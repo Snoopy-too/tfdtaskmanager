@@ -1,0 +1,16 @@
+# Sensitive configurations
+config.php
+
+# PHP & Local server
+.env
+.env.local
+.env.*.local
+vendor/
+composer.lock
+*.log
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
