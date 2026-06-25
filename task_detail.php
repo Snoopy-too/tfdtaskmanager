@@ -102,7 +102,12 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                     <?php echo $project ? SecurityHelper::escape($project->getName()) : 'Unknown Project'; ?>
                 </span>
-                <h1 class="text-2xl md:text-3xl font-extrabold text-white mt-1"><?php echo SecurityHelper::escape($task->getTitle()); ?></h1>
+                <div class="flex items-center space-x-3 mt-1">
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-white"><?php echo SecurityHelper::escape($task->getTitle()); ?></h1>
+                    <a href="edit_task.php?id=<?php echo $taskId; ?>" class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 border border-slate-700 rounded-lg transition duration-200">
+                        Edit
+                    </a>
+                </div>
                 
                 <div class="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-xs text-slate-400">
                     <span>Created by: <strong class="text-slate-300"><?php echo $creator ? SecurityHelper::escape($creator->getName()) : 'Unknown'; ?></strong></span>
