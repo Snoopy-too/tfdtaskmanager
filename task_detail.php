@@ -104,6 +104,9 @@ require_once __DIR__ . '/templates/header.php';
                 </span>
                 <div class="flex items-center space-x-3 mt-1">
                     <h1 class="text-2xl md:text-3xl font-extrabold text-white"><?php echo SecurityHelper::escape($task->getTitle()); ?></h1>
+                    <?php if ($task->isBug()): ?>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
+                    <?php endif; ?>
                     <a href="edit_task.php?id=<?php echo $taskId; ?>" class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 border border-slate-700 rounded-lg transition duration-200">
                         Edit
                     </a>

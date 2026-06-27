@@ -16,8 +16,10 @@ $userService = $container->get(UserService::class);
 
 $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
 $selectedStatus = isset($_GET['status']) && $_GET['status'] !== '' ? $_GET['status'] : null;
+$onlyBugs = isset($_GET['only_bugs']) && $_GET['only_bugs'] === '1';
+$sortBy = $_GET['sort_by'] ?? '';
 
-$tasks = $taskService->getTasksFiltered($selectedProjectId, $selectedStatus);
+$tasks = $taskService->getTasksFiltered($selectedProjectId, $selectedStatus, $onlyBugs, $sortBy);
 
 $projects = $projectService->getAllProjects();
 $users = $userService->getAllUsers();
@@ -77,8 +79,27 @@ require_once __DIR__ . '/templates/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+
+            <div class="flex-grow w-full md:max-w-xs">
+                <label for="bug_filter" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filter by Type</label>
+                <select id="bug_filter" name="only_bugs" onchange="this.form.submit()"
+                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
+                    <option value="0" <?php echo !$onlyBugs ? 'selected' : ''; ?>>All Tasks</option>
+                    <option value="1" <?php echo $onlyBugs ? 'selected' : ''; ?>>Bugs Only</option>
+                </select>
+            </div>
+
+            <div class="flex-grow w-full md:max-w-xs">
+                <label for="sort_by" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Sort By</label>
+                <select id="sort_by" name="sort_by" onchange="this.form.submit()"
+                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
+                    <option value="" <?php echo $sortBy === '' ? 'selected' : ''; ?>>Default (Newest First)</option>
+                    <option value="deadline" <?php echo $sortBy === 'deadline' ? 'selected' : ''; ?>>Due Date</option>
+                    <option value="alphabetical" <?php echo $sortBy === 'alphabetical' ? 'selected' : ''; ?>>Alphabetical</option>
+                </select>
+            </div>
             
-            <?php if ($selectedProjectId !== null): ?>
+            <?php if ($selectedProjectId !== null || $onlyBugs || $sortBy !== ''): ?>
                 <a href="index.php" class="text-xs text-slate-500 hover:text-slate-300 font-medium pb-2.5 transition">
                     Clear Filters
                 </a>
@@ -113,6 +134,9 @@ require_once __DIR__ . '/templates/header.php';
                                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                                     <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
                                 </span>
+                                <?php if ($task->isBug()): ?>
+                                    <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
+                                <?php endif; ?>
                                 <h3 class="text-base font-bold text-slate-100 mt-1 group-hover:text-indigo-300 transition">
                                     <a href="task_detail.php?id=<?php echo $task->getId(); ?>">
                                         <?php echo SecurityHelper::escape($task->getTitle()); ?>
@@ -162,6 +186,9 @@ require_once __DIR__ . '/templates/header.php';
                                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                                     <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
                                 </span>
+                                <?php if ($task->isBug()): ?>
+                                    <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
+                                <?php endif; ?>
                                 <h3 class="text-base font-bold text-slate-100 mt-1 hover:text-indigo-300 transition">
                                     <a href="task_detail.php?id=<?php echo $task->getId(); ?>">
                                         <?php echo SecurityHelper::escape($task->getTitle()); ?>
@@ -209,6 +236,9 @@ require_once __DIR__ . '/templates/header.php';
                                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                                     <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
                                 </span>
+                                <?php if ($task->isBug()): ?>
+                                    <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
+                                <?php endif; ?>
                                 <h3 class="text-base font-bold text-slate-300 line-through mt-1 hover:text-indigo-300 transition">
                                     <a href="task_detail.php?id=<?php echo $task->getId(); ?>">
                                         <?php echo SecurityHelper::escape($task->getTitle()); ?>

@@ -32,12 +32,12 @@ class TaskService
         return $this->taskRepository->findById($id);
     }
 
-    public function getTasksFiltered(?int $projectId, ?string $status): array
+    public function getTasksFiltered(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null): array
     {
-        return $this->taskRepository->findByFilters($projectId, $status);
+        return $this->taskRepository->findByFilters($projectId, $status, $onlyBugs, $sortBy);
     }
 
-    public function createTask(int $projectId, string $title, string $details, ?string $deadline, int $creatorId): Task
+    public function createTask(int $projectId, string $title, string $details, ?string $deadline, int $creatorId, bool $isBug = false): Task
     {
         $title = trim($title);
         $details = trim($details);
@@ -55,7 +55,7 @@ class TaskService
             throw new ValidationException("Deadline must be in YYYY-MM-DD format.");
         }
 
-        $task = new Task(null, $projectId, $title, $details, 'To Do', $deadline, $creatorId);
+        $task = new Task(null, $projectId, $title, $details, 'To Do', $deadline, $creatorId, null, null, '', $isBug);
         $savedTask = $this->taskRepository->save($task);
 
         $history = new TaskHistory(null, $savedTask->getId(), $creatorId, 'created', 'Task created.');

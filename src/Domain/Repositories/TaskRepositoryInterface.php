@@ -21,5 +21,5 @@ interface TaskRepositoryInterface
     /**
      * @return Task[]
      */
-    public function findByFilters(?int $projectId, ?string $status): array;
+    public function findByFilters(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null): array;
 }

@@ -15,6 +15,7 @@ class Task
     private ?int $assignedTo;
     private ?string $checkedOutAt;
     private string $createdAt;
+    private bool $isBug;
 
     public function __construct(
         ?int $id,
@@ -26,7 +27,8 @@ class Task
         int $createdBy,
         ?int $assignedTo = null,
         ?string $checkedOutAt = null,
-        string $createdAt = ''
+        string $createdAt = '',
+        bool $isBug = false
     ) {
         $this->id = $id;
         $this->projectId = $projectId;
@@ -38,6 +40,7 @@ class Task
         $this->assignedTo = $assignedTo;
         $this->checkedOutAt = $checkedOutAt;
         $this->createdAt = $createdAt;
+        $this->isBug = $isBug;
     }
 
     public function getId(): ?int
@@ -88,6 +91,11 @@ class Task
     public function getCreatedAt(): string
     {
         return $this->createdAt;
+    }
+
+    public function isBug(): bool
+    {
+        return $this->isBug;
     }
 
     // Business Logic for Task checkout/check-in transitions

@@ -29,8 +29,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
     {
         if ($task->getId() === null) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO tasks (project_id, title, details, status, deadline, created_by, assigned_to, checked_out_at)
-                VALUES (:project_id, :title, :details, :status, :deadline, :created_by, :assigned_to, :checked_out_at)
+                INSERT INTO tasks (project_id, title, details, status, deadline, created_by, assigned_to, checked_out_at, is_bug)
+                VALUES (:project_id, :title, :details, :status, :deadline, :created_by, :assigned_to, :checked_out_at, :is_bug)
             ");
             $stmt->execute([
                 'project_id' => $task->getProjectId(),
@@ -40,7 +40,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 'deadline' => $task->getDeadline(),
                 'created_by' => $task->getCreatedBy(),
                 'assigned_to' => $task->getAssignedTo(),
-                'checked_out_at' => $task->getCheckedOutAt()
+                'checked_out_at' => $task->getCheckedOutAt(),
+                'is_bug' => $task->isBug() ? 1 : 0
             ]);
             $id = (int)$this->pdo->lastInsertId();
             return new Task(
@@ -53,14 +54,15 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 $task->getCreatedBy(),
                 $task->getAssignedTo(),
                 $task->getCheckedOutAt(),
-                date('Y-m-d H:i:s')
+                date('Y-m-d H:i:s'),
+                $task->isBug()
             );
         } else {
             $stmt = $this->pdo->prepare("
                 UPDATE tasks
                 SET project_id = :project_id, title = :title, details = :details, status = :status,
                     deadline = :deadline, created_by = :created_by, assigned_to = :assigned_to,
-                    checked_out_at = :checked_out_at
+                    checked_out_at = :checked_out_at, is_bug = :is_bug
                 WHERE id = :id
             ");
             $stmt->execute([
@@ -72,6 +74,7 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 'created_by' => $task->getCreatedBy(),
                 'assigned_to' => $task->getAssignedTo(),
                 'checked_out_at' => $task->getCheckedOutAt(),
+                'is_bug' => $task->isBug() ? 1 : 0,
                 'id' => $task->getId()
             ]);
             return $task;
@@ -95,7 +98,7 @@ class PDOTaskRepository implements TaskRepositoryInterface
         return $tasks;
     }
 
-    public function findByFilters(?int $projectId, ?string $status): array
+    public function findByFilters(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null): array
     {
         $sql = "SELECT * FROM tasks WHERE 1=1";
         $params = [];
@@ -110,7 +113,17 @@ class PDOTaskRepository implements TaskRepositoryInterface
             $params['status'] = $status;
         }
 
-        $sql .= " ORDER BY created_at DESC";
+        if ($onlyBugs) {
+            $sql .= " AND is_bug = 1";
+        }
+
+        if ($sortBy === 'deadline') {
+            $sql .= " ORDER BY (deadline IS NULL), deadline ASC, title ASC";
+        } elseif ($sortBy === 'alphabetical') {
+            $sql .= " ORDER BY title ASC";
+        } else {
+            $sql .= " ORDER BY created_at DESC";
+        }
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -134,7 +147,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
             (int)$row['created_by'],
             $row['assigned_to'] ? (int)$row['assigned_to'] : null,
             $row['checked_out_at'] ? (string)$row['checked_out_at'] : null,
-            $row['created_at']
+            $row['created_at'],
+            (bool)($row['is_bug'] ?? false)
         );
     }
 }

@@ -28,9 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $details = $_POST['details'] ?? '';
         $deadline = $_POST['deadline'] ?? '';
         $creatorId = SecurityHelper::getCurrentUserId() ?? 0;
+        $isBug = isset($_POST['is_bug']) && $_POST['is_bug'] === '1';
 
         try {
-            $taskService->createTask($projectId, $title, $details, !empty($deadline) ? $deadline : null, $creatorId);
+            $taskService->createTask($projectId, $title, $details, !empty($deadline) ? $deadline : null, $creatorId, $isBug);
             $success = "Task '$title' successfully created.";
         } catch (ValidationException $e) {
             $error = $e->getMessage();
@@ -106,6 +107,12 @@ require_once __DIR__ . '/templates/header.php';
                     <label for="deadline" class="block text-sm font-medium text-slate-300 mb-1.5">Deadline (Optional)</label>
                     <input type="date" id="deadline" name="deadline"
                         class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 transition outline-none">
+                </div>
+
+                <div class="flex items-center space-x-2.5 py-1">
+                    <input type="checkbox" id="is_bug" name="is_bug" value="1"
+                        class="w-4 h-4 rounded bg-slate-950/60 border-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 focus:ring-1">
+                    <label for="is_bug" class="text-sm font-medium text-slate-300 select-none cursor-pointer">This task is a bug</label>
                 </div>
 
                 <div class="flex space-x-4 pt-2">

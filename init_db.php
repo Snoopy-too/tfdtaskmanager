@@ -56,6 +56,7 @@ try {
             `created_by` INT NOT NULL,
             `assigned_to` INT DEFAULT NULL,
             `checked_out_at` TIMESTAMP NULL DEFAULT NULL,
+            `is_bug` TINYINT(1) NOT NULL DEFAULT 0,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT `fk_tasks_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
             CONSTRAINT `fk_tasks_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),

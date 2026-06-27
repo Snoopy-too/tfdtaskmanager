@@ -49,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $details = $_POST['details'] ?? '';
             $deadline = $_POST['deadline'] ?? '';
             $status = $_POST['status'] ?? 'To Do';
+            $isBug = isset($_POST['is_bug']) && $_POST['is_bug'] === '1';
 
             try {
                 if (empty($title)) {
@@ -69,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("
                     UPDATE tasks
                     SET project_id = :project_id, title = :title, details = :details,
-                        deadline = :deadline, status = :status
+                        deadline = :deadline, status = :status, is_bug = :is_bug
                     WHERE id = :id
                 ");
                 $stmt->execute([
@@ -78,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'details' => $details,
                     'deadline' => !empty($deadline) ? $deadline : null,
                     'status' => $status,
+                    'is_bug' => $isBug ? 1 : 0,
                     'id' => $taskId
                 ]);
 
@@ -159,6 +161,13 @@ require_once __DIR__ . '/templates/header.php';
                 <input type="date" id="deadline" name="deadline"
                     value="<?php echo $task->getDeadline() ? SecurityHelper::escape($task->getDeadline()) : ''; ?>"
                     class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 transition outline-none">
+            </div>
+
+            <div class="flex items-center space-x-2.5 py-1">
+                <input type="checkbox" id="is_bug" name="is_bug" value="1"
+                    <?php echo $task->isBug() ? 'checked' : ''; ?>
+                    class="w-4 h-4 rounded bg-slate-950/60 border-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 focus:ring-1">
+                <label for="is_bug" class="text-sm font-medium text-slate-300 select-none cursor-pointer">This task is a bug</label>
             </div>
 
             <div>
