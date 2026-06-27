@@ -202,7 +202,7 @@ require_once __DIR__ . '/templates/header.php';
                                 <div class="mt-3 flex items-center space-x-2 bg-slate-950/40 border border-slate-800/80 px-2.5 py-1.5 rounded-lg">
                                     <div class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></div>
                                     <div class="text-[11px] text-slate-300">
-                                        Assigned: <span class="font-bold text-slate-200"><?php echo SecurityHelper::escape($userMap[$task->getAssignedTo()] ?? 'Unknown'); ?></span>
+                                        Checked out by: <span class="font-bold text-slate-200"><?php echo SecurityHelper::escape($userMap[$task->getAssignedTo()] ?? 'Unknown'); ?></span>
                                     </div>
                                 </div>
                             </div>
