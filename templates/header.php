@@ -48,7 +48,7 @@ function isActive(string $page, string $current_page): string {
                 <!-- Logo -->
                 <div class="flex items-center">
                     <a href="index.php" class="flex items-center space-x-2">
-                        <span class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">TFD Task Manager</span>
+                        <span class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">TFD - SWGGD</span>
                     </a>
                 </div>
 
