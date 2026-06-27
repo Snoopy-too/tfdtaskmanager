@@ -183,7 +183,7 @@ require_once __DIR__ . '/templates/header.php';
                                     <a href="users.php?edit=<?php echo $user->getId(); ?>" class="text-indigo-400 hover:text-indigo-300 text-sm font-medium transition">Edit</a>
                                     
                                     <?php if (!$user->isSuperAdmin()): ?>
-                                        <form action="users.php" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                        <form action="users.php" method="POST" class="inline" onsubmit="return showCustomConfirm('Are you sure you want to delete this user?', this);">
                                             <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="id" value="<?php echo $user->getId(); ?>">

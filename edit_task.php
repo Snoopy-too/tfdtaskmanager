@@ -105,7 +105,7 @@ require_once __DIR__ . '/templates/header.php';
         </div>
         
         <!-- Delete Task Form -->
-        <form action="edit_task.php?id=<?php echo $taskId; ?>" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this task?');">
+        <form action="edit_task.php?id=<?php echo $taskId; ?>" method="POST" onsubmit="return showCustomConfirm('Are you sure you want to permanently delete this task?', this);">
             <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
             <input type="hidden" name="action" value="delete">
             <button type="submit" class="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-sm font-semibold rounded-lg transition duration-200">
