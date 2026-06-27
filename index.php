@@ -56,7 +56,7 @@ require_once __DIR__ . '/templates/header.php';
     <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
         <div>
             <h1 class="text-3xl font-extrabold tracking-tight text-white">Shit We Gotta Get Done</h1>
-            <p class="text-slate-400 mt-1">Create and track TFD tasks, checkout tasks, and manage progress of TFD games.</p>
+            <p class="text-slate-400 mt-1">Create and track TFD tasks, checkout tasks, and manage progress of TFD shit.</p>
         </div>
         <div class="flex items-center space-x-3">
             <a href="add_task.php" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow transition duration-200">
