@@ -181,6 +181,10 @@ require_once __DIR__ . '/templates/header.php';
                     <p class="text-slate-500 text-center py-8 text-sm">No tasks in progress.</p>
                 <?php else: ?>
                     <?php foreach ($inProgressTasks as $task): ?>
+                        <?php 
+                        $deadlineTime = $task->getDeadline() ? strtotime($task->getDeadline()) : null;
+                        $isOverdue = $deadlineTime && $deadlineTime < strtotime(date('Y-m-d'));
+                        ?>
                         <div class="bg-slate-900 border border-amber-500/10 p-4 rounded-xl hover:border-amber-500/20 transition duration-200 flex flex-col justify-between space-y-3 shadow-lg">
                             <div>
                                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
@@ -204,9 +208,18 @@ require_once __DIR__ . '/templates/header.php';
                             </div>
                             
                             <div class="flex items-center justify-between pt-3 border-t border-slate-800/40 text-xs">
-                                <span class="text-slate-500">
-                                    Active: <?php echo date('M d', strtotime($task->getCheckedOutAt())); ?>
-                                </span>
+                                <div class="flex flex-col space-y-0.5">
+                                    <?php if ($deadlineTime): ?>
+                                        <span class="<?php echo $isOverdue ? 'text-rose-400 font-medium' : 'text-slate-500'; ?>">
+                                            Due: <?php echo date('M d, Y', $deadlineTime); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-slate-600">No deadline</span>
+                                    <?php endif; ?>
+                                    <span class="text-[10px] text-slate-500">
+                                        Active: <?php echo date('M d, G:i a', strtotime($task->getCheckedOutAt())); ?>
+                                    </span>
+                                </div>
                                 <a href="task_detail.php?id=<?php echo $task->getId(); ?>" class="text-indigo-400 hover:text-indigo-300 font-semibold transition">Manage Task &rarr;</a>
                             </div>
                         </div>
