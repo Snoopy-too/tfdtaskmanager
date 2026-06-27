@@ -15,20 +15,36 @@ $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
 
+$editProject = null;
+$editId = isset($_GET['edit']) ? (int)$_GET['edit'] : null;
+if ($editId) {
+    $editProject = $projectService->getProjectById($editId);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submittedToken = $_POST['csrf_token'] ?? '';
 
     if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
         $error = 'Security check failed. Please try again.';
     } else {
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : null;
         $name = $_POST['name'] ?? '';
         $description = $_POST['description'] ?? '';
 
         try {
-            $projectService->createProject($name, $description);
-            $success = "Project '$name' successfully created.";
+            if ($id) {
+                $projectService->updateProject($id, $name, $description);
+                $success = "Project '$name' successfully updated.";
+                $editProject = null;
+            } else {
+                $projectService->createProject($name, $description);
+                $success = "Project '$name' successfully created.";
+            }
         } catch (ValidationException $e) {
             $error = $e->getMessage();
+            if ($id) {
+                $editProject = $projectService->getProjectById($id);
+            }
         }
     }
 }
@@ -58,16 +74,32 @@ require_once __DIR__ . '/templates/header.php';
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
+        <?php
+        $isEdit = $editProject !== null;
+        $formTitle = $isEdit ? 'Edit Project' : 'Add New Project';
+        $buttonText = $isEdit ? 'Save Changes' : 'Add Project';
+        $nameValue = $isEdit ? $editProject->getName() : '';
+        $descValue = $isEdit ? $editProject->getDescription() : '';
+        ?>
         <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl shadow-xl h-fit">
-            <h2 class="text-xl font-bold text-slate-200 mb-6">Add New Project</h2>
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-slate-200"><?php echo $formTitle; ?></h2>
+                <?php if ($isEdit): ?>
+                    <a href="projects.php" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition">Cancel</a>
+                <?php endif; ?>
+            </div>
 
             <form action="projects.php" method="POST" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                <?php if ($isEdit): ?>
+                    <input type="hidden" name="id" value="<?php echo $editProject->getId(); ?>">
+                <?php endif; ?>
 
                 <div>
                     <label for="name" class="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
                     <input type="text" id="name" name="name" required
                         placeholder="e.g., Space Strategy, Prison Game"
+                        value="<?php echo SecurityHelper::escape($nameValue); ?>"
                         class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 transition outline-none">
                 </div>
 
@@ -75,12 +107,12 @@ require_once __DIR__ . '/templates/header.php';
                     <label for="description" class="block text-sm font-medium text-slate-300 mb-1">Description</label>
                     <textarea id="description" name="description" rows="3"
                         placeholder="Short summary of game mechanics or concepts..."
-                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 transition outline-none"></textarea>
+                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 transition outline-none"><?php echo SecurityHelper::escape($descValue); ?></textarea>
                 </div>
 
                 <button type="submit"
                     class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg transition duration-200">
-                    Add Project
+                    <?php echo $buttonText; ?>
                 </button>
             </form>
         </div>
@@ -107,7 +139,11 @@ require_once __DIR__ . '/templates/header.php';
                             </div>
                             <div class="mt-4 pt-3 border-t border-slate-800/60 text-xs text-slate-500 flex items-center justify-between">
                                 <span>Created: <?php echo date('M d, Y', strtotime($project->getCreatedAt())); ?></span>
-                                <a href="index.php?project_id=<?php echo $project->getId(); ?>" class="text-indigo-400 hover:text-indigo-300 font-medium transition">View Tasks &rarr;</a>
+                                <div class="flex items-center space-x-3">
+                                    <a href="projects.php?edit=<?php echo $project->getId(); ?>" class="text-slate-400 hover:text-indigo-300 font-medium transition">Edit</a>
+                                    <span class="text-slate-700">|</span>
+                                    <a href="index.php?project_id=<?php echo $project->getId(); ?>" class="text-indigo-400 hover:text-indigo-300 font-medium transition">View Tasks &rarr;</a>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>

@@ -38,4 +38,22 @@ class ProjectService
         $project = new Project(null, $name, $description);
         return $this->projectRepository->save($project);
     }
+
+    public function updateProject(int $id, string $name, string $description): Project
+    {
+        $name = trim($name);
+        $description = trim($description);
+
+        if (empty($name)) {
+            throw new ValidationException("Project name is required.");
+        }
+
+        $project = $this->projectRepository->findById($id);
+        if (!$project) {
+            throw new ValidationException("Project not found.");
+        }
+
+        $updatedProject = new Project($id, $name, $description, $project->getCreatedAt());
+        return $this->projectRepository->save($updatedProject);
+    }
 }
