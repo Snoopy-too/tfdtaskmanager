@@ -9,10 +9,13 @@ use App\Infrastructure\Repository\PDOProjectRepository;
 use App\Infrastructure\Repository\PDOTaskRepository;
 use App\Infrastructure\Repository\PDOCommentRepository;
 use App\Infrastructure\Repository\PDOTaskHistoryRepository;
+use App\Infrastructure\Repository\PDOMeetingRepository;
+use App\Infrastructure\Repository\PDOMeetingTopicRepository;
 use App\Application\Services\AuthService;
 use App\Application\Services\UserService;
 use App\Application\Services\ProjectService;
 use App\Application\Services\TaskService;
+use App\Application\Services\MeetingService;
 use PDO;
 
 class DIContainer
@@ -70,6 +73,21 @@ class DIContainer
                 $this->get(PDOTaskRepository::class),
                 $this->get(PDOTaskHistoryRepository::class),
                 $this->get(PDOCommentRepository::class)
+            );
+        };
+
+        $this->services[PDOMeetingRepository::class] = function() {
+            return new PDOMeetingRepository($this->get(PDO::class));
+        };
+
+        $this->services[PDOMeetingTopicRepository::class] = function() {
+            return new PDOMeetingTopicRepository($this->get(PDO::class));
+        };
+
+        $this->services[MeetingService::class] = function() {
+            return new MeetingService(
+                $this->get(PDOMeetingRepository::class),
+                $this->get(PDOMeetingTopicRepository::class)
             );
         };
     }

@@ -57,6 +57,7 @@ function isActive(string $page, string $current_page): string {
                     <nav class="hidden md:flex space-x-8">
                         <a href="index.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('index.php', $current_page); ?>">Dashboard</a>
                         <a href="projects.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('projects.php', $current_page); ?>">Projects</a>
+                        <a href="meetings.php" class="px-1 py-2 text-sm font-medium <?php echo ($current_page === 'meetings.php' || $current_page === 'meeting_detail.php') ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-300 hover:text-white transition duration-200'; ?>">Div/Dev</a>
                         <?php if (SecurityHelper::getCurrentUserRole() === 'super_admin'): ?>
                             <a href="users.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('users.php', $current_page); ?>">User Management</a>
                         <?php endif; ?>

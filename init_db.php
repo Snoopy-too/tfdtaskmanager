@@ -94,6 +94,33 @@ try {
     ");
     echo "- 'comments' table created.\n";
 
+    // 6. Meetings table (InnoDB)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `meetings` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `title` VARCHAR(150) NOT NULL,
+            `scheduled_date` DATE DEFAULT NULL,
+            `created_by` INT NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_meetings_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB;
+    ");
+    echo "- 'meetings' table created.\n";
+
+    // 7. Meeting Topics table (InnoDB)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `meeting_topics` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `meeting_id` INT NOT NULL,
+            `user_id` INT NOT NULL,
+            `title` VARCHAR(255) NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_topics_meeting` FOREIGN KEY (`meeting_id`) REFERENCES `meetings` (`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_topics_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB;
+    ");
+    echo "- 'meeting_topics' table created.\n";
+
     // Seed default Super-Admin if not exists
     $adminEmail = 'admin@tfdtaskmgr.local';
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = :email");
