@@ -7,6 +7,8 @@ use App\Domain\Entities\MeetingTopic;
 
 interface MeetingTopicRepositoryInterface
 {
+    public function findById(int $id): ?MeetingTopic;
+
     public function save(MeetingTopic $topic): MeetingTopic;
     
     /**

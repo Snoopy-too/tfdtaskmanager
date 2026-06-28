@@ -16,25 +16,49 @@ class PDOMeetingTopicRepository implements MeetingTopicRepositoryInterface
         $this->pdo = $pdo;
     }
 
+    public function findById(int $id): ?MeetingTopic
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM meeting_topics WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return null;
+        }
+        return $this->mapRowToEntity($row);
+    }
+
     public function save(MeetingTopic $topic): MeetingTopic
     {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO meeting_topics (meeting_id, user_id, title)
-            VALUES (:meeting_id, :user_id, :title)
-        ");
-        $stmt->execute([
-            'meeting_id' => $topic->getMeetingId(),
-            'user_id' => $topic->getUserId(),
-            'title' => $topic->getTitle()
-        ]);
-        $id = (int)$this->pdo->lastInsertId();
-        return new MeetingTopic(
-            $id,
-            $topic->getMeetingId(),
-            $topic->getUserId(),
-            $topic->getTitle(),
-            date('Y-m-d H:i:s')
-        );
+        if ($topic->getId() === null) {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO meeting_topics (meeting_id, user_id, title)
+                VALUES (:meeting_id, :user_id, :title)
+            ");
+            $stmt->execute([
+                'meeting_id' => $topic->getMeetingId(),
+                'user_id' => $topic->getUserId(),
+                'title' => $topic->getTitle()
+            ]);
+            $id = (int)$this->pdo->lastInsertId();
+            return new MeetingTopic(
+                $id,
+                $topic->getMeetingId(),
+                $topic->getUserId(),
+                $topic->getTitle(),
+                date('Y-m-d H:i:s')
+            );
+        } else {
+            $stmt = $this->pdo->prepare("
+                UPDATE meeting_topics
+                SET title = :title
+                WHERE id = :id
+            ");
+            $stmt->execute([
+                'title' => $topic->getTitle(),
+                'id' => $topic->getId()
+            ]);
+            return $topic;
+        }
     }
 
     public function findByMeetingId(int $meetingId): array

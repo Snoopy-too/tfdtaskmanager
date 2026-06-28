@@ -12,6 +12,7 @@ SecurityHelper::requireLogin();
 
 $meetingService = $container->get(MeetingService::class);
 $userService = $container->get(UserService::class);
+$currentUserId = SecurityHelper::getCurrentUserId();
 
 $meetingId = isset($_GET['id']) ? (int)$_GET['id'] : null;
 if (!$meetingId) {
@@ -51,13 +52,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'add_topic') {
             $topicTitle = $_POST['topic_title'] ?? '';
             try {
-                $currentUserId = SecurityHelper::getCurrentUserId();
                 if ($currentUserId === null) {
                     throw new ValidationException("User not authenticated.");
                 }
 
                 $meetingService->addTopic($meetingId, $currentUserId, $topicTitle);
                 $success = 'Topic successfully added to the agenda.';
+            } catch (ValidationException $e) {
+                $error = $e->getMessage();
+            }
+        } elseif ($action === 'edit_topic') {
+            $topicId = isset($_POST['topic_id']) ? (int)$_POST['topic_id'] : null;
+            $topicTitle = $_POST['topic_title'] ?? '';
+            try {
+                if ($currentUserId === null) {
+                    throw new ValidationException("User not authenticated.");
+                }
+                if (!$topicId) {
+                    throw new ValidationException("Topic ID is required.");
+                }
+                $meetingService->updateTopic($topicId, $currentUserId, $topicTitle);
+                $success = 'Topic successfully updated.';
             } catch (ValidationException $e) {
                 $error = $e->getMessage();
             }
@@ -183,10 +198,36 @@ require_once __DIR__ . '/templates/header.php';
                                 <?php echo $index + 1; ?>
                             </div>
                             <div class="flex-grow">
-                                <p class="text-slate-200 font-medium text-base"><?php echo SecurityHelper::escape($topic->getTitle()); ?></p>
-                                <p class="text-xs text-slate-500 mt-1">
-                                    Added by <?php echo SecurityHelper::escape($userMap[$topic->getUserId()] ?? 'Unknown User'); ?> &bull; <?php echo date('M d, Y, h:i A', strtotime($topic->getCreatedAt())); ?>
-                                </p>
+                                <?php if (isset($_GET['edit_topic']) && (int)$_GET['edit_topic'] === $topic->getId() && $topic->getUserId() === $currentUserId): ?>
+                                    <form action="meeting_detail.php?id=<?php echo $meetingId; ?>" method="POST" class="space-y-2">
+                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                        <input type="hidden" name="action" value="edit_topic">
+                                        <input type="hidden" name="topic_id" value="<?php echo $topic->getId(); ?>">
+                                        <input type="text" name="topic_title" required
+                                            value="<?php echo SecurityHelper::escape($topic->getTitle()); ?>"
+                                            class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 transition outline-none text-sm">
+                                        <div class="flex items-center space-x-2">
+                                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3 py-1 rounded text-xs transition duration-200">
+                                                Save
+                                            </button>
+                                            <a href="meeting_detail.php?id=<?php echo $meetingId; ?>" class="text-slate-400 hover:text-white font-medium text-xs transition">
+                                                Cancel
+                                            </a>
+                                        </div>
+                                    </form>
+                                <?php else: ?>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <p class="text-slate-200 font-medium text-base"><?php echo SecurityHelper::escape($topic->getTitle()); ?></p>
+                                        <?php if ($topic->getUserId() === $currentUserId): ?>
+                                            <a href="meeting_detail.php?id=<?php echo $meetingId; ?>&edit_topic=<?php echo $topic->getId(); ?>" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition whitespace-nowrap">
+                                                Edit
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        Added by <?php echo SecurityHelper::escape($userMap[$topic->getUserId()] ?? 'Unknown User'); ?> &bull; <?php echo date('M d, Y, h:i A', strtotime($topic->getCreatedAt())); ?>
+                                    </p>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

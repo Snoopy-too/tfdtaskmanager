@@ -104,4 +104,35 @@ class MeetingService
     {
         return $this->topicRepository->findByMeetingId($meetingId);
     }
+
+    public function getTopicById(int $id): ?MeetingTopic
+    {
+        return $this->topicRepository->findById($id);
+    }
+
+    public function updateTopic(int $id, int $userId, string $newTitle): MeetingTopic
+    {
+        $newTitle = trim($newTitle);
+        if (empty($newTitle)) {
+            throw new ValidationException("Topic title cannot be empty.");
+        }
+
+        $topic = $this->topicRepository->findById($id);
+        if (!$topic) {
+            throw new ValidationException("Topic not found.");
+        }
+
+        if ($topic->getUserId() !== $userId) {
+            throw new ValidationException("Access Denied: You can only edit topics you suggested.");
+        }
+
+        $updatedTopic = new MeetingTopic(
+            $id,
+            $topic->getMeetingId(),
+            $topic->getUserId(),
+            $newTitle,
+            $topic->getCreatedAt()
+        );
+        return $this->topicRepository->save($updatedTopic);
+    }
 }
