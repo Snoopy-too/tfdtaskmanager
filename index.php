@@ -139,7 +139,7 @@ require_once __DIR__ . '/templates/header.php';
                                 <?php endif; ?>
                                 <h3 class="text-base font-bold text-slate-100 mt-1 group-hover:text-indigo-300 transition">
                                     <a href="task_detail.php?id=<?php echo $task->getId(); ?>">
-                                        <?php echo SecurityHelper::escape($task->getTitle()); ?>
+                                        <span class="text-slate-400 font-medium mr-1"><?php echo ($task->isBug() ? 'bug #' : 'task #') . $task->getId(); ?>:</span><?php echo SecurityHelper::escape($task->getTitle()); ?>
                                     </a>
                                 </h3>
                                 <p class="text-xs text-slate-400 line-clamp-2 mt-2">
@@ -195,7 +195,7 @@ require_once __DIR__ . '/templates/header.php';
                                 <?php endif; ?>
                                 <h3 class="text-base font-bold text-slate-100 mt-1 hover:text-indigo-300 transition">
                                     <a href="task_detail.php?id=<?php echo $task->getId(); ?>">
-                                        <?php echo SecurityHelper::escape($task->getTitle()); ?>
+                                        <span class="text-slate-400 font-medium mr-1"><?php echo ($task->isBug() ? 'bug #' : 'task #') . $task->getId(); ?>:</span><?php echo SecurityHelper::escape($task->getTitle()); ?>
                                     </a>
                                 </h3>
                                 
@@ -254,7 +254,7 @@ require_once __DIR__ . '/templates/header.php';
                                 <?php endif; ?>
                                 <h3 class="text-base font-bold text-slate-300 line-through mt-1 hover:text-indigo-300 transition">
                                     <a href="task_detail.php?id=<?php echo $task->getId(); ?>">
-                                        <?php echo SecurityHelper::escape($task->getTitle()); ?>
+                                        <span class="text-slate-400/60 font-medium mr-1 no-underline"><?php echo ($task->isBug() ? 'bug #' : 'task #') . $task->getId(); ?>:</span><?php echo SecurityHelper::escape($task->getTitle()); ?>
                                     </a>
                                 </h3>
                             </div>

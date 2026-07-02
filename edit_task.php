@@ -101,7 +101,7 @@ require_once __DIR__ . '/templates/header.php';
     <div class="mb-8 flex items-center justify-between">
         <div>
             <a href="task_detail.php?id=<?php echo $taskId; ?>" class="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition">&larr; Back to Task Details</a>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white mt-2">Edit Task</h1>
+            <h1 class="text-3xl font-extrabold tracking-tight text-white mt-2">Edit <?php echo ($task->isBug() ? 'bug #' : 'task #') . $task->getId(); ?></h1>
         </div>
         
         <!-- Delete Task Form -->

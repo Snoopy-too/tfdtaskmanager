@@ -103,7 +103,9 @@ require_once __DIR__ . '/templates/header.php';
                     <?php echo $project ? SecurityHelper::escape($project->getName()) : 'Unknown Project'; ?>
                 </span>
                 <div class="flex items-center space-x-3 mt-1">
-                    <h1 class="text-2xl md:text-3xl font-extrabold text-white"><?php echo SecurityHelper::escape($task->getTitle()); ?></h1>
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-white">
+                        <span class="text-slate-400 font-medium mr-1.5"><?php echo ($task->isBug() ? 'bug #' : 'task #') . $task->getId(); ?>:</span><?php echo SecurityHelper::escape($task->getTitle()); ?>
+                    </h1>
                     <?php if ($task->isBug()): ?>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
                     <?php endif; ?>
