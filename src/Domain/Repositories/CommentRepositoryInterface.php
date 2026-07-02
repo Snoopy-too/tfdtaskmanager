@@ -12,5 +12,7 @@ interface CommentRepositoryInterface
      */
     public function findByTaskId(int $taskId): array;
     
+    public function findById(int $id): ?Comment;
+    
     public function save(Comment $comment): Comment;
 }

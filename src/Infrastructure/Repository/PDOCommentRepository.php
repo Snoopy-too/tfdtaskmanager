@@ -28,25 +28,47 @@ class PDOCommentRepository implements CommentRepositoryInterface
         return $comments;
     }
 
+    public function findById(int $id): ?Comment
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM comments WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        if (!$row) return null;
+        return $this->mapRowToEntity($row);
+    }
+
     public function save(Comment $comment): Comment
     {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO comments (task_id, user_id, message)
-            VALUES (:task_id, :user_id, :message)
-        ");
-        $stmt->execute([
-            'task_id' => $comment->getTaskId(),
-            'user_id' => $comment->getUserId(),
-            'message' => $comment->getMessage()
-        ]);
-        $id = (int)$this->pdo->lastInsertId();
-        return new Comment(
-            $id,
-            $comment->getTaskId(),
-            $comment->getUserId(),
-            $comment->getMessage(),
-            date('Y-m-d H:i:s')
-        );
+        if ($comment->getId() === null) {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO comments (task_id, user_id, message)
+                VALUES (:task_id, :user_id, :message)
+            ");
+            $stmt->execute([
+                'task_id' => $comment->getTaskId(),
+                'user_id' => $comment->getUserId(),
+                'message' => $comment->getMessage()
+            ]);
+            $id = (int)$this->pdo->lastInsertId();
+            return new Comment(
+                $id,
+                $comment->getTaskId(),
+                $comment->getUserId(),
+                $comment->getMessage(),
+                date('Y-m-d H:i:s')
+            );
+        } else {
+            $stmt = $this->pdo->prepare("
+                UPDATE comments
+                SET message = :message
+                WHERE id = :id
+            ");
+            $stmt->execute([
+                'message' => $comment->getMessage(),
+                'id' => $comment->getId()
+            ]);
+            return $comment;
+        }
     }
 
     private function mapRowToEntity(array $row): Comment

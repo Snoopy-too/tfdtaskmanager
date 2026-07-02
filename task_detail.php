@@ -52,6 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = $_POST['message'] ?? '';
                 $taskService->addComment($taskId, $currentUserId, $message);
                 $success = "Comment added successfully.";
+            } elseif ($action === 'edit_comment') {
+                $commentId = isset($_POST['comment_id']) ? (int)$_POST['comment_id'] : 0;
+                $message = $_POST['message'] ?? '';
+                $taskService->editComment($commentId, $currentUserId, $message);
+                $success = "Comment updated successfully.";
             }
             
             $task = $taskService->getTaskById($taskId);
@@ -236,12 +241,40 @@ require_once __DIR__ . '/templates/header.php';
                     <p class="text-slate-500 text-center py-6 text-sm">No comments yet. Start the discussion!</p>
                 <?php else: ?>
                     <?php foreach ($comments as $comment): ?>
+                        <?php $isOwner = ($comment->getUserId() === $currentUserId); ?>
                         <div class="bg-slate-950/40 border border-slate-800/60 p-4 rounded-xl space-y-2">
                             <div class="flex items-center justify-between text-xs">
-                                <span class="font-bold text-slate-300"><?php echo SecurityHelper::escape($userMap[$comment->getUserId()] ?? 'Unknown'); ?></span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-bold text-slate-300"><?php echo SecurityHelper::escape($userMap[$comment->getUserId()] ?? 'Unknown'); ?></span>
+                                    <?php if ($isOwner): ?>
+                                        <button onclick="toggleEditComment(<?php echo $comment->getId(); ?>)" class="text-indigo-400 hover:text-indigo-300 font-medium transition duration-200">Edit</button>
+                                    <?php endif; ?>
+                                </div>
                                 <span class="text-slate-500"><?php echo date('M d, Y g:i a', strtotime($comment->getCreatedAt())); ?></span>
                             </div>
-                            <p class="text-sm text-slate-300"><?php echo SecurityHelper::escape($comment->getMessage()); ?></p>
+                            
+                            <!-- View Mode -->
+                            <p id="comment-text-<?php echo $comment->getId(); ?>" class="text-sm text-slate-300 whitespace-pre-wrap"><?php echo SecurityHelper::escape($comment->getMessage()); ?></p>
+                            
+                            <!-- Edit Mode -->
+                            <?php if ($isOwner): ?>
+                                <form id="comment-form-<?php echo $comment->getId(); ?>" action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="hidden space-y-2 mt-2">
+                                    <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                    <input type="hidden" name="action" value="edit_comment">
+                                    <input type="hidden" name="comment_id" value="<?php echo $comment->getId(); ?>">
+                                    
+                                    <textarea name="message" rows="2" required class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 transition outline-none text-sm whitespace-pre-wrap"><?php echo SecurityHelper::escape($comment->getMessage()); ?></textarea>
+                                    
+                                    <div class="flex space-x-2 justify-end">
+                                        <button type="button" onclick="toggleEditComment(<?php echo $comment->getId(); ?>)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded transition duration-200">
+                                            Cancel
+                                        </button>
+                                        <button type="submit" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-medium transition duration-200">
+                                            Save
+                                        </button>
+                                    </div>
+                                </form>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -282,7 +315,7 @@ require_once __DIR__ . '/templates/header.php';
                                     <span class="text-slate-500 text-[10px]"><?php echo date('M d, Y g:i a', strtotime($log->getCreatedAt())); ?></span>
                                 </div>
                                 <?php if ($log->getNote()): ?>
-                                    <div class="bg-slate-950/60 text-slate-400 text-xs px-3 py-2 rounded-lg border border-slate-800/80 mt-1.5 font-sans">
+                                    <div class="bg-slate-950/60 text-slate-400 text-xs px-3 py-2 rounded-lg border border-slate-800/80 mt-1.5 font-sans whitespace-pre-wrap">
                                         &ldquo;<?php echo SecurityHelper::escape($log->getNote()); ?>&rdquo;
                                     </div>
                                 <?php endif; ?>
@@ -295,6 +328,22 @@ require_once __DIR__ . '/templates/header.php';
 
     </div>
 </div>
+
+<script>
+function toggleEditComment(commentId) {
+    const textEl = document.getElementById('comment-text-' + commentId);
+    const formEl = document.getElementById('comment-form-' + commentId);
+    if (textEl && formEl) {
+        if (formEl.classList.contains('hidden')) {
+            formEl.classList.remove('hidden');
+            textEl.classList.add('hidden');
+        } else {
+            formEl.classList.add('hidden');
+            textEl.classList.remove('hidden');
+        }
+    }
+}
+</script>
 
 <?php
 require_once __DIR__ . '/templates/footer.php';

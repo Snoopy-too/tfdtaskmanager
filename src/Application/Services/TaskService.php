@@ -153,6 +153,33 @@ class TaskService
         return $this->commentRepository->save($comment);
     }
 
+    public function editComment(int $commentId, int $userId, string $message): Comment
+    {
+        $message = trim($message);
+        if (empty($message)) {
+            throw new ValidationException("Comment message cannot be empty.");
+        }
+
+        $comment = $this->commentRepository->findById($commentId);
+        if (!$comment) {
+            throw new ValidationException("Comment not found.");
+        }
+
+        if ($comment->getUserId() !== $userId) {
+            throw new ValidationException("You can only edit your own comments.");
+        }
+
+        $updatedComment = new Comment(
+            $comment->getId(),
+            $comment->getTaskId(),
+            $comment->getUserId(),
+            $message,
+            $comment->getCreatedAt()
+        );
+
+        return $this->commentRepository->save($updatedComment);
+    }
+
     public function getTaskComments(int $taskId): array
     {
         return $this->commentRepository->findByTaskId($taskId);
