@@ -53,7 +53,8 @@ class UserService
             throw new ValidationException("A user with this email already exists.");
         }
 
-        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
+        $hash = password_hash($password, $algo);
         $user = new User(null, $role, $name, $email, $hash);
 
         return $this->userRepository->save($user);
@@ -108,7 +109,8 @@ class UserService
 
         $hash = $user->getPasswordHash();
         if (!empty($password)) {
-            $hash = password_hash($password, PASSWORD_BCRYPT);
+            $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
+            $hash = password_hash($password, $algo);
         }
 
         $updatedUser = new User($id, $role, $name, $email, $hash, $user->getCreatedAt());

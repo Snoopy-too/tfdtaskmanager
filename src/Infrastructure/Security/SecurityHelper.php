@@ -7,6 +7,18 @@ class SecurityHelper
 {
     public static function initSession(): void
     {
+        if (!headers_sent()) {
+            header("X-Frame-Options: DENY");
+            header("X-Content-Type-Options: nosniff");
+            
+            $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+            if ($isHttps) {
+                header("Strict-Transport-Security: max-age=63072000; includeSubDomains; preload");
+            }
+            
+            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data:; connect-src 'self';");
+        }
+
         if (session_status() === PHP_SESSION_NONE) {
             ini_set('session.cookie_httponly', '1');
             ini_set('session.use_only_cookies', '1');
@@ -20,7 +32,7 @@ class SecurityHelper
                 'httponly' => true,
                 'samesite' => 'Lax'
             ]);
-
+ 
             session_start();
         }
 

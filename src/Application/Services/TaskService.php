@@ -180,6 +180,87 @@ class TaskService
         return $this->commentRepository->save($updatedComment);
     }
 
+    public function updateTask(
+        int $taskId,
+        int $projectId,
+        string $title,
+        string $details,
+        ?string $deadline,
+        string $status,
+        bool $isBug,
+        int $updaterId
+    ): Task {
+        $task = $this->taskRepository->findById($taskId);
+        if (!$task) {
+            throw new ValidationException("Task not found.");
+        }
+
+        $title = trim($title);
+        $details = trim($details);
+        $deadline = $deadline ? trim($deadline) : null;
+        $status = trim($status);
+
+        if (empty($title)) {
+            throw new ValidationException("Task title is required.");
+        }
+
+        if ($projectId <= 0) {
+            throw new ValidationException("Valid project selection is required.");
+        }
+
+        if ($deadline !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $deadline)) {
+            throw new ValidationException("Deadline must be in YYYY-MM-DD format.");
+        }
+
+        if (!in_array($status, ['To Do', 'In Progress', 'Done'])) {
+            throw new ValidationException("Invalid status selected.");
+        }
+
+        // Detect changes to construct an audit trail note
+        $changes = [];
+        if ($task->getTitle() !== $title) $changes[] = "title";
+        if ($task->getProjectId() !== $projectId) $changes[] = "project";
+        if ($task->getDetails() !== $details) $changes[] = "details";
+        if ($task->getDeadline() !== $deadline) $changes[] = "deadline";
+        if ($task->getStatus() !== $status) $changes[] = "status";
+        if ($task->isBug() !== $isBug) $changes[] = "type";
+
+        // Create updated entity copy
+        $updatedTask = new Task(
+            $task->getId(),
+            $projectId,
+            $title,
+            $details,
+            $status,
+            $deadline,
+            $task->getCreatedBy(),
+            $task->getAssignedTo(),
+            $task->getCheckedOutAt(),
+            $task->getCreatedAt(),
+            $isBug
+        );
+
+        $savedTask = $this->taskRepository->save($updatedTask);
+
+        // If something changed, write a history entry
+        if (!empty($changes)) {
+            $note = "Task fields updated: " . implode(', ', $changes) . ".";
+            $history = new TaskHistory(null, $taskId, $updaterId, 'updated', $note);
+            $this->historyRepository->save($history);
+        }
+
+        return $savedTask;
+    }
+
+    public function deleteTask(int $taskId): void
+    {
+        $task = $this->taskRepository->findById($taskId);
+        if (!$task) {
+            throw new ValidationException("Task not found.");
+        }
+        $this->taskRepository->delete($taskId);
+    }
+
     public function getTaskComments(int $taskId): array
     {
         return $this->commentRepository->findByTaskId($taskId);

@@ -71,7 +71,7 @@ try {
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `task_id` INT NOT NULL,
             `user_id` INT NOT NULL,
-            `action` ENUM('created', 'checked_out', 'checked_in', 'completed') NOT NULL,
+            `action` ENUM('created', 'checked_out', 'checked_in', 'completed', 'updated') NOT NULL,
             `note` TEXT DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT `fk_history_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE,
@@ -127,7 +127,8 @@ try {
     $stmt->execute(['email' => $adminEmail]);
     if (!$stmt->fetch()) {
         $adminPassword = 'AdminPass123!';
-        $hash = password_hash($adminPassword, PASSWORD_BCRYPT);
+        $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
+        $hash = password_hash($adminPassword, $algo);
         
         $insert = $pdo->prepare("
             INSERT INTO users (role, name, email, password_hash) 

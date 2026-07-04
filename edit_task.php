@@ -35,13 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'] ?? 'update';
 
         if ($action === 'delete') {
-            // Delete task
-            $db = $container->get(PDO::class);
-            $stmt = $db->prepare("DELETE FROM tasks WHERE id = :id");
-            $stmt->execute(['id' => $taskId]);
-            
-            header('Location: index.php?deleted=1');
-            exit();
+            try {
+                $taskService->deleteTask($taskId);
+                header('Location: index.php?deleted=1');
+                exit();
+            } catch (ValidationException $e) {
+                $error = $e->getMessage();
+            }
         } else {
             // Update task fields
             $projectId = (int)($_POST['project_id'] ?? 0);
@@ -50,38 +50,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $deadline = $_POST['deadline'] ?? '';
             $status = $_POST['status'] ?? 'To Do';
             $isBug = isset($_POST['is_bug']) && $_POST['is_bug'] === '1';
+            $currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 
             try {
-                if (empty($title)) {
-                    throw new ValidationException("Task title is required.");
-                }
-                if ($projectId <= 0) {
-                    throw new ValidationException("Valid project selection is required.");
-                }
-                if (!empty($deadline) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $deadline)) {
-                    throw new ValidationException("Deadline must be in YYYY-MM-DD format.");
-                }
-                if (!in_array($status, ['To Do', 'In Progress', 'Done'])) {
-                    throw new ValidationException("Invalid status selected.");
-                }
-
-                // Update entity in DB
-                $db = $container->get(PDO::class);
-                $stmt = $db->prepare("
-                    UPDATE tasks
-                    SET project_id = :project_id, title = :title, details = :details,
-                        deadline = :deadline, status = :status, is_bug = :is_bug
-                    WHERE id = :id
-                ");
-                $stmt->execute([
-                    'project_id' => $projectId,
-                    'title' => $title,
-                    'details' => $details,
-                    'deadline' => !empty($deadline) ? $deadline : null,
-                    'status' => $status,
-                    'is_bug' => $isBug ? 1 : 0,
-                    'id' => $taskId
-                ]);
+                $taskService->updateTask(
+                    $taskId,
+                    $projectId,
+                    $title,
+                    $details,
+                    !empty($deadline) ? $deadline : null,
+                    $status,
+                    $isBug,
+                    $currentUserId
+                );
 
                 $success = "Task updated successfully.";
                 $task = $taskService->getTaskById($taskId); // Reload
