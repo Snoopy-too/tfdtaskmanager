@@ -121,6 +121,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
             $sql .= " ORDER BY (deadline IS NULL), deadline ASC, title ASC";
         } elseif ($sortBy === 'alphabetical') {
             $sql .= " ORDER BY title ASC";
+        } elseif ($sortBy === 'task_number') {
+            $sql .= " ORDER BY id ASC";
         } else {
             $sql .= " ORDER BY created_at DESC";
         }

@@ -96,6 +96,7 @@ require_once __DIR__ . '/templates/header.php';
                     <option value="" <?php echo $sortBy === '' ? 'selected' : ''; ?>>Default (Newest First)</option>
                     <option value="deadline" <?php echo $sortBy === 'deadline' ? 'selected' : ''; ?>>Due Date</option>
                     <option value="alphabetical" <?php echo $sortBy === 'alphabetical' ? 'selected' : ''; ?>>Alphabetical</option>
+                    <option value="task_number" <?php echo $sortBy === 'task_number' ? 'selected' : ''; ?>>Task Number</option>
                 </select>
             </div>
             
