@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $deadline = $_POST['deadline'] ?? '';
             $status = $_POST['status'] ?? 'To Do';
             $isBug = isset($_POST['is_bug']) && $_POST['is_bug'] === '1';
-            $currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
+            $version = (int)($_POST['version'] ?? 0);
 
             try {
                 $taskService->updateTask(
@@ -61,7 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     !empty($deadline) ? $deadline : null,
                     $status,
                     $isBug,
-                    $currentUserId
+                    $currentUserId,
+                    $version
                 );
 
                 $success = "Task updated successfully.";
@@ -111,6 +112,7 @@ require_once __DIR__ . '/templates/header.php';
         <form action="edit_task.php?id=<?php echo $taskId; ?>" method="POST" class="space-y-6">
             <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
             <input type="hidden" name="action" value="update">
+            <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
 
             <div>
                 <label for="project_id" class="block text-sm font-medium text-slate-300 mb-1.5">Project / Game Title</label>

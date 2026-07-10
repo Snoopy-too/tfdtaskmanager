@@ -62,8 +62,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 UPDATE tasks
                 SET project_id = :project_id, title = :title, details = :details, status = :status,
                     deadline = :deadline, created_by = :created_by, assigned_to = :assigned_to,
-                    checked_out_at = :checked_out_at, is_bug = :is_bug
-                WHERE id = :id
+                    checked_out_at = :checked_out_at, is_bug = :is_bug, version = version + 1
+                WHERE id = :id AND version = :expected_version
             ");
             $stmt->execute([
                 'project_id' => $task->getProjectId(),
@@ -75,9 +75,28 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 'assigned_to' => $task->getAssignedTo(),
                 'checked_out_at' => $task->getCheckedOutAt(),
                 'is_bug' => $task->isBug() ? 1 : 0,
-                'id' => $task->getId()
+                'id' => $task->getId(),
+                'expected_version' => $task->getVersion()
             ]);
-            return $task;
+
+            if ($stmt->rowCount() === 0) {
+                throw new \App\Application\Exceptions\ValidationException("This task was updated or checked out by another team member. Please refresh the page.");
+            }
+
+            return new Task(
+                $task->getId(),
+                $task->getProjectId(),
+                $task->getTitle(),
+                $task->getDetails(),
+                $task->getStatus(),
+                $task->getDeadline(),
+                $task->getCreatedBy(),
+                $task->getAssignedTo(),
+                $task->getCheckedOutAt(),
+                $task->getCreatedAt(),
+                $task->isBug(),
+                $task->getVersion() + 1
+            );
         }
     }
 
@@ -150,7 +169,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
             $row['assigned_to'] ? (int)$row['assigned_to'] : null,
             $row['checked_out_at'] ? (string)$row['checked_out_at'] : null,
             $row['created_at'],
-            (bool)($row['is_bug'] ?? false)
+            (bool)($row['is_bug'] ?? false),
+            (int)($row['version'] ?? 1)
         );
     }
 }

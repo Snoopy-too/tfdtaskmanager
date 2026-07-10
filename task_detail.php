@@ -38,15 +38,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'] ?? '';
 
         try {
+            $expectedVersion = isset($_POST['version']) ? (int)$_POST['version'] : 0;
+
             if ($action === 'checkout') {
-                $taskService->checkoutTask($taskId, $currentUserId);
+                $taskService->checkoutTask($taskId, $currentUserId, $expectedVersion);
                 $success = "Task checked out successfully.";
             } elseif ($action === 'checkin') {
                 $reason = $_POST['reason'] ?? '';
-                $taskService->checkinTask($taskId, $currentUserId, $reason);
+                $taskService->checkinTask($taskId, $currentUserId, $reason, $expectedVersion);
                 $success = "Task checked in successfully.";
             } elseif ($action === 'complete') {
-                $taskService->completeTask($taskId, $currentUserId);
+                $taskService->completeTask($taskId, $currentUserId, $expectedVersion);
                 $success = "Task completed successfully.";
             } elseif ($action === 'add_comment') {
                 $message = $_POST['message'] ?? '';
@@ -163,6 +165,7 @@ require_once __DIR__ . '/templates/header.php';
                     <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="w-full">
                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                         <input type="hidden" name="action" value="checkout">
+                        <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
                         <button type="submit" class="w-full text-center px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition duration-200">
                             Check Out Task
                         </button>
@@ -178,6 +181,7 @@ require_once __DIR__ . '/templates/header.php';
                     <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="w-full sm:w-auto">
                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                         <input type="hidden" name="action" value="complete">
+                        <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
                         <button type="submit" class="w-full text-center px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm rounded-lg transition duration-200">
                             Mark as Done
                         </button>
@@ -196,6 +200,7 @@ require_once __DIR__ . '/templates/header.php';
             <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                 <input type="hidden" name="action" value="checkin">
+                <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
 
                 <div>
                     <label for="reason" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Mandatory Note / Reason</label>

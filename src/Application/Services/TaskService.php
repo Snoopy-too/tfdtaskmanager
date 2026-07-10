@@ -64,7 +64,7 @@ class TaskService
         return $savedTask;
     }
 
-    public function checkoutTask(int $taskId, int $userId): Task
+    public function checkoutTask(int $taskId, int $userId, int $expectedVersion): Task
     {
         $task = $this->taskRepository->findById($taskId);
         if (!$task) {
@@ -72,6 +72,20 @@ class TaskService
         }
 
         try {
+            $task = new Task(
+                $task->getId(),
+                $task->getProjectId(),
+                $task->getTitle(),
+                $task->getDetails(),
+                $task->getStatus(),
+                $task->getDeadline(),
+                $task->getCreatedBy(),
+                $task->getAssignedTo(),
+                $task->getCheckedOutAt(),
+                $task->getCreatedAt(),
+                $task->isBug(),
+                $expectedVersion
+            );
             $task->checkout($userId);
             $savedTask = $this->taskRepository->save($task);
 
@@ -84,7 +98,7 @@ class TaskService
         }
     }
 
-    public function checkinTask(int $taskId, int $userId, string $reason): Task
+    public function checkinTask(int $taskId, int $userId, string $reason, int $expectedVersion): Task
     {
         $task = $this->taskRepository->findById($taskId);
         if (!$task) {
@@ -101,6 +115,20 @@ class TaskService
         }
 
         try {
+            $task = new Task(
+                $task->getId(),
+                $task->getProjectId(),
+                $task->getTitle(),
+                $task->getDetails(),
+                $task->getStatus(),
+                $task->getDeadline(),
+                $task->getCreatedBy(),
+                $task->getAssignedTo(),
+                $task->getCheckedOutAt(),
+                $task->getCreatedAt(),
+                $task->isBug(),
+                $expectedVersion
+            );
             $task->checkin();
             $savedTask = $this->taskRepository->save($task);
 
@@ -113,7 +141,7 @@ class TaskService
         }
     }
 
-    public function completeTask(int $taskId, int $userId): Task
+    public function completeTask(int $taskId, int $userId, int $expectedVersion): Task
     {
         $task = $this->taskRepository->findById($taskId);
         if (!$task) {
@@ -125,6 +153,20 @@ class TaskService
         }
 
         try {
+            $task = new Task(
+                $task->getId(),
+                $task->getProjectId(),
+                $task->getTitle(),
+                $task->getDetails(),
+                $task->getStatus(),
+                $task->getDeadline(),
+                $task->getCreatedBy(),
+                $task->getAssignedTo(),
+                $task->getCheckedOutAt(),
+                $task->getCreatedAt(),
+                $task->isBug(),
+                $expectedVersion
+            );
             $task->complete();
             $savedTask = $this->taskRepository->save($task);
 
@@ -188,7 +230,8 @@ class TaskService
         ?string $deadline,
         string $status,
         bool $isBug,
-        int $updaterId
+        int $updaterId,
+        int $expectedVersion
     ): Task {
         $task = $this->taskRepository->findById($taskId);
         if (!$task) {
@@ -237,7 +280,8 @@ class TaskService
             $task->getAssignedTo(),
             $task->getCheckedOutAt(),
             $task->getCreatedAt(),
-            $isBug
+            $isBug,
+            $expectedVersion
         );
 
         $savedTask = $this->taskRepository->save($updatedTask);
