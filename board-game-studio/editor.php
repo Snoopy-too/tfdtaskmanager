@@ -55,9 +55,19 @@ require_once __DIR__ . '/../templates/header.php';
         overflow: hidden !important;
         height: 100% !important;
     }
+    /* Override standard main layout for the full-screen editor */
+    body > main {
+        max-width: 100% !important;
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        height: calc(100vh - 64px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
     .editor-container {
-        height: calc(100vh - 120px);
-        min-height: 350px;
+        flex-grow: 1;
+        min-height: 0;
     }
     .canvas-viewport {
         background-color: #0b0f19;
@@ -82,7 +92,7 @@ require_once __DIR__ . '/../templates/header.php';
     /* Scrollbars are managed by canvas-viewport, not the body */
 </style>
 
-<div class="space-y-4">
+<div class="space-y-4 flex-grow flex flex-col min-h-0">
     <!-- Top editor status/controls -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-slate-800">
         <div class="flex items-center space-x-3">
@@ -149,7 +159,7 @@ require_once __DIR__ . '/../templates/header.php';
     <div class="editor-container grid grid-cols-1 lg:grid-cols-4 gap-4">
         
         <!-- Left Panel: Layers and Assets -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
+        <div class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
             <!-- Tabs -->
             <div class="flex border-b border-slate-800">
                 <button id="tab-layers-btn" class="flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-400">Layers</button>
@@ -200,7 +210,7 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
 
         <!-- Central Panel: Canvas Area -->
-        <div class="lg:col-span-2 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative">
+        <div class="lg:col-span-2 min-w-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative">
             <div class="canvas-viewport flex-grow overflow-auto flex p-8 relative">
                 <!-- Outer scaled container to handle flex-scroll centering -->
                 <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0;">
@@ -239,7 +249,7 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
 
         <!-- Right Panel: Properties Inspector -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
+        <div class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
             <div class="p-4 border-b border-slate-800">
                 <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Properties Inspector</h2>
             </div>
