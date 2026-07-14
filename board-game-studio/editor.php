@@ -290,6 +290,17 @@ require_once __DIR__ . '/../templates/header.php';
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
+                                <label for="prop-width-mm" class="block text-xs font-semibold text-slate-400 mb-1">Width (mm)</label>
+                                <input type="number" id="prop-width-mm" step="0.1" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                            </div>
+                            <div>
+                                <label for="prop-height-mm" class="block text-xs font-semibold text-slate-400 mb-1">Height (mm)</label>
+                                <input type="number" id="prop-height-mm" step="0.1" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
                                 <label for="prop-rotation" class="block text-xs font-semibold text-slate-400 mb-1">Rotation (°)</label>
                                 <input type="number" id="prop-rotation" min="0" max="360" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                             </div>

@@ -18,6 +18,20 @@
         document.getElementById('prop-top').addEventListener('input', (e) => updateActiveProp('top', parseFloat(e.target.value) || 0));
         document.getElementById('prop-width').addEventListener('input', (e) => updateActiveScaleWidth(parseFloat(e.target.value) || 0));
         document.getElementById('prop-height').addEventListener('input', (e) => updateActiveScaleHeight(parseFloat(e.target.value) || 0));
+
+        // Millimeter width and height controls
+        document.getElementById('prop-width-mm').addEventListener('input', (e) => {
+            const mmVal = parseFloat(e.target.value) || 0;
+            const pxVal = Math.round((mmVal / 25.4) * 300);
+            document.getElementById('prop-width').value = pxVal;
+            updateActiveScaleWidth(pxVal);
+        });
+        document.getElementById('prop-height-mm').addEventListener('input', (e) => {
+            const mmVal = parseFloat(e.target.value) || 0;
+            const pxVal = Math.round((mmVal / 25.4) * 300);
+            document.getElementById('prop-height').value = pxVal;
+            updateActiveScaleHeight(pxVal);
+        });
         document.getElementById('prop-rotation').addEventListener('input', (e) => updateActiveProp('angle', parseFloat(e.target.value) || 0));
         document.getElementById('prop-opacity').addEventListener('input', (e) => updateActiveProp('opacity', (parseFloat(e.target.value) || 0) / 100));
 
@@ -156,6 +170,10 @@
         activeObj.set('scaleX', scaleX);
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
+
+        // Sync corresponding MM input
+        const wMm = (width * 25.4) / 300;
+        document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
     }
 
     function updateActiveScaleHeight(height) {
@@ -165,6 +183,10 @@
         activeObj.set('scaleY', scaleY);
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
+
+        // Sync corresponding MM input
+        const hMm = (height * 25.4) / 300;
+        document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
     }
 
     // Set form fields based on active selection
@@ -182,8 +204,16 @@
         document.getElementById('prop-name').value = obj.name || '';
         document.getElementById('prop-left').value = Math.round(obj.left);
         document.getElementById('prop-top').value = Math.round(obj.top);
-        document.getElementById('prop-width').value = Math.round(obj.width * obj.scaleX);
-        document.getElementById('prop-height').value = Math.round(obj.height * obj.scaleY);
+        const wPx = obj.width * obj.scaleX;
+        const hPx = obj.height * obj.scaleY;
+        document.getElementById('prop-width').value = Math.round(wPx);
+        document.getElementById('prop-height').value = Math.round(hPx);
+        
+        // Convert to millimeters and round to 1 decimal place
+        const wMm = (wPx * 25.4) / 300;
+        const hMm = (hPx * 25.4) / 300;
+        document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
+        document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
         document.getElementById('prop-rotation').value = Math.round(obj.angle || 0);
         document.getElementById('prop-opacity').value = Math.round((obj.opacity || 1.0) * 100);
 
