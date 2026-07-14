@@ -263,6 +263,7 @@
         const viewport = document.querySelector('.canvas-viewport');
         const wrapper = document.getElementById('canvas-container-wrapper');
         const zoomContainer = document.getElementById('canvas-zoom-container');
+        const zoomInput = document.getElementById('zoom-value');
         
         function applyZoom() {
             const width = window.studioConfig.canvasWidth;
@@ -275,7 +276,9 @@
             
             wrapper.style.transform = `scale(${zoomLevel})`;
             wrapper.style.transformOrigin = '0 0';
-            document.getElementById('zoom-value').textContent = Math.round(zoomLevel * 100) + '%';
+            if (zoomInput) {
+                zoomInput.value = Math.round(zoomLevel * 100) + '%';
+            }
         }
 
         document.getElementById('btn-zoom-in').addEventListener('click', () => {
@@ -289,6 +292,27 @@
         });
 
         document.getElementById('btn-zoom-fit').addEventListener('click', fitToView);
+
+        if (zoomInput) {
+            zoomInput.addEventListener('change', () => {
+                let val = parseFloat(zoomInput.value.replace(/[^0-9.]/g, ''));
+                if (!isNaN(val)) {
+                    val = Math.max(10, Math.min(val, 300));
+                    zoomLevel = val / 100;
+                }
+                applyZoom();
+            });
+
+            zoomInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    zoomInput.blur();
+                }
+            });
+
+            zoomInput.addEventListener('focus', () => {
+                zoomInput.select();
+            });
+        }
 
         function fitToView() {
             const containerWidth = viewport.clientWidth - 64;

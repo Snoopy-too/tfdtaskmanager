@@ -143,7 +143,7 @@ require_once __DIR__ . '/../templates/header.php';
             <!-- Zoom controls -->
             <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
                 <button id="btn-zoom-out" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded" title="Zoom Out">-</button>
-                <span id="zoom-value" class="text-xs font-semibold px-2 text-slate-300">100%</span>
+                <input type="text" id="zoom-value" class="text-xs font-semibold text-center text-slate-300 bg-transparent w-12 border-none focus:outline-none focus:ring-0 p-0" value="100%">
                 <button id="btn-zoom-in" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded" title="Zoom In">+</button>
                 <button id="btn-zoom-fit" class="p-1 hover:bg-slate-800 text-slate-500 hover:text-white rounded text-[10px] font-bold px-1.5" title="Fit to View">FIT</button>
             </div>
