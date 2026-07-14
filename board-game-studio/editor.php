@@ -25,6 +25,27 @@ if (!$template) {
     exit;
 }
 
+// Handle Template Duplication from Editor
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'duplicate_template') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        header("Location: index.php");
+        exit;
+    } else {
+        $newName = $_POST['new_name'] ?? '';
+        $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+        try {
+            $newTemplate = $templateService->cloneTemplate($templateId, $newName, $currentUserId);
+            header("Location: editor.php?id=" . $newTemplate->getId());
+            exit;
+        } catch (\Exception $e) {
+            error_log('[BoardGameStudio] duplicate_template in editor error: ' . $e->getMessage());
+            header("Location: editor.php?id=" . $templateId . "&error=" . urlencode($e->getMessage()));
+            exit;
+        }
+    }
+}
+
 $project = $projectService->getProjectById($template->getProjectId());
 $compTypes = $templateService->getComponentTypes();
 $compType = null;
@@ -148,6 +169,10 @@ require_once __DIR__ . '/../templates/header.php';
                 <button id="btn-zoom-fit" class="p-1 hover:bg-slate-800 text-slate-500 hover:text-white rounded text-[10px] font-bold px-1.5" title="Fit to View">FIT</button>
             </div>
 
+            <!-- Copy -->
+            <button type="button" onclick="makeCopy()" class="px-4 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold rounded-lg shadow transition">
+                Make a Copy
+            </button>
             <!-- Export -->
             <a href="export.php?project_id=<?php echo $template->getProjectId(); ?>&template_id=<?php echo $template->getId(); ?>" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow transition">
                 Export Studio
@@ -456,6 +481,7 @@ require_once __DIR__ . '/../templates/header.php';
         templateId: <?php echo $template->getId(); ?>,
         projectId: <?php echo $template->getProjectId(); ?>,
         csrfToken: "<?php echo SecurityHelper::escape($csrfToken); ?>",
+        templateName: "<?php echo SecurityHelper::escape(addslashes($template->getName())); ?>",
         datasetId: <?php echo $template->getDatasetId() ? $template->getDatasetId() : 'null'; ?>,
         canvasWidth: <?php echo $template->getCanvasWidthPx(); ?>,
         canvasHeight: <?php echo $template->getCanvasHeightPx(); ?>,
@@ -472,5 +498,62 @@ require_once __DIR__ . '/../templates/header.php';
 <script src="js/property-inspector.js"></script>
 <script src="js/asset-picker.js"></script>
 <script src="js/template-engine.js"></script>
+
+<script>
+    function makeCopy() {
+        const originalName = window.studioConfig.templateName;
+        const newName = prompt("Enter a name for the duplicated template:", originalName + " (Copy)");
+        if (newName === null) return;
+        const trimmed = newName.trim();
+        if (trimmed === "") {
+            alert("Template name cannot be empty.");
+            return;
+        }
+        
+        if (window.editorCore && typeof window.editorCore.setSaveStatus === 'function') {
+            window.editorCore.setSaveStatus('Saving and duplicating...', 'pulse');
+        }
+        
+        // Save canvas first
+        let savePromise = Promise.resolve();
+        if (window.editorCore && typeof window.editorCore.saveCanvas === 'function') {
+            const res = window.editorCore.saveCanvas();
+            if (res instanceof Promise) {
+                savePromise = res;
+            }
+        }
+        
+        savePromise
+            .then(() => {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '';
+                
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'duplicate_template';
+                form.appendChild(actionInput);
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = window.studioConfig.csrfToken;
+                form.appendChild(csrfInput);
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'hidden';
+                nameInput.name = 'new_name';
+                nameInput.value = trimmed;
+                form.appendChild(nameInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            })
+            .catch(err => {
+                alert("Could not save the current state before duplicating: " + err.message);
+            });
+    }
+</script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>

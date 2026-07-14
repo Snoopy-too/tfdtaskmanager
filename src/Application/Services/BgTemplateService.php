@@ -196,4 +196,60 @@ class BgTemplateService
     {
         return $this->layerRepository->findByTemplateId($templateId);
     }
+
+    public function cloneTemplate(int $id, string $newName, int $currentUserId): BgTemplate
+    {
+        $template = $this->templateRepository->findById($id);
+        if (!$template) {
+            throw new ValidationException("Template not found.");
+        }
+
+        $newName = trim($newName);
+        if (empty($newName)) {
+            throw new ValidationException("Template name is required.");
+        }
+
+        $cloned = new BgTemplate(
+            null,
+            $template->getProjectId(),
+            $template->getComponentTypeId(),
+            $newName,
+            $template->getCanvasWidthPx(),
+            $template->getCanvasHeightPx(),
+            $template->getBleedMm(),
+            $template->getSafeMarginMm(),
+            $template->getDatasetId(),
+            $currentUserId
+        );
+
+        if ($template->getCanvasJson() !== null) {
+            $cloned->setCanvasJson($template->getCanvasJson());
+        }
+
+        $saved = $this->templateRepository->save($cloned);
+
+        $layers = $this->layerRepository->findByTemplateId($id);
+        foreach ($layers as $layer) {
+            $clonedLayer = new BgTemplateLayer(
+                null,
+                $saved->getId(),
+                $layer->getName(),
+                $layer->getLayerType(),
+                $layer->getZIndex(),
+                $layer->getXPos(),
+                $layer->getYPos(),
+                $layer->getWidth(),
+                $layer->getHeight(),
+                $layer->getRotation(),
+                $layer->getOpacity(),
+                $layer->getProperties(),
+                $layer->getVariableBinding(),
+                $layer->isVisible(),
+                $layer->isLocked()
+            );
+            $this->layerRepository->save($clonedLayer);
+        }
+
+        return $saved;
+    }
 }

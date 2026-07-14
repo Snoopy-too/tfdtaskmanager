@@ -90,6 +90,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Template Duplication
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'duplicate_template') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+        $newName = $_POST['new_name'] ?? '';
+        $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+        try {
+            $newTemplate = $templateService->cloneTemplate($templateId, $newName, $currentUserId);
+            header("Location: editor.php?id=" . $newTemplate->getId());
+            exit;
+        } catch (ValidationException $e) {
+            $error = $e->getMessage();
+        } catch (\Exception $e) {
+            error_log('[BoardGameStudio] duplicate_template error: ' . $e->getMessage());
+            $error = 'An unexpected error occurred duplicating the template. Please try again.';
+        }
+    }
+}
+
 // Fetch list of templates, assets, datasets, component types for active project
 $templates = [];
 $assetsCount = 0;
@@ -298,20 +320,32 @@ require_once __DIR__ . '/../templates/header.php';
                                         </div>
                                     <?php endif; ?>
                                 </div>
-                                <div class="flex items-center justify-between mt-6 pt-3 border-t border-slate-800/60">
+                                <div class="flex items-center justify-between mt-6 pt-3 border-t border-slate-800/60 gap-2">
                                     <a href="editor.php?id=<?php echo $tmpl->getId(); ?>" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1.5 bg-indigo-500/5 hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                         <span>Open Editor</span>
                                     </a>
                                     
-                                    <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this template?', this);">
-                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                                        <input type="hidden" name="action" value="delete_template">
-                                        <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">
-                                        <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 transition p-1 rounded hover:bg-rose-500/10 border border-transparent hover:border-rose-500/10">
-                                            Delete
-                                        </button>
-                                    </form>
+                                    <div class="flex items-center space-x-2">
+                                        <form action="" method="POST" class="m-0" onsubmit="return duplicateTemplate(<?php echo $tmpl->getId(); ?>, '<?php echo SecurityHelper::escape(addslashes($tmpl->getName())); ?>', this);">
+                                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                            <input type="hidden" name="action" value="duplicate_template">
+                                            <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">
+                                            <input type="hidden" name="new_name" id="dup_name_<?php echo $tmpl->getId(); ?>" value="">
+                                            <button type="submit" class="text-xs text-indigo-400 hover:text-indigo-300 transition p-1 rounded hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/10" title="Duplicate Template">
+                                                Copy
+                                            </button>
+                                        </form>
+
+                                        <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this template?', this);">
+                                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                            <input type="hidden" name="action" value="delete_template">
+                                            <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">
+                                            <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 transition p-1 rounded hover:bg-rose-500/10 border border-transparent hover:border-rose-500/10">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -361,6 +395,20 @@ require_once __DIR__ . '/../templates/header.php';
                         }
                         // Trigger on load in case Custom is default
                         document.addEventListener('DOMContentLoaded', () => toggleCustomDimensions(document.getElementById('component_type_id')));
+
+                        function duplicateTemplate(templateId, originalName, form) {
+                            const newName = prompt("Enter a name for the duplicated template:", originalName + " (Copy)");
+                            if (newName === null) {
+                                return false;
+                            }
+                            const trimmed = newName.trim();
+                            if (trimmed === "") {
+                                alert("Template name cannot be empty.");
+                                return false;
+                            }
+                            document.getElementById("dup_name_" + templateId).value = trimmed;
+                            return true;
+                        }
                     </script>
 
                     <div class="grid grid-cols-2 gap-4">

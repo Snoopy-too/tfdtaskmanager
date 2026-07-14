@@ -82,7 +82,7 @@
 
     // Save Canvas state to database
     function saveCanvas() {
-        if (isSaving) return;
+        if (isSaving) return Promise.resolve();
         isSaving = true;
 
         const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
@@ -144,7 +144,7 @@
         formData.append('canvas_json', canvasJson);
         formData.append('layers', JSON.stringify(layers));
 
-        fetch('api.php?action=save_canvas', {
+        return fetch('api.php?action=save_canvas', {
             method: 'POST',
             body: formData,
             headers: {
@@ -160,15 +160,18 @@
                 if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                     window.layerManager.renderLayersList();
                 }
+                return data;
             } else {
                 setSaveStatus('Error saving changes', 'error');
                 console.error(data.error);
+                throw new Error(data.error || 'Failed to save template canvas.');
             }
         })
         .catch(err => {
             isSaving = false;
             setSaveStatus('Error saving changes', 'error');
             console.error(err);
+            throw err;
         });
     }
 
