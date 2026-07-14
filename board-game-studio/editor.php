@@ -385,6 +385,19 @@ require_once __DIR__ . '/../templates/header.php';
                             <span class="text-slate-400 truncate max-w-[120px]" id="prop-image-filename">No image selected</span>
                             <button id="btn-inspector-change-image" class="px-2 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">Change</button>
                         </div>
+                        <div>
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-550 mb-1.5">Canvas Fitting</span>
+                            <div class="flex space-x-2">
+                                <button type="button" id="btn-inspector-fit-contain" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] uppercase font-bold py-1.5 rounded transition flex items-center justify-center gap-1.5">
+                                    <svg class="h-3.5 w-3.5 text-indigo-450" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16V4m0 0h12M4 4l8 8m-8 4h16m0 0v-4m0 4l-8-8"/></svg>
+                                    Contain
+                                </button>
+                                <button type="button" id="btn-inspector-fit-cover" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] uppercase font-bold py-1.5 rounded transition flex items-center justify-center gap-1.5">
+                                    <svg class="h-3.5 w-3.5 text-indigo-450" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4z"/></svg>
+                                    Cover
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>

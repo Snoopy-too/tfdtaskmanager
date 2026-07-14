@@ -85,6 +85,58 @@
                 document.getElementById('tab-assets-btn').click();
             });
         }
+
+        const btnFitContain = document.getElementById('btn-inspector-fit-contain');
+        if (btnFitContain) {
+            btnFitContain.addEventListener('click', () => {
+                if (!activeObj || activeObj.type !== 'image' || !window.editorCanvas) return;
+                
+                activeObj.set({
+                    angle: 0,
+                    originX: 'center',
+                    originY: 'center',
+                    left: window.editorCanvas.width / 2,
+                    top: window.editorCanvas.height / 2
+                });
+                
+                const scale = Math.min(window.editorCanvas.width / activeObj.width, window.editorCanvas.height / activeObj.height);
+                activeObj.set({
+                    scaleX: scale,
+                    scaleY: scale
+                });
+                
+                activeObj.setCoords();
+                window.editorCanvas.renderAll();
+                window.editorCore.triggerAutoSave();
+                inspect(activeObj);
+            });
+        }
+
+        const btnFitCover = document.getElementById('btn-inspector-fit-cover');
+        if (btnFitCover) {
+            btnFitCover.addEventListener('click', () => {
+                if (!activeObj || activeObj.type !== 'image' || !window.editorCanvas) return;
+                
+                activeObj.set({
+                    angle: 0,
+                    originX: 'center',
+                    originY: 'center',
+                    left: window.editorCanvas.width / 2,
+                    top: window.editorCanvas.height / 2
+                });
+                
+                const scale = Math.max(window.editorCanvas.width / activeObj.width, window.editorCanvas.height / activeObj.height);
+                activeObj.set({
+                    scaleX: scale,
+                    scaleY: scale
+                });
+                
+                activeObj.setCoords();
+                window.editorCanvas.renderAll();
+                window.editorCore.triggerAutoSave();
+                inspect(activeObj);
+            });
+        }
     }
 
     // Apply values to canvas object
