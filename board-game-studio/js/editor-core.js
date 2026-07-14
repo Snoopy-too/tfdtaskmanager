@@ -19,6 +19,13 @@
     let isSaving = false;
     let saveTimeout = null;
 
+    // History undo/redo state variables
+    const historyStack = [];
+    const redoStack = [];
+    let isUndoingRedoing = false;
+    let historyTimeout = null;
+    const maxHistorySize = 50;
+
     // Initialize Canvas
     function initCanvas() {
         // Force FabricJS to append the hidden textarea to the document body instead of the transformed wrapper.
@@ -62,6 +69,8 @@
 
     // Debounce Save Trigger
     function triggerAutoSave() {
+        pushState(); // Push to local undo/redo stack
+
         if (saveTimeout) clearTimeout(saveTimeout);
         
         setSaveStatus('Saving changes...', 'pulse');
@@ -179,6 +188,8 @@
                     canvas.renderAll();
                     setSaveStatus('All changes saved', 'saved');
                     
+                    pushStateImmediate(); // Push base state
+
                     if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                         window.layerManager.renderLayersList();
                     }
@@ -190,6 +201,8 @@
                 }
                 setSaveStatus('All changes saved', 'saved');
                 
+                pushStateImmediate(); // Push base state
+
                 if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                     window.layerManager.renderLayersList();
                 }
@@ -276,9 +289,160 @@
         setTimeout(fitToView, 200);
     }
 
+    // Push canvas state to local history stack with a small debounce
+    function pushState() {
+        if (isUndoingRedoing || !canvas) return;
+
+        if (historyTimeout) clearTimeout(historyTimeout);
+
+        historyTimeout = setTimeout(() => {
+            const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
+            if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
+
+            historyStack.push(json);
+            if (historyStack.length > maxHistorySize) {
+                historyStack.shift();
+            }
+            
+            // Clear redo stack on new action
+            redoStack.length = 0;
+            updateHistoryButtons();
+        }, 300); // 300ms debounce
+    }
+
+    // Push canvas state to local history stack immediately
+    function pushStateImmediate() {
+        if (isUndoingRedoing || !canvas) return;
+
+        const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
+        if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
+
+        historyStack.push(json);
+        if (historyStack.length > maxHistorySize) {
+            historyStack.shift();
+        }
+        updateHistoryButtons();
+    }
+
+    function undo() {
+        if (historyStack.length <= 1) return;
+
+        isUndoingRedoing = true;
+        const currentState = historyStack.pop();
+        redoStack.push(currentState);
+
+        const previousState = historyStack[historyStack.length - 1];
+        canvas.loadFromJSON(previousState, () => {
+            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                window.guideRenderer.renderGuides();
+            }
+            canvas.renderAll();
+            isUndoingRedoing = false;
+
+            triggerAutoSave();
+
+            // Refresh properties inspector selection if any
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+                    window.propertyInspector.inspect(activeObj);
+                }
+            } else {
+                if (window.propertyInspector && typeof window.propertyInspector.clearInspect === 'function') {
+                    window.propertyInspector.clearInspect();
+                }
+            }
+            updateHistoryButtons();
+        });
+    }
+
+    function redo() {
+        if (redoStack.length === 0) return;
+
+        isUndoingRedoing = true;
+        const nextState = redoStack.pop();
+        historyStack.push(nextState);
+
+        canvas.loadFromJSON(nextState, () => {
+            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                window.guideRenderer.renderGuides();
+            }
+            canvas.renderAll();
+            isUndoingRedoing = false;
+
+            triggerAutoSave();
+
+            // Refresh properties inspector selection if any
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+                    window.propertyInspector.inspect(activeObj);
+                }
+            } else {
+                if (window.propertyInspector && typeof window.propertyInspector.clearInspect === 'function') {
+                    window.propertyInspector.clearInspect();
+                }
+            }
+            updateHistoryButtons();
+        });
+    }
+
+    function updateHistoryButtons() {
+        const btnUndo = document.getElementById('btn-undo');
+        const btnRedo = document.getElementById('btn-redo');
+
+        if (btnUndo) {
+            btnUndo.disabled = (historyStack.length <= 1);
+        }
+        if (btnRedo) {
+            btnRedo.disabled = (redoStack.length === 0);
+        }
+    }
+
+    function setupHistoryControls() {
+        const btnUndo = document.getElementById('btn-undo');
+        if (btnUndo) {
+            btnUndo.addEventListener('click', undo);
+        }
+        
+        const btnRedo = document.getElementById('btn-redo');
+        if (btnRedo) {
+            btnRedo.addEventListener('click', redo);
+        }
+
+        // Keyboard Shortcuts
+        window.addEventListener('keydown', (e) => {
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            if (activeTag === 'input' || activeTag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) {
+                return;
+            }
+
+            const isCtrl = e.ctrlKey || e.metaKey;
+
+            // Ctrl + Z (Undo)
+            if (isCtrl && e.key.toLowerCase() === 'z') {
+                if (e.shiftKey) {
+                    // Ctrl + Shift + Z (Redo)
+                    e.preventDefault();
+                    redo();
+                } else {
+                    e.preventDefault();
+                    undo();
+                }
+            }
+
+            // Ctrl + Y (Redo)
+            if (isCtrl && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo();
+            }
+        });
+    }
+
     // DOM Ready
     document.addEventListener('DOMContentLoaded', () => {
         initCanvas();
+        setupHistoryControls();
     });
 
     // Expose functions globally
@@ -286,6 +450,9 @@
         saveCanvas: saveCanvas,
         triggerAutoSave: triggerAutoSave,
         loadCanvas: loadCanvas,
-        setSaveStatus: setSaveStatus
+        setSaveStatus: setSaveStatus,
+        undo: undo,
+        redo: redo,
+        pushState: pushState
     };
 })();
