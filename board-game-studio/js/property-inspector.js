@@ -74,16 +74,55 @@
         document.getElementById('prop-font-italic').addEventListener('change', (e) => updateActiveProp('fontStyle', e.target.checked ? 'italic' : 'normal'));
 
         // Shape properties
-        document.getElementById('prop-fill-color').addEventListener('input', (e) => updateActiveProp('fill', e.target.value));
+        document.getElementById('prop-fill-color').addEventListener('input', (e) => {
+            if (!activeObj || isUpdatingForm) return;
+            const fillOpacity = document.getElementById('prop-fill-opacity');
+            const alpha = (parseInt(fillOpacity.value) || 0) / 100;
+            const isTransparent = document.getElementById('prop-fill-transparent').checked;
+            
+            if (isTransparent) {
+                document.getElementById('prop-fill-transparent').checked = false;
+            }
+            
+            const rgbaColor = hexToRgba(e.target.value, alpha);
+            updateActiveProp('fill', rgbaColor);
+        });
         
         const fillTrans = document.getElementById('prop-fill-transparent');
         if (fillTrans) {
             fillTrans.addEventListener('change', (e) => {
                 if (e.target.checked) {
                     updateActiveProp('fill', 'transparent');
+                    document.getElementById('prop-fill-opacity').value = 0;
                 } else {
                     const colorInput = document.getElementById('prop-fill-color');
-                    updateActiveProp('fill', colorInput.value || '#000000');
+                    const fillOpacity = document.getElementById('prop-fill-opacity');
+                    let alphaVal = parseInt(fillOpacity.value) || 0;
+                    if (alphaVal === 0) {
+                        alphaVal = 100;
+                        fillOpacity.value = 100;
+                    }
+                    const rgbaColor = hexToRgba(colorInput.value || '#000000', alphaVal / 100);
+                    updateActiveProp('fill', rgbaColor);
+                }
+            });
+        }
+
+        const fillOpacityInput = document.getElementById('prop-fill-opacity');
+        if (fillOpacityInput) {
+            fillOpacityInput.addEventListener('input', (e) => {
+                if (!activeObj || isUpdatingForm) return;
+                const alpha = (parseInt(e.target.value) || 0) / 100;
+                const colorInput = document.getElementById('prop-fill-color');
+                const hexColor = colorInput.value || '#000000';
+                
+                if (alpha === 0) {
+                    updateActiveProp('fill', 'transparent');
+                    document.getElementById('prop-fill-transparent').checked = true;
+                } else {
+                    const rgbaColor = hexToRgba(hexColor, alpha);
+                    updateActiveProp('fill', rgbaColor);
+                    document.getElementById('prop-fill-transparent').checked = false;
                 }
             });
         }
@@ -252,10 +291,21 @@
         } else if (obj.type === 'rect' || obj.type === 'circle') {
             shapeSec.classList.remove('hidden');
             
-            const isTransparent = obj.fill === 'transparent' || obj.fill === '';
+            const fillVal = obj.fill || '';
+            const isTransparent = fillVal === 'transparent' || fillVal === '';
             document.getElementById('prop-fill-transparent').checked = isTransparent;
-            if (!isTransparent && obj.fill && obj.fill.startsWith('#')) {
-                document.getElementById('prop-fill-color').value = obj.fill;
+            
+            if (isTransparent) {
+                document.getElementById('prop-fill-opacity').value = 0;
+            } else if (fillVal.startsWith('rgba')) {
+                const parsed = parseRgba(fillVal);
+                document.getElementById('prop-fill-color').value = parsed.hex;
+                document.getElementById('prop-fill-opacity').value = Math.round(parsed.alpha * 100);
+            } else if (fillVal.startsWith('#')) {
+                document.getElementById('prop-fill-color').value = fillVal;
+                document.getElementById('prop-fill-opacity').value = 100;
+            } else {
+                document.getElementById('prop-fill-opacity').value = 100;
             }
 
             if (obj.stroke && obj.stroke.startsWith('#')) {
@@ -269,6 +319,36 @@
         }
 
         isUpdatingForm = false;
+    }
+
+    // Helper to convert hex to rgba
+    function hexToRgba(hex, alpha) {
+        hex = hex.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Helper to parse rgb or rgba string
+    function parseRgba(rgbaStr) {
+        const match = rgbaStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        if (!match) return { hex: '#000000', alpha: 1.0 };
+        
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const alpha = match[4] !== undefined ? parseFloat(match[4]) : 1.0;
+        
+        const toHex = (c) => {
+            const hex = c.toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        };
+        
+        return {
+            hex: `#${toHex(r)}${toHex(g)}${toHex(b)}`,
+            alpha: alpha
+        };
     }
 
     // Clear Inspector state

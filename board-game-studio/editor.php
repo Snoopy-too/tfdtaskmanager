@@ -394,6 +394,13 @@ require_once __DIR__ . '/../templates/header.php';
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
+                                <label for="prop-fill-opacity" class="block text-xs font-semibold text-slate-400 mb-1">Fill Opacity (%)</label>
+                                <input type="number" id="prop-fill-opacity" min="0" max="100" step="5" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
                                 <label for="prop-stroke-color" class="block text-xs font-semibold text-slate-400 mb-1">Stroke Color</label>
                                 <input type="color" id="prop-stroke-color" class="w-full h-8 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
                             </div>
