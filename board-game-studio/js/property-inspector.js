@@ -66,7 +66,17 @@
         }
 
         document.getElementById('prop-font-size').addEventListener('input', (e) => updateActiveProp('fontSize', parseInt(e.target.value) || 12));
-        document.getElementById('prop-font-family').addEventListener('change', (e) => updateActiveProp('fontFamily', e.target.value));
+        document.getElementById('prop-font-family').addEventListener('change', (e) => {
+            const font = e.target.value;
+            updateActiveProp('fontFamily', font);
+            if (document.fonts) {
+                document.fonts.load(`1em "${font}"`).then(() => {
+                    if (window.editorCanvas) {
+                        window.editorCanvas.requestRenderAll();
+                    }
+                });
+            }
+        });
         document.getElementById('prop-text-color').addEventListener('input', (e) => updateActiveProp('fill', e.target.value));
         document.getElementById('prop-text-align').addEventListener('change', (e) => updateActiveProp('textAlign', e.target.value));
         

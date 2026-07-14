@@ -84,6 +84,11 @@ require_once __DIR__ . '/../templates/header.php';
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
+<!-- Google Fonts for Board Game Creators -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400&family=Bangers&family=Cinzel:wght@400;700&family=Comic+Neue:wght@400;700&family=Creepster&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fredoka:wght@400;700&family=Inter:wght@400;700&family=Jolly+Lodger&family=Lora:ital,wght@0,400;0,700;1,400&family=Luckiest+Guy&family=MedievalSharp&family=Metal+Mania&family=Montserrat:wght@400;700&family=Orbitron:wght@400;700&family=Outfit:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Rajdhani:wght@500;700&family=Rye&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
 <!-- CSS for Editor Grid -->
 <style>
     html, body {
@@ -421,10 +426,42 @@ require_once __DIR__ . '/../templates/header.php';
                             <div>
                                 <label for="prop-font-family" class="block text-xs font-semibold text-slate-400 mb-1">Font Family</label>
                                 <select id="prop-font-family" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
-                                    <option value="Plus Jakarta Sans">Jakarta Sans</option>
-                                    <option value="Arial">Arial</option>
-                                    <option value="Times New Roman">Times Roman</option>
-                                    <option value="Courier New">Courier</option>
+                                    <option value="Plus Jakarta Sans">Jakarta Sans (Default)</option>
+                                    <optgroup label="Modern Sans-Serif">
+                                        <option value="Inter">Inter</option>
+                                        <option value="Montserrat">Montserrat</option>
+                                        <option value="Outfit">Outfit</option>
+                                        <option value="Arial">Arial</option>
+                                    </optgroup>
+                                    <optgroup label="RPG & Fantasy">
+                                        <option value="Cinzel">Cinzel</option>
+                                        <option value="MedievalSharp">MedievalSharp</option>
+                                        <option value="Almendra">Almendra</option>
+                                        <option value="Rye">Rye</option>
+                                    </optgroup>
+                                    <optgroup label="Sci-Fi & Futuristic">
+                                        <option value="Orbitron">Orbitron</option>
+                                        <option value="Rajdhani">Rajdhani</option>
+                                        <option value="Share Tech Mono">Share Tech Mono</option>
+                                        <option value="Courier New">Courier New</option>
+                                    </optgroup>
+                                    <optgroup label="Classic Serif">
+                                        <option value="Playfair Display">Playfair Display</option>
+                                        <option value="Lora">Lora</option>
+                                        <option value="EB Garamond">EB Garamond</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                    </optgroup>
+                                    <optgroup label="Spooky & Horror">
+                                        <option value="Creepster">Creepster</option>
+                                        <option value="Metal Mania">Metal Mania</option>
+                                        <option value="Jolly Lodger">Jolly Lodger</option>
+                                    </optgroup>
+                                    <optgroup label="Comic & Casual">
+                                        <option value="Bangers">Bangers</option>
+                                        <option value="Fredoka">Fredoka</option>
+                                        <option value="Luckiest Guy">Luckiest Guy</option>
+                                        <option value="Comic Neue">Comic Neue</option>
+                                    </optgroup>
                                     <!-- Uploaded project fonts added dynamically -->
                                 </select>
                             </div>
