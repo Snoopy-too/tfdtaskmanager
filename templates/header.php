@@ -6,8 +6,14 @@ use App\Infrastructure\Security\SecurityHelper;
 SecurityHelper::initSession();
 
 $current_page = basename($_SERVER['PHP_SELF']);
-function isActive(string $page, string $current_page): string {
-    return $page === $current_page ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-300 hover:text-white transition duration-200';
+$in_studio = basename(dirname($_SERVER['PHP_SELF'])) === 'board-game-studio';
+$base_url = $in_studio ? '../' : '';
+
+function isActive(string $page, string $current_page, bool $in_studio, bool $check_studio = false): string {
+    if ($check_studio) {
+        return $in_studio ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-300 hover:text-white transition duration-200';
+    }
+    return (!$in_studio && $page === $current_page) ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-300 hover:text-white transition duration-200';
 }
 ?>
 <!DOCTYPE html>
@@ -47,7 +53,7 @@ function isActive(string $page, string $current_page): string {
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
                 <div class="flex items-center">
-                    <a href="index.php" class="flex items-center space-x-2">
+                    <a href="<?php echo $base_url; ?>index.php" class="flex items-center space-x-2">
                         <span class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">TFD - SWGGD</span>
                     </a>
                 </div>
@@ -55,11 +61,12 @@ function isActive(string $page, string $current_page): string {
                 <!-- Navigation Links -->
                 <?php if (SecurityHelper::isLoggedIn()): ?>
                     <nav class="hidden md:flex space-x-8">
-                        <a href="index.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('index.php', $current_page); ?>">Dashboard</a>
-                        <a href="projects.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('projects.php', $current_page); ?>">Projects</a>
-                        <a href="meetings.php" class="px-1 py-2 text-sm font-medium <?php echo ($current_page === 'meetings.php' || $current_page === 'meeting_detail.php') ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-300 hover:text-white transition duration-200'; ?>">Div/Dev</a>
+                        <a href="<?php echo $base_url; ?>index.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('index.php', $current_page, $in_studio, false); ?>">Dashboard</a>
+                        <a href="<?php echo $base_url; ?>projects.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('projects.php', $current_page, $in_studio, false); ?>">Projects</a>
+                        <a href="<?php echo $base_url; ?>board-game-studio/index.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('', $current_page, $in_studio, true); ?>">Board Game Studio</a>
+                        <a href="<?php echo $base_url; ?>meetings.php" class="px-1 py-2 text-sm font-medium <?php echo (!$in_studio && ($current_page === 'meetings.php' || $current_page === 'meeting_detail.php')) ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-300 hover:text-white transition duration-200'; ?>">Div/Dev</a>
                         <?php if (SecurityHelper::getCurrentUserRole() === 'super_admin'): ?>
-                            <a href="users.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('users.php', $current_page); ?>">User Management</a>
+                            <a href="<?php echo $base_url; ?>users.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('users.php', $current_page, $in_studio, false); ?>">User Management</a>
                         <?php endif; ?>
                     </nav>
                 <?php endif; ?>
@@ -71,7 +78,7 @@ function isActive(string $page, string $current_page): string {
                             <span class="text-sm font-semibold text-slate-200"><?php echo SecurityHelper::escape($_SESSION['user_name'] ?? ''); ?></span>
                             <span class="text-xs text-indigo-400 uppercase tracking-wider font-medium"><?php echo SecurityHelper::escape(str_replace('_', ' ', $_SESSION['role'] ?? '')); ?></span>
                         </div>
-                        <a href="logout.php" class="inline-flex items-center px-4 py-2 border border-slate-700 text-sm font-medium rounded-lg text-slate-300 hover:text-white hover:border-slate-500 hover:bg-slate-800 transition duration-200">
+                        <a href="<?php echo $base_url; ?>logout.php" class="inline-flex items-center px-4 py-2 border border-slate-700 text-sm font-medium rounded-lg text-slate-300 hover:text-white hover:border-slate-500 hover:bg-slate-800 transition duration-200">
                             Logout
                         </a>
                     <?php endif; ?>

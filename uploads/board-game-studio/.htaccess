@@ -1,0 +1,12 @@
+# Disable directory listing to prevent asset enumeration
+Options -Indexes
+
+# Prevent PHP script execution in the uploaded asset directory for security
+<FilesMatch "\.php$">
+    Require all denied
+</FilesMatch>
+
+# Prevent direct access to .htaccess
+<Files ".htaccess">
+    Require all denied
+</Files>

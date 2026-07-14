@@ -16,7 +16,7 @@ class SecurityHelper
                 header("Strict-Transport-Security: max-age=63072000; includeSubDomains; preload");
             }
             
-            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data:; connect-src 'self';");
+            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' cdn.tailwindcss.com cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: blob: https://*; connect-src 'self' cdnjs.cloudflare.com;");
         }
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -41,7 +41,7 @@ class SecurityHelper
 
         if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $lifetime)) {
             self::destroySession();
-            header('Location: login.php?expired=1');
+            header('Location: /tfdtaskmanager/login.php?expired=1');
             exit();
         }
         $_SESSION['last_activity'] = time();
@@ -107,7 +107,7 @@ class SecurityHelper
     {
         self::initSession();
         if (!self::isLoggedIn()) {
-            header('Location: login.php');
+            header('Location: /tfdtaskmanager/login.php');
             exit();
         }
     }

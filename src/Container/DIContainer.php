@@ -16,6 +16,15 @@ use App\Application\Services\UserService;
 use App\Application\Services\ProjectService;
 use App\Application\Services\TaskService;
 use App\Application\Services\MeetingService;
+use App\Infrastructure\Repository\PDOBgComponentTypeRepository;
+use App\Infrastructure\Repository\PDOBgAssetRepository;
+use App\Infrastructure\Repository\PDOBgDatasetRepository;
+use App\Infrastructure\Repository\PDOBgTemplateRepository;
+use App\Infrastructure\Repository\PDOBgTemplateLayerRepository;
+use App\Application\Services\BgAssetService;
+use App\Application\Services\BgDatasetService;
+use App\Application\Services\BgTemplateService;
+use App\Application\Services\BgExportService;
 use PDO;
 
 class DIContainer
@@ -89,6 +98,46 @@ class DIContainer
                 $this->get(PDOMeetingRepository::class),
                 $this->get(PDOMeetingTopicRepository::class)
             );
+        };
+
+        $this->services[PDOBgComponentTypeRepository::class] = function() {
+            return new PDOBgComponentTypeRepository($this->get(PDO::class));
+        };
+
+        $this->services[PDOBgAssetRepository::class] = function() {
+            return new PDOBgAssetRepository($this->get(PDO::class));
+        };
+
+        $this->services[PDOBgDatasetRepository::class] = function() {
+            return new PDOBgDatasetRepository($this->get(PDO::class));
+        };
+
+        $this->services[PDOBgTemplateRepository::class] = function() {
+            return new PDOBgTemplateRepository($this->get(PDO::class));
+        };
+
+        $this->services[PDOBgTemplateLayerRepository::class] = function() {
+            return new PDOBgTemplateLayerRepository($this->get(PDO::class));
+        };
+
+        $this->services[BgAssetService::class] = function() {
+            return new BgAssetService($this->get(PDOBgAssetRepository::class));
+        };
+
+        $this->services[BgDatasetService::class] = function() {
+            return new BgDatasetService($this->get(PDOBgDatasetRepository::class));
+        };
+
+        $this->services[BgTemplateService::class] = function() {
+            return new BgTemplateService(
+                $this->get(PDOBgTemplateRepository::class),
+                $this->get(PDOBgTemplateLayerRepository::class),
+                $this->get(PDOBgComponentTypeRepository::class)
+            );
+        };
+
+        $this->services[BgExportService::class] = function() {
+            return new BgExportService();
         };
     }
 
