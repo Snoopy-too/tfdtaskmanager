@@ -203,7 +203,7 @@ require_once __DIR__ . '/../templates/header.php';
         <div class="lg:col-span-2 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative">
             <div class="canvas-viewport flex-grow overflow-auto flex p-8 relative">
                 <!-- Outer scaled container to handle flex-scroll centering -->
-                <div id="canvas-zoom-container" style="margin: auto; position: relative;">
+                <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0;">
                     <!-- Wrapper for absolute alignment and sizing -->
                     <div id="canvas-container-wrapper" class="relative shadow-2xl border border-slate-700/50" style="transform-origin: 0 0;">
                         <canvas id="editor-canvas"></canvas>
