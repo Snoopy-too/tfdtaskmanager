@@ -262,10 +262,19 @@
     function setupZoomControls() {
         const viewport = document.querySelector('.canvas-viewport');
         const wrapper = document.getElementById('canvas-container-wrapper');
+        const zoomContainer = document.getElementById('canvas-zoom-container');
         
         function applyZoom() {
+            const width = window.studioConfig.canvasWidth;
+            const height = window.studioConfig.canvasHeight;
+            
+            if (zoomContainer) {
+                zoomContainer.style.width = (width * zoomLevel) + 'px';
+                zoomContainer.style.height = (height * zoomLevel) + 'px';
+            }
+            
             wrapper.style.transform = `scale(${zoomLevel})`;
-            wrapper.style.transformOrigin = 'center center';
+            wrapper.style.transformOrigin = '0 0';
             document.getElementById('zoom-value').textContent = Math.round(zoomLevel * 100) + '%';
         }
 
