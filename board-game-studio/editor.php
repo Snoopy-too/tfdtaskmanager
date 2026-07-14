@@ -205,7 +205,7 @@ require_once __DIR__ . '/../templates/header.php';
                 <!-- Outer scaled container to handle flex-scroll centering -->
                 <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0;">
                     <!-- Wrapper for absolute alignment and sizing -->
-                    <div id="canvas-container-wrapper" class="relative shadow-2xl border border-slate-700/50" style="transform-origin: 0 0;">
+                    <div id="canvas-container-wrapper" class="relative shadow-2xl border border-slate-700/50" style="transform-origin: 0 0; max-width: none !important; max-height: none !important;">
                         <canvas id="editor-canvas"></canvas>
                     </div>
                 </div>
