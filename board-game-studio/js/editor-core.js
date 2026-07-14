@@ -451,6 +451,37 @@
                     duplicateObject(activeObj);
                 }
             }
+
+            // Arrow keys nudge navigation
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault(); // Prevent browser scrolling
+                const step = e.shiftKey ? 10 : 1;
+                
+                switch (e.key) {
+                    case 'ArrowUp':
+                        activeObj.set('top', activeObj.top - step);
+                        break;
+                    case 'ArrowDown':
+                        activeObj.set('top', activeObj.top + step);
+                        break;
+                    case 'ArrowLeft':
+                        activeObj.set('left', activeObj.left - step);
+                        break;
+                    case 'ArrowRight':
+                        activeObj.set('left', activeObj.left + step);
+                        break;
+                }
+                
+                activeObj.setCoords();
+                canvas.renderAll();
+                triggerAutoSave();
+                
+                // Live update properties inspector form
+                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+                    window.propertyInspector.inspect(activeObj);
+                }
+            }
         });
     }
 
