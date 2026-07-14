@@ -496,7 +496,7 @@ require_once __DIR__ . '/../templates/header.php';
                     <div id="inspector-image-section" class="space-y-3 pb-4 border-b border-slate-800/80 hidden">
                         <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
                             <span class="text-slate-400 truncate max-w-[120px]" id="prop-image-filename">No image selected</span>
-                            <button id="btn-inspector-change-image" class="px-2 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">Change</button>
+                            <button type="button" id="btn-inspector-change-image" class="px-2 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">Change</button>
                         </div>
                         <div>
                             <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-550 mb-1.5">Canvas Fitting</span>
