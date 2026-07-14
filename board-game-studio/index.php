@@ -25,10 +25,7 @@ $csrfToken = SecurityHelper::generateCsrfToken();
 $projects = $projectService->getAllProjects();
 
 // Select active project
-$activeProjectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
-if (!$activeProjectId && !empty($projects)) {
-    $activeProjectId = $projects[0]->getId();
-}
+$activeProjectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '') ? (int)$_GET['project_id'] : null;
 
 $activeProject = null;
 if ($activeProjectId) {
@@ -142,6 +139,7 @@ require_once __DIR__ . '/../templates/header.php';
                 <label for="project_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-2">Project:</label>
                 <form method="GET" class="m-0">
                     <select id="project_select" name="project_id" onchange="this.form.submit()" class="bg-slate-950 border-0 text-slate-100 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
+                        <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None</option>
                         <?php foreach ($projects as $proj): ?>
                             <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
                                 <?php echo SecurityHelper::escape($proj->getName()); ?>
@@ -165,8 +163,22 @@ require_once __DIR__ . '/../templates/header.php';
             </a>
         </div>
     <?php else: ?>
-
-        <?php if (!empty($error)): ?>
+        <?php if (!$activeProjectId): ?>
+            <div class="p-12 text-center bg-slate-900/40 border border-slate-800/80 rounded-2xl max-w-2xl mx-auto my-8 space-y-6">
+                <div class="inline-flex p-4 bg-indigo-500/10 rounded-2xl text-indigo-400 mx-auto justify-center">
+                    <svg class="h-10 w-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                </div>
+                <div class="space-y-2 text-center">
+                    <h2 class="text-xl font-bold text-slate-200">Welcome to the Board Game Design Studio!</h2>
+                    <p class="text-slate-400 max-w-md mx-auto text-sm">
+                        Please select a project from the dropdown menu in the top right to start prototyping components, managing asset libraries, and binding card datasets.
+                    </p>
+                </div>
+            </div>
+        <?php else: ?>
+            <?php if (!empty($error)): ?>
             <div class="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-sm">
                 <?php echo SecurityHelper::escape($error); ?>
             </div>
@@ -380,6 +392,7 @@ require_once __DIR__ . '/../templates/header.php';
                 </form>
             </div>
         </div>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 
