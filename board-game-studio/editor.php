@@ -207,6 +207,11 @@ require_once __DIR__ . '/../templates/header.php';
                 <button id="btn-zoom-fit" class="p-1 hover:bg-slate-800 text-slate-500 hover:text-white rounded text-[10px] font-bold px-1.5" title="Fit to View">FIT</button>
             </div>
 
+            <!-- Preview -->
+            <button type="button" onclick="showFullscreenPreview()" class="px-4 py-1.5 bg-slate-900 border border-slate-800 text-slate-350 hover:text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5" title="Full Screen Preview">
+                <svg class="h-3.5 w-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                <span>Preview</span>
+            </button>
             <!-- Copy -->
             <button type="button" onclick="makeCopy()" class="px-4 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold rounded-lg shadow transition">
                 Make a Copy
@@ -513,6 +518,17 @@ require_once __DIR__ . '/../templates/header.php';
     </div>
 </div>
 
+<!-- Full Screen Preview Overlay -->
+<div id="preview-overlay" class="fixed inset-0 bg-slate-950/95 z-[9999] hidden flex-col items-center justify-center p-6 transition-all duration-300 opacity-0">
+    <button onclick="closeFullscreenPreview()" class="absolute top-6 right-6 p-2 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-white rounded-xl shadow-lg transition duration-200" title="Exit Preview (Esc)">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div class="relative max-w-full max-h-full flex items-center justify-center">
+        <img id="preview-image" src="" alt="Canvas Preview" class="max-w-[90vw] max-h-[85vh] rounded-xl shadow-2xl border border-slate-800 object-contain">
+    </div>
+    <p class="text-xs text-slate-500 mt-4 tracking-wider uppercase font-semibold">Press Esc to Exit Preview</p>
+</div>
+
 <!-- Configuration parameters injected to JavaScript -->
 <script>
     window.studioConfig = {
@@ -553,9 +569,9 @@ require_once __DIR__ . '/../templates/header.php';
             window.editorCore.setSaveStatus('Saving and duplicating...', 'pulse');
         }
         
-        // Save canvas first
+        // Save canvas first if NOT in view mode
         let savePromise = Promise.resolve();
-        if (window.editorCore && typeof window.editorCore.saveCanvas === 'function') {
+        if (!window.studioConfig.isViewMode && window.editorCore && typeof window.editorCore.saveCanvas === 'function') {
             const res = window.editorCore.saveCanvas();
             if (res instanceof Promise) {
                 savePromise = res;
@@ -592,6 +608,69 @@ require_once __DIR__ . '/../templates/header.php';
             .catch(err => {
                 alert("Could not save the current state before duplicating: " + err.message);
             });
+    }
+
+    function showFullscreenPreview() {
+        if (!window.editorCanvas) return;
+        
+        const canvas = window.editorCanvas;
+        
+        // Hide guides temporarily before exporting to keep preview clean
+        let safeGuide = null;
+        let bleedGuide = null;
+        canvas.getObjects().forEach(obj => {
+            if (obj.id === 'safe-zone-guide') safeGuide = obj;
+            if (obj.id === 'bleed-zone-guide') bleedGuide = obj;
+        });
+        
+        const safeVisible = safeGuide ? safeGuide.visible : false;
+        const bleedVisible = bleedGuide ? bleedGuide.visible : false;
+        
+        if (safeGuide) safeGuide.visible = false;
+        if (bleedGuide) bleedGuide.visible = false;
+        canvas.discardActiveObject().renderAll();
+        
+        // Generate high-resolution clean preview
+        const dataUrl = canvas.toDataURL({
+            format: 'png',
+            quality: 1.0,
+            multiplier: 2
+        });
+        
+        // Restore guides
+        if (safeGuide) safeGuide.visible = safeVisible;
+        if (bleedGuide) bleedGuide.visible = bleedVisible;
+        canvas.renderAll();
+        
+        const overlay = document.getElementById('preview-overlay');
+        const img = document.getElementById('preview-image');
+        img.src = dataUrl;
+        
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+        }, 50);
+        
+        document.addEventListener('keydown', onPreviewEscKey);
+    }
+
+    function closeFullscreenPreview() {
+        const overlay = document.getElementById('preview-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.classList.remove('flex');
+            overlay.classList.add('hidden');
+            document.getElementById('preview-image').src = '';
+        }, 300);
+        
+        document.removeEventListener('keydown', onPreviewEscKey);
+    }
+
+    function onPreviewEscKey(e) {
+        if (e.key === 'Escape') {
+            closeFullscreenPreview();
+        }
     }
 </script>
 
