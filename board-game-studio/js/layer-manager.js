@@ -212,6 +212,18 @@
                 window.editorCore.triggerAutoSave();
             });
 
+            // Duplicate Layer
+            const btnDuplicate = document.createElement('button');
+            btnDuplicate.className = 'p-1 hover:text-white text-slate-600';
+            btnDuplicate.title = 'Duplicate Layer';
+            btnDuplicate.innerHTML = `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>`;
+            btnDuplicate.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (window.editorCore && typeof window.editorCore.duplicateObject === 'function') {
+                    window.editorCore.duplicateObject(obj);
+                }
+            });
+
             // Delete Layer
             const btnDelete = document.createElement('button');
             btnDelete.className = 'p-1 hover:text-rose-500 text-slate-600';
@@ -234,6 +246,7 @@
             rightBlock.appendChild(btnLock);
             rightBlock.appendChild(btnUp);
             rightBlock.appendChild(btnDown);
+            rightBlock.appendChild(btnDuplicate);
             rightBlock.appendChild(btnDelete);
 
             item.appendChild(leftBlock);

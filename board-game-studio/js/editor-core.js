@@ -442,7 +442,43 @@
                 e.preventDefault();
                 redo();
             }
+
+            // Ctrl + D (Duplicate)
+            if (isCtrl && e.key.toLowerCase() === 'd') {
+                e.preventDefault();
+                const activeObj = canvas.getActiveObject();
+                if (activeObj) {
+                    duplicateObject(activeObj);
+                }
+            }
         });
+    }
+
+    // Duplicate an object and offset its position slightly
+    function duplicateObject(obj) {
+        if (!obj || obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') return;
+
+        obj.clone((clonedObj) => {
+            canvas.discardActiveObject();
+            
+            clonedObj.set({
+                left: obj.left + 30, // Offset by 30px X and Y
+                top: obj.top + 30,
+                name: obj.name ? (obj.name + ' Copy') : (obj.type.charAt(0).toUpperCase() + obj.type.slice(1) + ' Copy'),
+                evented: true
+            });
+
+            canvas.add(clonedObj);
+            canvas.setActiveObject(clonedObj);
+            canvas.renderAll();
+
+            triggerAutoSave();
+
+            // Refresh layer list
+            if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                window.layerManager.renderLayersList();
+            }
+        }, ['id', 'name', 'layerType', 'variable_binding', 'properties', 'original_filename', 'stored_filename', 'is_locked']);
     }
 
     // DOM Ready
@@ -459,6 +495,7 @@
         setSaveStatus: setSaveStatus,
         undo: undo,
         redo: redo,
-        pushState: pushState
+        pushState: pushState,
+        duplicateObject: duplicateObject
     };
 })();
