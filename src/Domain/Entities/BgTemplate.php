@@ -130,4 +130,27 @@ class BgTemplate
     {
         return ($px / $dpi) * 25.4;
     }
+
+    private ?int $lockedByUserId = null;
+    private ?string $lockedAt = null;
+
+    public function getLockedByUserId(): ?int
+    {
+        return $this->lockedByUserId;
+    }
+
+    public function setLockedByUserId(?int $lockedByUserId): void
+    {
+        $this->lockedByUserId = $lockedByUserId;
+    }
+
+    public function getLockedAt(): ?string
+    {
+        return $this->lockedAt;
+    }
+
+    public function setLockedAt(?string $lockedAt): void
+    {
+        $this->lockedAt = $lockedAt;
+    }
 }

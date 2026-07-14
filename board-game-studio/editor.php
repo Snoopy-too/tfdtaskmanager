@@ -25,6 +25,20 @@ if (!$template) {
     exit;
 }
 
+// Check lock status
+$lockUser = null;
+$isViewMode = false;
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
+    $isViewMode = true;
+    $userService = $container->get(\App\Application\Services\UserService::class);
+    $lockUser = $userService->getUserById($template->getLockedByUserId());
+} else {
+    // Acquire or refresh lock
+    $templateService->acquireOrRefreshLock($template->getId(), $currentUserId);
+}
+
 // Handle Template Duplication from Editor
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'duplicate_template') {
     $submittedToken = $_POST['csrf_token'] ?? '';
@@ -111,9 +125,33 @@ require_once __DIR__ . '/../templates/header.php';
         pointer-events: none !important;
     }
     /* Scrollbars are managed by canvas-viewport, not the body */
+
+    /* Read-only view styles */
+    body.view-only-mode #left-layers-panel,
+    body.view-only-mode #right-inspector-panel,
+    body.view-only-mode #btn-toggle-guides,
+    body.view-only-mode #save-status {
+        pointer-events: none !important;
+        opacity: 0.6 !important;
+    }
+    body.view-only-mode #tab-layers-view .grid {
+        display: none !important; /* Hide Add layer buttons */
+    }
 </style>
 
 <div class="space-y-4 flex-grow flex flex-col min-h-0">
+    <?php if ($isViewMode): ?>
+        <div class="bg-rose-500/10 border border-rose-500/20 text-rose-450 p-3 rounded-xl text-sm flex items-center justify-between gap-4">
+            <div class="flex items-center space-x-2">
+                <svg class="h-5 w-5 text-rose-455 animate-pulse flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                <span><strong>Read-Only View:</strong> This template is currently locked for editing by <strong><?php echo SecurityHelper::escape($lockUser ? $lockUser->getName() : 'another user'); ?></strong>.</span>
+            </div>
+            <a href="index.php?project_id=<?php echo $template->getProjectId(); ?>" class="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-350 hover:text-white rounded-lg text-xs font-semibold transition flex-shrink-0">
+                Back to Dashboard
+            </a>
+        </div>
+    <?php endif; ?>
+
     <!-- Top editor status/controls -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-slate-800">
         <div class="flex items-center space-x-3">
@@ -184,7 +222,7 @@ require_once __DIR__ . '/../templates/header.php';
     <div class="editor-container grid grid-cols-1 lg:grid-cols-4 gap-4">
         
         <!-- Left Panel: Layers and Assets -->
-        <div class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
+        <div id="left-layers-panel" class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
             <!-- Tabs -->
             <div class="flex border-b border-slate-800">
                 <button id="tab-layers-btn" class="flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-400">Layers</button>
@@ -274,7 +312,7 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
 
         <!-- Right Panel: Properties Inspector -->
-        <div class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
+        <div id="right-inspector-panel" class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
             <div class="p-4 border-b border-slate-800">
                 <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Properties Inspector</h2>
             </div>
@@ -482,6 +520,7 @@ require_once __DIR__ . '/../templates/header.php';
         projectId: <?php echo $template->getProjectId(); ?>,
         csrfToken: "<?php echo SecurityHelper::escape($csrfToken); ?>",
         templateName: "<?php echo SecurityHelper::escape(addslashes($template->getName())); ?>",
+        isViewMode: <?php echo $isViewMode ? 'true' : 'false'; ?>,
         datasetId: <?php echo $template->getDatasetId() ? $template->getDatasetId() : 'null'; ?>,
         canvasWidth: <?php echo $template->getCanvasWidthPx(); ?>,
         canvasHeight: <?php echo $template->getCanvasHeightPx(); ?>,

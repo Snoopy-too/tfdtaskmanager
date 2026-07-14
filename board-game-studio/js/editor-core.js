@@ -51,10 +51,45 @@
 
         window.editorCanvas = canvas;
 
-        // Auto-save on modify
-        canvas.on('object:modified', triggerAutoSave);
-        canvas.on('object:added', triggerAutoSave);
-        canvas.on('object:removed', triggerAutoSave);
+        if (window.studioConfig.isViewMode) {
+            document.body.classList.add('view-only-mode');
+            canvas.selection = false;
+
+            // Make any newly added or rendered objects non-selectable
+            canvas.on('object:added', function(e) {
+                const obj = e.target;
+                if (obj.id !== 'safe-zone-guide' && obj.id !== 'bleed-zone-guide') {
+                    obj.selectable = false;
+                    obj.evented = false;
+                    obj.lockMovementX = true;
+                    obj.lockMovementY = true;
+                    obj.lockScalingX = true;
+                    obj.lockScalingY = true;
+                    obj.lockRotation = true;
+                    obj.hoverCursor = 'default';
+                }
+            });
+
+            canvas.on('after:render', function() {
+                canvas.getObjects().forEach(obj => {
+                    if (obj.id !== 'safe-zone-guide' && obj.id !== 'bleed-zone-guide') {
+                        obj.selectable = false;
+                        obj.evented = false;
+                        obj.lockMovementX = true;
+                        obj.lockMovementY = true;
+                        obj.lockScalingX = true;
+                        obj.lockScalingY = true;
+                        obj.lockRotation = true;
+                        obj.hoverCursor = 'default';
+                    }
+                });
+            });
+        } else {
+            // Auto-save on modify
+            canvas.on('object:modified', triggerAutoSave);
+            canvas.on('object:added', triggerAutoSave);
+            canvas.on('object:removed', triggerAutoSave);
+        }
         
         // Listen to selection changes for Property Inspector
         canvas.on('selection:created', onSelectionChanged);
@@ -548,10 +583,44 @@
         }, ['id', 'name', 'layerType', 'variable_binding', 'properties', 'original_filename', 'stored_filename', 'is_locked']);
     }
 
-    // DOM Ready
     document.addEventListener('DOMContentLoaded', () => {
         initCanvas();
         setupHistoryControls();
+
+        if (!window.studioConfig.isViewMode) {
+            // Heartbeat lock refresh
+            setInterval(() => {
+                const formData = new FormData();
+                formData.append('csrf_token', window.studioConfig.csrfToken);
+                formData.append('template_id', window.studioConfig.templateId.toString());
+                
+                fetch('api.php?action=heartbeat_lock', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-Token': window.studioConfig.csrfToken
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.locked) {
+                        alert("This design template has been locked by another user or session expired. Entering read-only mode.");
+                        window.location.reload();
+                    }
+                })
+                .catch(err => {
+                    console.error('Lock heartbeat failed:', err);
+                });
+            }, 20000); // every 20 seconds
+
+            // Release lock on page unload
+            window.addEventListener('beforeunload', () => {
+                const formData = new FormData();
+                formData.append('csrf_token', window.studioConfig.csrfToken);
+                formData.append('template_id', window.studioConfig.templateId.toString());
+                navigator.sendBeacon('api.php?action=release_lock', formData);
+            });
+        }
     });
 
     // Expose functions globally

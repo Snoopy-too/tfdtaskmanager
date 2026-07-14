@@ -112,6 +112,20 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
         ]);
     }
 
+    public function updateLock(int $id, ?int $userId, ?string $lockedAt): void
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE bg_templates
+            SET locked_by_user_id = :locked_by_user_id, locked_at = :locked_at
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'locked_by_user_id' => $userId,
+            'locked_at' => $lockedAt,
+            'id' => $id
+        ]);
+    }
+
     private function mapRowToEntity(array $row): BgTemplate
     {
         $template = new BgTemplate(
@@ -130,6 +144,12 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
         );
         if ($row['canvas_json'] !== null) {
             $template->setCanvasJson($row['canvas_json']);
+        }
+        if (isset($row['locked_by_user_id']) && $row['locked_by_user_id'] !== null) {
+            $template->setLockedByUserId((int)$row['locked_by_user_id']);
+        }
+        if (isset($row['locked_at']) && $row['locked_at'] !== null) {
+            $template->setLockedAt($row['locked_at']);
         }
         return $template;
     }

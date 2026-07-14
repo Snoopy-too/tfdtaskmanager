@@ -63,6 +63,21 @@ try {
             }
 
             $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            
+            // Security check: Verify that the template is not locked by another user
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
+                http_response_code(423); // Locked
+                echo json_encode(['error' => 'Template is currently locked for editing by another user.']);
+                exit;
+            }
+
             $canvasJson = $_POST['canvas_json'] ?? '';
             $layersRaw = $_POST['layers'] ?? '[]';
             
@@ -72,6 +87,56 @@ try {
             }
 
             $templateService->saveCanvas($templateId, $canvasJson, $layers);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'heartbeat_lock':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+
+            if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
+                echo json_encode(['success' => false, 'locked' => true]);
+                exit;
+            }
+
+            $success = $templateService->acquireOrRefreshLock($templateId, $currentUserId);
+            echo json_encode(['success' => $success, 'locked' => !$success]);
+            break;
+
+        case 'release_lock':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            $templateService->releaseLock($templateId, $currentUserId);
             echo json_encode(['success' => true]);
             break;
 

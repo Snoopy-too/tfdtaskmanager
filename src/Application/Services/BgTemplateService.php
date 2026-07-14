@@ -252,4 +252,42 @@ class BgTemplateService
 
         return $saved;
     }
+
+    public function isTemplateLockedByOther(BgTemplate $template, int $currentUserId): bool
+    {
+        if ($template->getLockedByUserId() === null) {
+            return false;
+        }
+        if ($template->getLockedByUserId() === $currentUserId) {
+            return false;
+        }
+        $lockedTime = strtotime($template->getLockedAt());
+        if ($lockedTime === false) {
+            return false;
+        }
+        return (time() - $lockedTime) < 60; // Lock is valid for 60 seconds
+    }
+
+    public function acquireOrRefreshLock(int $templateId, int $userId): bool
+    {
+        $template = $this->templateRepository->findById($templateId);
+        if (!$template) {
+            return false;
+        }
+
+        if ($this->isTemplateLockedByOther($template, $userId)) {
+            return false;
+        }
+
+        $this->templateRepository->updateLock($templateId, $userId, date('Y-m-d H:i:s'));
+        return true;
+    }
+
+    public function releaseLock(int $templateId, int $userId): void
+    {
+        $template = $this->templateRepository->findById($templateId);
+        if ($template && $template->getLockedByUserId() === $userId) {
+            $this->templateRepository->updateLock($templateId, null, null);
+        }
+    }
 }

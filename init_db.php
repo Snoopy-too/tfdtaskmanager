@@ -211,12 +211,15 @@ try {
             `safe_margin_mm` DECIMAL(5,2) NOT NULL DEFAULT 5.00,
             `dataset_id` INT DEFAULT NULL,
             `created_by` INT NOT NULL,
+            `locked_by_user_id` INT DEFAULT NULL,
+            `locked_at` TIMESTAMP NULL DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             CONSTRAINT `fk_bg_templates_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
             CONSTRAINT `fk_bg_templates_comp_type` FOREIGN KEY (`component_type_id`) REFERENCES `bg_component_types` (`id`),
             CONSTRAINT `fk_bg_templates_dataset` FOREIGN KEY (`dataset_id`) REFERENCES `bg_datasets` (`id`) ON DELETE SET NULL,
             CONSTRAINT `fk_bg_templates_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+            CONSTRAINT `fk_bg_templates_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
             INDEX `idx_bg_templates_project` (`project_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
@@ -268,6 +271,15 @@ try {
         echo "- Seeded Super-Admin user: $adminEmail with default credentials.\n";
     } else {
         echo "- Super-Admin user already exists. Skipping seeding.\n";
+    }
+
+    // Migration: Check if locks columns exist on bg_templates for existing DBs
+    $columns = $pdo->query("SHOW COLUMNS FROM `bg_templates` LIKE 'locked_by_user_id'")->fetchAll();
+    if (empty($columns)) {
+        $pdo->exec("ALTER TABLE `bg_templates` ADD COLUMN `locked_by_user_id` INT DEFAULT NULL AFTER `created_by`");
+        $pdo->exec("ALTER TABLE `bg_templates` ADD COLUMN `locked_at` TIMESTAMP NULL DEFAULT NULL AFTER `locked_by_user_id`");
+        $pdo->exec("ALTER TABLE `bg_templates` ADD CONSTRAINT `fk_bg_templates_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL");
+        echo "- Added locking columns and constraint to 'bg_templates' table via migration.\n";
     }
 
     echo "Database setup completed successfully!\n";

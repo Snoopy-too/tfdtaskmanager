@@ -21,4 +21,6 @@ interface BgTemplateRepositoryInterface
     public function delete(int $id): void;
 
     public function updateCanvasJson(int $id, string $canvasJson): void;
+
+    public function updateLock(int $id, ?int $userId, ?string $lockedAt): void;
 }

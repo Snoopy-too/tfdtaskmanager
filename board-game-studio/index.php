@@ -3,6 +3,19 @@ declare(strict_types=1);
 
 $container = require_once __DIR__ . '/../src/bootstrap.php';
 
+// Auto-migration for template lock columns
+try {
+    $db = $container->get(PDO::class);
+    $check = $db->query("SHOW COLUMNS FROM `bg_templates` LIKE 'locked_by_user_id'")->fetchAll();
+    if (empty($check)) {
+        $db->exec("ALTER TABLE `bg_templates` ADD COLUMN `locked_by_user_id` INT DEFAULT NULL AFTER `created_by`");
+        $db->exec("ALTER TABLE `bg_templates` ADD COLUMN `locked_at` TIMESTAMP NULL DEFAULT NULL AFTER `locked_by_user_id`");
+        $db->exec("ALTER TABLE `bg_templates` ADD CONSTRAINT `fk_bg_templates_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL");
+    }
+} catch (\Exception $e) {
+    // Ignore db connection issues here; standard page loads will handle them
+}
+
 use App\Infrastructure\Security\SecurityHelper;
 use App\Application\Services\ProjectService;
 use App\Application\Services\BgTemplateService;
@@ -17,6 +30,7 @@ $templateService = $container->get(BgTemplateService::class);
 $assetService = $container->get(BgAssetService::class);
 $datasetService = $container->get(BgDatasetService::class);
 
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
 $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
@@ -301,12 +315,26 @@ require_once __DIR__ . '/../templates/header.php';
                                     break;
                                 }
                             }
+                            $isLocked = $templateService->isTemplateLockedByOther($tmpl, $currentUserId);
+                            $lockUser = null;
+                            if ($isLocked) {
+                                $userService = $container->get(\App\Application\Services\UserService::class);
+                                $lockUser = $userService->getUserById($tmpl->getLockedByUserId());
+                            }
                             ?>
                             <div class="bg-slate-900 border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between hover:border-slate-700/80 hover:shadow-lg transition">
                                 <div class="space-y-1">
                                     <div class="flex justify-between items-start">
-                                        <h3 class="font-bold text-slate-200 truncate pr-2"><?php echo SecurityHelper::escape($tmpl->getName()); ?></h3>
-                                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400">
+                                        <div class="space-y-1 min-w-0 flex-grow">
+                                            <h3 class="font-bold text-slate-200 truncate pr-2"><?php echo SecurityHelper::escape($tmpl->getName()); ?></h3>
+                                            <?php if ($isLocked): ?>
+                                                <div class="flex items-center space-x-1 text-[10px] text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded w-fit">
+                                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                    <span>Locked by <?php echo SecurityHelper::escape($lockUser ? $lockUser->getName() : 'Other User'); ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 h-fit flex-shrink-0">
                                             <?php echo $cType ? SecurityHelper::escape($cType->getName()) : 'Unknown'; ?>
                                         </span>
                                     </div>
@@ -321,10 +349,17 @@ require_once __DIR__ . '/../templates/header.php';
                                     <?php endif; ?>
                                 </div>
                                 <div class="flex items-center justify-between mt-6 pt-3 border-t border-slate-800/60 gap-2">
-                                    <a href="editor.php?id=<?php echo $tmpl->getId(); ?>" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1.5 bg-indigo-500/5 hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition">
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                        <span>Open Editor</span>
-                                    </a>
+                                    <?php if ($isLocked): ?>
+                                        <a href="editor.php?id=<?php echo $tmpl->getId(); ?>" class="text-xs font-semibold text-slate-300 hover:text-white flex items-center space-x-1.5 bg-slate-800/50 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                                            <svg class="h-3.5 w-3.5 text-slate-450" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            <span>View Design</span>
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="editor.php?id=<?php echo $tmpl->getId(); ?>" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1.5 bg-indigo-500/5 hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition">
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                            <span>Open Editor</span>
+                                        </a>
+                                    <?php endif; ?>
                                     
                                     <div class="flex items-center space-x-2">
                                         <form action="" method="POST" class="m-0" onsubmit="return duplicateTemplate(<?php echo $tmpl->getId(); ?>, '<?php echo SecurityHelper::escape(addslashes($tmpl->getName())); ?>', this);">
@@ -337,14 +372,16 @@ require_once __DIR__ . '/../templates/header.php';
                                             </button>
                                         </form>
 
-                                        <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this template?', this);">
-                                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                                            <input type="hidden" name="action" value="delete_template">
-                                            <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">
-                                            <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 transition p-1 rounded hover:bg-rose-500/10 border border-transparent hover:border-rose-500/10">
-                                                Delete
-                                            </button>
-                                        </form>
+                                        <?php if (!$isLocked): ?>
+                                            <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this template?', this);">
+                                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                                <input type="hidden" name="action" value="delete_template">
+                                                <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">
+                                                <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 transition p-1 rounded hover:bg-rose-500/10 border border-transparent hover:border-rose-500/10">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
