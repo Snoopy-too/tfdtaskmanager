@@ -304,7 +304,7 @@ require_once __DIR__ . '/../templates/header.php';
 
                                 <!-- Delete button -->
                                 <div class="flex justify-end pt-1">
-                                    <form action="" method="POST" class="m-0" onsubmit="return confirm('Are you sure you want to delete this asset? This cannot be undone and may break canvas layers referencing this asset.');">
+                                    <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this asset? This cannot be undone and may break canvas layers referencing this asset.', this);">
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="delete_asset">
                                         <input type="hidden" name="asset_id" value="<?php echo $asset->getId(); ?>">

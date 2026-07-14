@@ -136,7 +136,7 @@
         })
         .catch(err => {
             console.error('Export Engine Failure:', err);
-            alert('Failed to generate export: ' + err.message);
+            window.studioAlert('Failed to generate export: ' + err.message, 'Export Error');
             document.getElementById('export-progress-container').classList.add('hidden');
             document.getElementById('btn-run-export').disabled = false;
             isRunning = false;
@@ -517,26 +517,7 @@
         document.getElementById('progress-bar').style.width = percentValue + '%';
     }
 
-    // Custom alert modal to replace native alert()
-    function customAlert(message) {
-        return new Promise(resolve => {
-            const overlay = document.createElement('div');
-            overlay.className = 'fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center';
-            overlay.innerHTML = `
-                <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all text-center">
-                    <h3 class="text-base font-bold text-slate-200 mb-6">${message}</h3>
-                    <div class="flex justify-center">
-                        <button id="custom-alert-ok" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl shadow-lg hover:shadow-indigo-500/20 transition">OK</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-            document.getElementById('custom-alert-ok').onclick = () => {
-                overlay.remove();
-                resolve();
-            };
-        });
-    }
+
 
     // Helper to load image as a Promise
     function loadImage(src) {

@@ -292,7 +292,7 @@ require_once __DIR__ . '/../templates/header.php';
                                         <span>Open Editor</span>
                                     </a>
                                     
-                                    <form action="" method="POST" class="m-0" onsubmit="return confirm('Are you sure you want to delete this template?');">
+                                    <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this template?', this);">
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="delete_template">
                                         <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">

@@ -175,7 +175,7 @@
             window.editorCore.triggerAutoSave();
         } else {
             // Alert user to select or create a text layer
-            alert(`Font "${asset.original_filename}" registered successfully! Select a text layer and apply this font from the Properties panel.`);
+            window.studioAlert(`Font "${asset.original_filename}" registered successfully! Select a text layer and apply this font from the Properties panel.`, 'Font Registered');
         }
     }
 
