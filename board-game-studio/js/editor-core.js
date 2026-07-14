@@ -239,6 +239,9 @@
             if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
                 window.propertyInspector.inspect(activeObject);
             }
+            if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                window.layerManager.renderLayersList();
+            }
         } else {
             // Guides or multiple selections
             canvas.discardActiveObject();
@@ -249,6 +252,9 @@
     function onSelectionCleared() {
         if (window.propertyInspector && typeof window.propertyInspector.clearInspect === 'function') {
             window.propertyInspector.clearInspect();
+        }
+        if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+            window.layerManager.renderLayersList();
         }
     }
 
