@@ -164,15 +164,24 @@
         }
 
         // Image crop controls
-        ['left', 'right', 'top', 'bottom'].forEach(side => {
-            const range = document.getElementById(`prop-crop-${side}`);
-            if (range) {
-                range.addEventListener('input', (e) => {
-                    document.getElementById(`label-crop-${side}`).textContent = `${e.target.value}%`;
-                    updateImageCrop();
-                });
-            }
-        });
+        const btnCropImage = document.getElementById('btn-crop-image');
+        if (btnCropImage) {
+            btnCropImage.addEventListener('click', () => {
+                if (activeObj && activeObj.type === 'image') {
+                    startImageCrop(activeObj);
+                }
+            });
+        }
+
+        const btnCropApply = document.getElementById('btn-crop-apply');
+        if (btnCropApply) {
+            btnCropApply.addEventListener('click', applyImageCrop);
+        }
+
+        const btnCropCancel = document.getElementById('btn-crop-cancel');
+        if (btnCropCancel) {
+            btnCropCancel.addEventListener('click', cancelImageCrop);
+        }
 
         const btnFitContain = document.getElementById('btn-inspector-fit-contain');
         if (btnFitContain) {
@@ -388,30 +397,6 @@
         } else if (obj.type === 'image') {
             imgSec.classList.remove('hidden');
             document.getElementById('prop-image-filename').textContent = obj.original_filename || 'Uploaded Image';
-            
-            const originalWidth = obj._originalElement.naturalWidth || obj._originalElement.width || 1;
-            const originalHeight = obj._originalElement.naturalHeight || obj._originalElement.height || 1;
-            
-            // Calculate percentages from crop values
-            const cropX = obj.cropX || 0;
-            const cropY = obj.cropY || 0;
-            const cropW = obj.width || originalWidth;
-            const cropH = obj.height || originalHeight;
-            
-            const cropLeftPct = Math.round((cropX / originalWidth) * 100);
-            const cropTopPct = Math.round((cropY / originalHeight) * 100);
-            const cropRightPct = Math.round(((originalWidth - cropW - cropX) / originalWidth) * 100);
-            const cropBottomPct = Math.round(((originalHeight - cropH - cropY) / originalHeight) * 100);
-            
-            document.getElementById('prop-crop-left').value = cropLeftPct;
-            document.getElementById('prop-crop-right').value = cropRightPct;
-            document.getElementById('prop-crop-top').value = cropTopPct;
-            document.getElementById('prop-crop-bottom').value = cropBottomPct;
-            
-            document.getElementById('label-crop-left').textContent = `${cropLeftPct}%`;
-            document.getElementById('label-crop-right').textContent = `${cropRightPct}%`;
-            document.getElementById('label-crop-top').textContent = `${cropTopPct}%`;
-            document.getElementById('label-crop-bottom').textContent = `${cropBottomPct}%`;
         }
 
         isUpdatingForm = false;
@@ -541,7 +526,11 @@
                 clearInterval(checkCanvasInterval);
                 canvas.on('object:moving', () => { if (activeObj) inspect(activeObj); });
                 canvas.on('object:scaling', () => { if (activeObj) inspect(activeObj); });
-                canvas.on('object:rotating', () => { if (activeObj) inspect(activeObj); });
+                canvas.on('mouse:dblclick', (options) => {
+                    if (options.target && options.target.type === 'image' && !isCropMode) {
+                        startImageCrop(options.target);
+                    }
+                });
                 
                 // Initialize canvas properties inspector once canvas is ready
                 initCanvasInspector();
@@ -549,63 +538,230 @@
         }, 100);
     });
 
-    function updateImageCrop() {
-        if (!activeObj || activeObj.type !== 'image' || !window.editorCanvas || isUpdatingForm) return;
+    let isCropMode = false;
+    let activeCropImage = null;
 
-        const originalWidth = activeObj._originalElement.naturalWidth || activeObj._originalElement.width || 1;
-        const originalHeight = activeObj._originalElement.naturalHeight || activeObj._originalElement.height || 1;
-
-        const cropLeftPct = parseFloat(document.getElementById('prop-crop-left').value) || 0;
-        const cropRightPct = parseFloat(document.getElementById('prop-crop-right').value) || 0;
-        const cropTopPct = parseFloat(document.getElementById('prop-crop-top').value) || 0;
-        const cropBottomPct = parseFloat(document.getElementById('prop-crop-bottom').value) || 0;
-
-        // Prevent cropping beyond boundaries
-        if (cropLeftPct + cropRightPct >= 100) return;
-        if (cropTopPct + cropBottomPct >= 100) return;
-
-        // Calculate crop bounds in original pixel space
-        const cropX = (cropLeftPct / 100) * originalWidth;
-        const cropY = (cropTopPct / 100) * originalHeight;
-        const newWidth = originalWidth - ((cropLeftPct + cropRightPct) / 100) * originalWidth;
-        const newHeight = originalHeight - ((cropTopPct + cropBottomPct) / 100) * originalHeight;
-
-        // Calculate center shift to keep physical layout stationary
-        const currentCenterX = cropX + newWidth / 2;
-        const currentCenterY = cropY + newHeight / 2;
+    function startImageCrop(img) {
+        if (isCropMode || !img || img.type !== 'image' || !window.editorCanvas) return;
         
-        const oldCenterX = (activeObj.cropX || 0) + (activeObj.width || originalWidth) / 2;
-        const oldCenterY = (activeObj.cropY || 0) + (activeObj.height || originalHeight) / 2;
+        isCropMode = true;
+        activeCropImage = img;
 
-        const shiftX = (currentCenterX - oldCenterX) * activeObj.scaleX;
-        const shiftY = (currentCenterY - oldCenterY) * activeObj.scaleY;
+        const canvas = window.editorCanvas;
+        
+        // Hide normal Crop button, show Apply/Cancel action buttons
+        document.getElementById('btn-crop-image').classList.add('hidden');
+        document.getElementById('crop-actions-group').classList.remove('hidden');
 
-        activeObj.set({
-            cropX: cropX,
-            cropY: cropY,
-            width: newWidth,
-            height: newHeight,
-            left: activeObj.left + shiftX,
-            top: activeObj.top + shiftY
+        // Store original size and crop coordinates
+        const originalWidth = img._originalElement.naturalWidth || img._originalElement.width || 1;
+        const originalHeight = img._originalElement.naturalHeight || img._originalElement.height || 1;
+
+        // Hide original image layer
+        img.visible = false;
+        canvas.discardActiveObject();
+
+        // Calculate natural uncropped center on canvas using transform matrix
+        const matrix = img.calcTransformMatrix();
+        const localPoint = new fabric.Point(
+            -img.width/2 - (img.cropX || 0) + originalWidth/2,
+            -img.height/2 - (img.cropY || 0) + originalHeight/2
+        );
+        const uncroppedCenterOnCanvas = fabric.util.transformPoint(localPoint, matrix);
+
+        // Create dimmed uncropped background placeholder
+        const bgImg = new fabric.Image(img._originalElement, {
+            left: uncroppedCenterOnCanvas.x,
+            top: uncroppedCenterOnCanvas.y,
+            width: originalWidth,
+            height: originalHeight,
+            scaleX: img.scaleX,
+            scaleY: img.scaleY,
+            angle: img.angle,
+            originX: 'center',
+            originY: 'center',
+            opacity: 0.4,
+            selectable: false,
+            evented: false,
+            id: 'temp-crop-bg'
+        });
+        canvas.add(bgImg);
+
+        // Create interactive crop box overlay matching current crop region
+        const cropBox = new fabric.Rect({
+            left: img.left,
+            top: img.top,
+            width: img.width * img.scaleX,
+            height: img.height * img.scaleY,
+            scaleX: 1,
+            scaleY: 1,
+            angle: img.angle,
+            originX: 'center',
+            originY: 'center',
+            fill: 'transparent',
+            stroke: '#6366f1',
+            strokeWidth: 2,
+            cornerColor: '#6366f1',
+            cornerStrokeColor: '#ffffff',
+            cornerSize: 10,
+            transparentCorners: false,
+            hasRotatingPoint: false,
+            id: 'temp-crop-box'
+        });
+        canvas.add(cropBox);
+
+        // Disable selection/movement of all other layers
+        canvas.getObjects().forEach(obj => {
+            if (obj !== cropBox) {
+                obj._origSelectable = obj.selectable;
+                obj._origEvented = obj.evented;
+                obj.selectable = false;
+                obj.evented = false;
+            }
         });
 
-        // Update inputs
-        const wPx = newWidth * activeObj.scaleX;
-        const hPx = newHeight * activeObj.scaleY;
-        document.getElementById('prop-width').value = Math.round(wPx);
-        document.getElementById('prop-height').value = Math.round(hPx);
-        
-        const wMm = (wPx * 25.4) / 300;
-        const hMm = (hPx * 25.4) / 300;
-        document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
-        document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
-        document.getElementById('prop-left').value = Math.round(activeObj.left);
-        document.getElementById('prop-top').value = Math.round(activeObj.top);
-
-        activeObj.setCoords();
-        window.editorCanvas.renderAll();
-        window.editorCore.triggerAutoSave();
+        // Focus cropBox
+        canvas.setActiveObject(cropBox);
+        canvas.renderAll();
     }
+
+    function applyImageCrop() {
+        if (!isCropMode || !activeCropImage || !window.editorCanvas) return;
+
+        const canvas = window.editorCanvas;
+        let cropBox = null;
+        let bgImg = null;
+        
+        canvas.getObjects().forEach(obj => {
+            if (obj.id === 'temp-crop-box') cropBox = obj;
+            if (obj.id === 'temp-crop-bg') bgImg = obj;
+        });
+
+        if (cropBox && bgImg) {
+            const originalWidth = activeCropImage._originalElement.naturalWidth || activeCropImage._originalElement.width || 1;
+            const originalHeight = activeCropImage._originalElement.naturalHeight || activeCropImage._originalElement.height || 1;
+
+            // Invert the transform matrix of the uncropped background image
+            const matrix = bgImg.calcTransformMatrix();
+            const inverseMatrix = fabric.util.invertTransform(matrix);
+
+            // Get crop box coordinates in uncropped background image space
+            const coords = cropBox.getCoords();
+            const localTL = fabric.util.transformPoint(coords[0], inverseMatrix);
+            const localBR = fabric.util.transformPoint(coords[2], inverseMatrix);
+
+            // Convert to absolute pixel space relative to original top-left corner
+            let cropX = localTL.x + originalWidth / 2;
+            let cropY = localTL.y + originalHeight / 2;
+            let newWidth = localBR.x - localTL.x;
+            let newHeight = localBR.y - localTL.y;
+
+            // Clamp crop box inside uncropped image boundaries
+            if (cropX < 0) {
+                newWidth += cropX;
+                cropX = 0;
+            }
+            if (cropY < 0) {
+                newHeight += cropY;
+                cropY = 0;
+            }
+            if (cropX + newWidth > originalWidth) {
+                newWidth = originalWidth - cropX;
+            }
+            if (cropY + newHeight > originalHeight) {
+                newHeight = originalHeight - cropY;
+            }
+            if (newWidth < 10) newWidth = 10;
+            if (newHeight < 10) newHeight = 10;
+
+            // Calculate new visual center relative to the rotated/scaled image coordinate space
+            const localCenterX = -originalWidth / 2 + cropX + newWidth / 2;
+            const localCenterY = -originalHeight / 2 + cropY + newHeight / 2;
+            const newCenter = fabric.util.transformPoint(new fabric.Point(localCenterX, localCenterY), matrix);
+
+            // Compute visual size on canvas to adjust scaling factors
+            const visualWidth = cropBox.width * cropBox.scaleX;
+            const visualHeight = cropBox.height * cropBox.scaleY;
+
+            activeCropImage.set({
+                cropX: cropX,
+                cropY: cropY,
+                width: newWidth,
+                height: newHeight,
+                scaleX: visualWidth / newWidth,
+                scaleY: visualHeight / newHeight,
+                left: newCenter.x,
+                top: newCenter.y
+            });
+        }
+
+        exitCropMode(true);
+    }
+
+    function cancelImageCrop() {
+        exitCropMode(false);
+    }
+
+    function exitCropMode(shouldSave) {
+        if (!isCropMode || !window.editorCanvas) return;
+
+        const canvas = window.editorCanvas;
+
+        // Restore normal crop buttons UI
+        document.getElementById('btn-crop-image').classList.remove('hidden');
+        document.getElementById('crop-actions-group').classList.add('hidden');
+
+        // Delete temporary cropping layers
+        let cropBox = null;
+        let bgImg = null;
+        canvas.getObjects().forEach(obj => {
+            if (obj.id === 'temp-crop-box') cropBox = obj;
+            if (obj.id === 'temp-crop-bg') bgImg = obj;
+        });
+
+        if (cropBox) canvas.remove(cropBox);
+        if (bgImg) canvas.remove(bgImg);
+
+        // Restore original selectable & evented properties
+        canvas.getObjects().forEach(obj => {
+            if (obj._origSelectable !== undefined) {
+                obj.selectable = obj._origSelectable;
+                delete obj._origSelectable;
+            }
+            if (obj._origEvented !== undefined) {
+                obj.evented = obj._origEvented;
+                delete obj._origEvented;
+            }
+        });
+
+        // Restore active image visibility
+        if (activeCropImage) {
+            activeCropImage.visible = true;
+            canvas.setActiveObject(activeCropImage);
+            inspect(activeCropImage);
+        }
+
+        canvas.renderAll();
+
+        isCropMode = false;
+        activeCropImage = null;
+
+        if (shouldSave && window.editorCore) {
+            window.editorCore.triggerAutoSave();
+        }
+    }
+
+    // Key Listeners for Crop Mode shortcuts (Enter / Escape)
+    document.addEventListener('keydown', (e) => {
+        if (!isCropMode) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyImageCrop();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelImageCrop();
+        }
+    });
 
     window.propertyInspector = {
         inspect: inspect,
