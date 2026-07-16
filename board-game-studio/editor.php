@@ -555,6 +555,14 @@ require_once __DIR__ . '/../templates/header.php';
                             </div>
                         </div>
 
+                        <!-- ponytail: corner radius for rectangle layers -->
+                        <div id="prop-rect-corners-group" class="grid grid-cols-2 gap-3 hidden">
+                            <div>
+                                <label for="prop-rect-rx" class="block text-xs font-semibold text-slate-400 mb-1">Corner Radius (px)</label>
+                                <input type="number" id="prop-rect-rx" min="0" max="500" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label for="prop-stroke-color" class="block text-xs font-semibold text-slate-400 mb-1">Stroke Color</label>

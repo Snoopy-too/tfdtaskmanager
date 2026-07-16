@@ -154,6 +154,25 @@
         document.getElementById('prop-stroke-color').addEventListener('input', (e) => updateActiveProp('stroke', e.target.value));
         document.getElementById('prop-stroke-width').addEventListener('input', (e) => updateActiveProp('strokeWidth', parseInt(e.target.value) || 0));
 
+        // ponytail: corners rounding for Rect layers
+        const rectRxInput = document.getElementById('prop-rect-rx');
+        if (rectRxInput) {
+            rectRxInput.addEventListener('input', (e) => {
+                if (!activeObj || isUpdatingForm) return;
+                const val = Math.max(0, parseInt(e.target.value) || 0);
+                activeObj.set({
+                    rx: val,
+                    ry: val
+                });
+                if (window.editorCanvas) {
+                    window.editorCanvas.renderAll();
+                }
+                if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
+                    window.editorCore.triggerAutoSave();
+                }
+            });
+        }
+
         const changeImgBtn = document.getElementById('btn-inspector-change-image');
         if (changeImgBtn) {
             changeImgBtn.addEventListener('click', () => {
@@ -439,6 +458,17 @@
             } else {
                 if (fillGroup) fillGroup.classList.remove('hidden');
                 if (opacityGroup) opacityGroup.classList.remove('hidden');
+            }
+
+            // ponytail: display and populate corner radius control for Rectangle layers
+            const cornersGroup = document.getElementById('prop-rect-corners-group');
+            if (cornersGroup) {
+                if (obj.type === 'rect') {
+                    cornersGroup.classList.remove('hidden');
+                    document.getElementById('prop-rect-rx').value = obj.rx || 0;
+                } else {
+                    cornersGroup.classList.add('hidden');
+                }
             }
             
             let fillVal = obj.fill || '';
