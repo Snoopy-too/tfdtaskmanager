@@ -79,6 +79,7 @@
                         }
                     }
                     if (activeObj && (activeObj.type === 'i-text' || activeObj.type === 'text')) {
+                        activeObj.dirty = true;
                         if (typeof activeObj.initDimensions === 'function') {
                             activeObj.initDimensions();
                         }

@@ -226,6 +226,7 @@
         textObjects.forEach(obj => {
             if (!obj.fontFamily) return;
             document.fonts.load(`1em "${obj.fontFamily}"`).then(() => {
+                obj.dirty = true;
                 if (typeof obj.initDimensions === 'function') {
                     obj.initDimensions();
                 }
@@ -633,6 +634,9 @@
 
         // Listen for browser font load completion events to handle asynchronous stylesheet loads (e.g. Google Fonts latency)
         if (document.fonts) {
+            document.fonts.ready.then(() => {
+                refreshCanvasTextLayers();
+            });
             document.fonts.addEventListener('loadingdone', () => {
                 refreshCanvasTextLayers();
             });
