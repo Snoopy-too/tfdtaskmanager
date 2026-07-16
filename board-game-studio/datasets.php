@@ -162,6 +162,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Delete Column Action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_dataset_column') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+        $columnName = $_POST['column_name'] ?? '';
+        try {
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if (!$dataset) {
+                throw new \Exception("Dataset not found.");
+            }
+            
+            $columnMap = $dataset->getColumnMap();
+            $rowData = $dataset->getRowData();
+            
+            // Remove column from map
+            $colIndex = array_search($columnName, $columnMap);
+            if ($colIndex !== false) {
+                array_splice($columnMap, $colIndex, 1);
+            }
+            
+            // Remove column from each row
+            foreach ($rowData as &$row) {
+                unset($row[$columnName]);
+            }
+            
+            $datasetService->updateDataset($datasetId, $dataset->getName(), $columnMap, $rowData);
+            $success = "Column '$columnName' deleted successfully.";
+        } catch (\Exception $e) {
+            $error = "Failed to delete column: " . $e->getMessage();
+        }
+    }
+}
+
+// Handle Delete Row Action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_dataset_row') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+        $rowIndex = isset($_POST['row_index']) ? (int)$_POST['row_index'] : -1;
+        try {
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if (!$dataset) {
+                throw new \Exception("Dataset not found.");
+            }
+            
+            $rowData = $dataset->getRowData();
+            if ($rowIndex >= 0 && $rowIndex < count($rowData)) {
+                array_splice($rowData, $rowIndex, 1);
+                $datasetService->updateDataset($datasetId, $dataset->getName(), $dataset->getColumnMap(), $rowData);
+                $success = "Row " . ($rowIndex + 1) . " deleted successfully.";
+            } else {
+                throw new \Exception("Invalid row index.");
+            }
+        } catch (\Exception $e) {
+            $error = "Failed to delete row: " . $e->getMessage();
+        }
+    }
+}
+
 // Fetch all datasets in active project
 $datasets = $datasetService->getDatasetsByProject($activeProjectId);
 
@@ -368,8 +432,18 @@ require_once __DIR__ . '/../templates/header.php';
                                     <tr class="bg-slate-950 text-slate-300 border-b border-slate-800">
                                         <th class="p-3 font-semibold w-12 text-center">Row</th>
                                         <?php foreach ($inspectDataset->getColumnMap() as $col): ?>
-                                            <th class="p-3 font-semibold"><?php echo SecurityHelper::escape($col); ?></th>
+                                            <th class="p-3 font-semibold relative group pr-6">
+                                                <span><?php echo SecurityHelper::escape($col); ?></span>
+                                                <form action="" method="POST" class="absolute right-1 top-2.5 m-0 inline" onsubmit="event.preventDefault(); window.customConfirm('Remove column: <?php echo SecurityHelper::escape($col); ?>? This will delete all cell values for this column.', (confirmed) => { if (confirmed) this.submit(); });">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                                    <input type="hidden" name="action" value="delete_dataset_column">
+                                                    <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                                    <input type="hidden" name="column_name" value="<?php echo SecurityHelper::escape($col); ?>">
+                                                    <button type="submit" class="text-rose-500 hover:text-rose-450 font-bold opacity-0 group-hover:opacity-100 transition text-[13px] leading-none" title="Delete Column">&times;</button>
+                                                </form>
+                                            </th>
                                         <?php endforeach; ?>
+                                        <th class="p-3 font-semibold w-16 text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -381,7 +455,7 @@ require_once __DIR__ . '/../templates/header.php';
                                     if (empty($rows)): 
                                     ?>
                                         <tr>
-                                            <td colspan="<?php echo count($inspectDataset->getColumnMap()) + 1; ?>" class="p-8 text-center text-slate-500">
+                                            <td colspan="<?php echo count($inspectDataset->getColumnMap()) + 2; ?>" class="p-8 text-center text-slate-500">
                                                 No rows of data found.
                                             </td>
                                         </tr>
@@ -394,11 +468,20 @@ require_once __DIR__ . '/../templates/header.php';
                                                         <?php echo SecurityHelper::escape($row[$col] ?? ''); ?>
                                                     </td>
                                                 <?php endforeach; ?>
+                                                <td class="p-3 text-center bg-slate-950/20 border-l border-slate-800/40">
+                                                    <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.customConfirm('Delete Row <?php echo $index + 1; ?>?', (confirmed) => { if (confirmed) this.submit(); });">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                                        <input type="hidden" name="action" value="delete_dataset_row">
+                                                        <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                                        <input type="hidden" name="row_index" value="<?php echo $index; ?>">
+                                                        <button type="submit" class="text-rose-500 hover:text-rose-450 font-bold text-sm px-1" title="Delete Row">&times;</button>
+                                                    </form>
+                                                </td>
                                             </tr>
                                         <?php endforeach; ?>
                                         <?php if ($totalRows > $previewLimit): ?>
                                             <tr>
-                                                <td colspan="<?php echo count($inspectDataset->getColumnMap()) + 1; ?>" class="p-3 text-center text-xs text-amber-500/80 bg-amber-500/5 border-t border-amber-500/20">
+                                                <td colspan="<?php echo count($inspectDataset->getColumnMap()) + 2; ?>" class="p-3 text-center text-xs text-amber-500/80 bg-amber-500/5 border-t border-amber-500/20">
                                                     Showing first <?php echo $previewLimit; ?> of <?php echo $totalRows; ?> rows. All rows will be used during export.
                                                 </td>
                                             </tr>
