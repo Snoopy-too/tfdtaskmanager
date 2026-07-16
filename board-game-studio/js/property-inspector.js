@@ -167,21 +167,14 @@
         const btnCropImage = document.getElementById('btn-crop-image');
         if (btnCropImage) {
             btnCropImage.addEventListener('click', () => {
-                if (activeObj && activeObj.type === 'image') {
-                    startImageCrop(activeObj);
-                }
+                if (activeObj && activeObj.type === 'image') startImageCrop(activeObj);
             });
         }
-
         const btnCropApply = document.getElementById('btn-crop-apply');
-        if (btnCropApply) {
-            btnCropApply.addEventListener('click', applyImageCrop);
-        }
+        if (btnCropApply) btnCropApply.addEventListener('click', applyImageCrop);
 
         const btnCropCancel = document.getElementById('btn-crop-cancel');
-        if (btnCropCancel) {
-            btnCropCancel.addEventListener('click', cancelImageCrop);
-        }
+        if (btnCropCancel) btnCropCancel.addEventListener('click', cancelImageCrop);
 
         const btnFitContain = document.getElementById('btn-inspector-fit-contain');
         if (btnFitContain) {
@@ -531,6 +524,7 @@
                         startImageCrop(options.target);
                     }
                 });
+                canvas.on('selection:cleared', () => { if (isCropMode) cancelImageCrop(); });
                 
                 // Initialize canvas properties inspector once canvas is ready
                 initCanvasInspector();
@@ -538,205 +532,194 @@
         }, 100);
     });
 
+    // ─── Crop Mode ───────────────────────────────────────────────────────────
     let isCropMode = false;
-    let activeCropImage = null;
+    let activeCropImage = null;   // the fabric.Image being cropped
+    let _cropOverlay = null;      // dim rect covering full canvas
+    let _cropBg = null;           // ghost of the full image (dimmed)
+    let _cropBox = null;          // the draggable/resizable crop rect
+    let _cropOrigState = null;    // snapshot of original cropX/Y/width/height/scaleX/scaleY
 
     function startImageCrop(img) {
         if (isCropMode || !img || img.type !== 'image' || !window.editorCanvas) return;
-        
-        isCropMode = true;
-        activeCropImage = img;
 
         const canvas = window.editorCanvas;
-        
-        // Hide normal Crop button, show Apply/Cancel action buttons
+        const imgEl  = img.getElement();
+
+        // Natural (uncropped) pixel dimensions of the source image
+        const natW = (imgEl && imgEl.naturalWidth)  || img.width  || 1;
+        const natH = (imgEl && imgEl.naturalHeight) || img.height || 1;
+
+        isCropMode      = true;
+        activeCropImage = img;
+
+        // Save original state so Cancel can fully restore
+        _cropOrigState = {
+            cropX: img.cropX || 0,
+            cropY: img.cropY || 0,
+            width: img.width,
+            height: img.height,
+            scaleX: img.scaleX,
+            scaleY: img.scaleY,
+            left: img.left,
+            top: img.top
+        };
+
+        // Show Apply/Cancel UI
         document.getElementById('btn-crop-image').classList.add('hidden');
         document.getElementById('crop-actions-group').classList.remove('hidden');
 
-        // Store original size and crop coordinates
-        const imgEl = img.getElement();
-        const originalWidth = imgEl ? (imgEl.naturalWidth || imgEl.width || img.width || 1) : (img.width || 1);
-        const originalHeight = imgEl ? (imgEl.naturalHeight || imgEl.height || img.height || 1) : (img.height || 1);
-
-        // Hide original image layer
-        img.visible = false;
-        canvas.discardActiveObject();
-
-        // Calculate natural uncropped center on canvas using transform matrix
+        // ── 1. Compute the canvas-space position of the full (uncropped) image center
         const matrix = img.calcTransformMatrix();
-        const localPoint = new fabric.Point(
-            -img.width/2 - (img.cropX || 0) + originalWidth/2,
-            -img.height/2 - (img.cropY || 0) + originalHeight/2
-        );
-        const uncroppedCenterOnCanvas = fabric.util.transformPoint(localPoint, matrix);
+        // Local offset from img center to uncropped-image center
+        const localDx = -img.width / 2 - (img.cropX || 0) + natW / 2;
+        const localDy = -img.height / 2 - (img.cropY || 0) + natH / 2;
+        const fullCenter = fabric.util.transformPoint(new fabric.Point(localDx, localDy), matrix);
 
-        // Create dimmed uncropped background placeholder
-        const bgImg = new fabric.Image(img.getElement(), {
-            left: uncroppedCenterOnCanvas.x,
-            top: uncroppedCenterOnCanvas.y,
-            width: originalWidth,
-            height: originalHeight,
-            scaleX: img.scaleX,
-            scaleY: img.scaleY,
-            angle: img.angle,
-            originX: 'center',
-            originY: 'center',
-            opacity: 0.4,
+        // ── 2. Ghost image (full uncropped, dimmed)
+        _cropBg = new fabric.Image(imgEl, {
+            left:      fullCenter.x,
+            top:       fullCenter.y,
+            width:     natW,
+            height:    natH,
+            scaleX:    img.scaleX,
+            scaleY:    img.scaleY,
+            angle:     img.angle,
+            originX:   'center',
+            originY:   'center',
+            opacity:   0.35,
             selectable: false,
-            evented: false,
-            id: 'temp-crop-bg'
+            evented:    false,
+            id: '_crop_bg'
         });
-        canvas.add(bgImg);
 
-        // Create interactive crop box overlay matching current crop region
-        const cropBox = new fabric.Rect({
-            left: img.left,
-            top: img.top,
-            width: img.width * img.scaleX,
+        // ── 3. Crop selection rect (positioned over the currently-cropped region)
+        _cropBox = new fabric.Rect({
+            left:   img.left,
+            top:    img.top,
+            width:  img.width  * img.scaleX,
             height: img.height * img.scaleY,
             scaleX: 1,
             scaleY: 1,
-            angle: img.angle,
+            angle:  img.angle,
             originX: 'center',
             originY: 'center',
-            fill: 'transparent',
+            fill:   'rgba(99,102,241,0.10)',
             stroke: '#6366f1',
-            strokeWidth: 2,
+            strokeWidth: 1.5,
+            strokeDashArray: null,
             cornerColor: '#6366f1',
-            cornerStrokeColor: '#ffffff',
-            cornerSize: 10,
+            cornerStrokeColor: '#fff',
+            cornerSize: 9,
             transparentCorners: false,
             hasRotatingPoint: false,
-            id: 'temp-crop-box'
+            lockRotation: true,
+            id: '_crop_box'
         });
-        canvas.add(cropBox);
 
-        // Disable selection/movement of all other layers
+        // Hide the actual image while we're in crop mode
+        img.visible = false;
+        canvas.discardActiveObject();
+
+        canvas.add(_cropBg);
+        canvas.add(_cropBox);
+
+        // Lock all other objects
         canvas.getObjects().forEach(obj => {
-            if (obj !== cropBox) {
-                obj._origSelectable = obj.selectable;
-                obj._origEvented = obj.evented;
+            if (obj !== _cropBox && obj !== _cropBg) {
+                obj._cs = obj.selectable;
+                obj._ce = obj.evented;
                 obj.selectable = false;
-                obj.evented = false;
+                obj.evented    = false;
             }
         });
 
-        // Focus cropBox
-        canvas.setActiveObject(cropBox);
+        canvas.setActiveObject(_cropBox);
         canvas.renderAll();
     }
 
     function applyImageCrop() {
-        if (!isCropMode || !activeCropImage || !window.editorCanvas) return;
+        if (!isCropMode || !activeCropImage || !_cropBox || !_cropBg) return;
 
         const canvas = window.editorCanvas;
-        let cropBox = null;
-        let bgImg = null;
-        
-        canvas.getObjects().forEach(obj => {
-            if (obj.id === 'temp-crop-box') cropBox = obj;
-            if (obj.id === 'temp-crop-bg') bgImg = obj;
+        const img    = activeCropImage;
+        const imgEl  = img.getElement();
+        const natW   = (imgEl && imgEl.naturalWidth)  || _cropOrigState.width  || 1;
+        const natH   = (imgEl && imgEl.naturalHeight) || _cropOrigState.height || 1;
+
+        // Map the crop box corners back into the source image's pixel space
+        const bgMatrix  = _cropBg.calcTransformMatrix();
+        const invMatrix = fabric.util.invertTransform(bgMatrix);
+        const coords    = _cropBox.getCoords(); // canvas-space corners [TL,TR,BR,BL]
+        const localTL   = fabric.util.transformPoint(coords[0], invMatrix);
+        const localBR   = fabric.util.transformPoint(coords[2], invMatrix);
+
+        // localTL/BR are in ghost-image local space where (0,0) = image center
+        let cropX = localTL.x + natW / 2;
+        let cropY = localTL.y + natH / 2;
+        let newW  = localBR.x - localTL.x;
+        let newH  = localBR.y - localTL.y;
+
+        // Clamp to source boundaries
+        cropX = Math.max(0, cropX);
+        cropY = Math.max(0, cropY);
+        if (cropX + newW > natW) newW = natW - cropX;
+        if (cropY + newH > natH) newH = natH - cropY;
+        newW = Math.max(10, newW);
+        newH = Math.max(10, newH);
+
+        // New canvas-space center of the cropped region
+        const localCx = -natW / 2 + cropX + newW / 2;
+        const localCy = -natH / 2 + cropY + newH / 2;
+        const newCenter = fabric.util.transformPoint(new fabric.Point(localCx, localCy), bgMatrix);
+
+        // Visual pixel size of the crop box on canvas
+        const visW = _cropBox.width  * _cropBox.scaleX;
+        const visH = _cropBox.height * _cropBox.scaleY;
+
+        img.set({
+            cropX,
+            cropY,
+            width:  newW,
+            height: newH,
+            scaleX: visW / newW,
+            scaleY: visH / newH,
+            left:   newCenter.x,
+            top:    newCenter.y
         });
 
-        if (cropBox && bgImg) {
-            const imgEl = activeCropImage.getElement();
-            const originalWidth = imgEl ? (imgEl.naturalWidth || imgEl.width || activeCropImage.width || 1) : (activeCropImage.width || 1);
-            const originalHeight = imgEl ? (imgEl.naturalHeight || imgEl.height || activeCropImage.height || 1) : (activeCropImage.height || 1);
-
-            // Invert the transform matrix of the uncropped background image
-            const matrix = bgImg.calcTransformMatrix();
-            const inverseMatrix = fabric.util.invertTransform(matrix);
-
-            // Get crop box coordinates in uncropped background image space
-            const coords = cropBox.getCoords();
-            const localTL = fabric.util.transformPoint(coords[0], inverseMatrix);
-            const localBR = fabric.util.transformPoint(coords[2], inverseMatrix);
-
-            // Convert to absolute pixel space relative to original top-left corner
-            let cropX = localTL.x + originalWidth / 2;
-            let cropY = localTL.y + originalHeight / 2;
-            let newWidth = localBR.x - localTL.x;
-            let newHeight = localBR.y - localTL.y;
-
-            // Clamp crop box inside uncropped image boundaries
-            if (cropX < 0) {
-                newWidth += cropX;
-                cropX = 0;
-            }
-            if (cropY < 0) {
-                newHeight += cropY;
-                cropY = 0;
-            }
-            if (cropX + newWidth > originalWidth) {
-                newWidth = originalWidth - cropX;
-            }
-            if (cropY + newHeight > originalHeight) {
-                newHeight = originalHeight - cropY;
-            }
-            if (newWidth < 10) newWidth = 10;
-            if (newHeight < 10) newHeight = 10;
-
-            // Calculate new visual center relative to the rotated/scaled image coordinate space
-            const localCenterX = -originalWidth / 2 + cropX + newWidth / 2;
-            const localCenterY = -originalHeight / 2 + cropY + newHeight / 2;
-            const newCenter = fabric.util.transformPoint(new fabric.Point(localCenterX, localCenterY), matrix);
-
-            // Compute visual size on canvas to adjust scaling factors
-            const visualWidth = cropBox.width * cropBox.scaleX;
-            const visualHeight = cropBox.height * cropBox.scaleY;
-
-            activeCropImage.set({
-                cropX: cropX,
-                cropY: cropY,
-                width: newWidth,
-                height: newHeight,
-                scaleX: visualWidth / newWidth,
-                scaleY: visualHeight / newHeight,
-                left: newCenter.x,
-                top: newCenter.y
-            });
-        }
-
-        exitCropMode(true);
+        _exitCropMode(true);
     }
 
     function cancelImageCrop() {
-        exitCropMode(false);
+        if (!isCropMode || !activeCropImage) return;
+        // Fully restore original state
+        activeCropImage.set(_cropOrigState);
+        _exitCropMode(false);
     }
 
-    function exitCropMode(shouldSave) {
+    function _exitCropMode(shouldSave) {
         if (!isCropMode || !window.editorCanvas) return;
 
         const canvas = window.editorCanvas;
 
-        // Restore normal crop buttons UI
+        // Restore UI
         document.getElementById('btn-crop-image').classList.remove('hidden');
         document.getElementById('crop-actions-group').classList.add('hidden');
 
-        // Delete temporary cropping layers
-        let cropBox = null;
-        let bgImg = null;
+        // Remove temp objects
+        if (_cropBox) canvas.remove(_cropBox);
+        if (_cropBg)  canvas.remove(_cropBg);
+        _cropBox = null;
+        _cropBg  = null;
+
+        // Restore selectable/evented on all objects
         canvas.getObjects().forEach(obj => {
-            if (obj.id === 'temp-crop-box') cropBox = obj;
-            if (obj.id === 'temp-crop-bg') bgImg = obj;
+            if (obj._cs !== undefined) { obj.selectable = obj._cs; delete obj._cs; }
+            if (obj._ce !== undefined) { obj.evented    = obj._ce; delete obj._ce; }
         });
 
-        if (cropBox) canvas.remove(cropBox);
-        if (bgImg) canvas.remove(bgImg);
-
-        // Restore original selectable & evented properties
-        canvas.getObjects().forEach(obj => {
-            if (obj._origSelectable !== undefined) {
-                obj.selectable = obj._origSelectable;
-                delete obj._origSelectable;
-            }
-            if (obj._origEvented !== undefined) {
-                obj.evented = obj._origEvented;
-                delete obj._origEvented;
-            }
-        });
-
-        // Restore active image visibility
+        // Reveal the image and re-select it
         if (activeCropImage) {
             activeCropImage.visible = true;
             canvas.setActiveObject(activeCropImage);
@@ -745,24 +728,18 @@
 
         canvas.renderAll();
 
-        isCropMode = false;
-        activeCropImage = null;
+        isCropMode       = false;
+        activeCropImage  = null;
+        _cropOrigState   = null;
 
-        if (shouldSave && window.editorCore) {
-            window.editorCore.triggerAutoSave();
-        }
+        if (shouldSave && window.editorCore) window.editorCore.triggerAutoSave();
     }
 
-    // Key Listeners for Crop Mode shortcuts (Enter / Escape)
+    // Keyboard shortcuts: Enter = apply, Escape = cancel
     document.addEventListener('keydown', (e) => {
         if (!isCropMode) return;
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            applyImageCrop();
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            cancelImageCrop();
-        }
+        if (e.key === 'Enter')  { e.preventDefault(); applyImageCrop(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelImageCrop(); }
     });
 
     window.propertyInspector = {
