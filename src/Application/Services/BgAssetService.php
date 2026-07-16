@@ -21,7 +21,69 @@ class BgAssetService
 
     public function getAssetsByProject(int $projectId): array
     {
+        $this->ensureDefaultIconsPopulated($projectId);
         return $this->assetRepository->findByProjectId($projectId);
+    }
+
+    private function ensureDefaultIconsPopulated(int $projectId): void
+    {
+        $defaultIcons = [
+            'icon_speed' => 'icon_speed.svg',
+            'icon_power' => 'icon_power.svg',
+            'icon_appeal' => 'icon_appeal.svg',
+            'icon_chin' => 'icon_chin.svg',
+            'icon_stamina' => 'icon_stamina.svg'
+        ];
+
+        $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $projectId;
+        if (!is_dir($projectUploadDir)) {
+            mkdir($projectUploadDir, 0755, true);
+        }
+
+        $srcIconsDir = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'icons';
+
+        $existingAssets = $this->assetRepository->findByProjectId($projectId);
+        $existingTags = [];
+        foreach ($existingAssets as $asset) {
+            if ($asset->getTag() !== null) {
+                $cleanTag = trim($asset->getTag(), '[]');
+                $existingTags[$cleanTag] = $asset;
+            }
+        }
+
+        foreach ($defaultIcons as $tag => $filename) {
+            if (!isset($existingTags[$tag])) {
+                $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
+                if (file_exists($srcPath)) {
+                    $storedName = uniqid() . '_' . $filename;
+                    $destPath = $projectUploadDir . DIRECTORY_SEPARATOR . $storedName;
+                    
+                    if (copy($srcPath, $destPath)) {
+                        $size = filesize($destPath);
+                        $asset = new BgAsset(
+                            null,
+                            $projectId,
+                            $filename,
+                            $storedName,
+                            'image/svg+xml',
+                            $size,
+                            '[' . $tag . ']',
+                            1
+                        );
+                        $this->assetRepository->save($asset);
+                    }
+                }
+            } else {
+                $asset = $existingTags[$tag];
+                $filePath = $projectUploadDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+                if (!file_exists($filePath)) {
+                    $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
+                    if (file_exists($srcPath)) {
+                        copy($srcPath, $filePath);
+                    }
+                }
+            }
+        }
     }
 
     public function getAssetById(int $id): ?BgAsset
