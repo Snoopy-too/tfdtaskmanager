@@ -42,6 +42,26 @@ declare(strict_types=1);
         </div>
     </div>
 
+    <!-- Global Custom Prompt Modal -->
+    <div id="global_prompt_modal" class="hidden fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="relative bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4">
+            <h3 class="text-lg font-bold text-white" id="global_prompt_title">Input Required</h3>
+            <p class="text-sm text-slate-300" id="global_prompt_message">Enter details:</p>
+            <input type="text" id="global_prompt_input" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:ring-indigo-500 focus:outline-none">
+            
+            <div class="flex justify-end space-x-3 pt-2">
+                <button type="button" id="global_prompt_cancel_btn"
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition duration-200">
+                    Cancel
+                </button>
+                <button type="button" id="global_prompt_ok_btn"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentConfirmForm = null;
 
@@ -129,6 +149,50 @@ declare(strict_types=1);
                 newOkBtn.addEventListener('click', () => {
                     modal.classList.add('hidden');
                     resolve();
+                });
+            });
+        };
+
+        // Promise-based Prompt helper
+        window.studioPrompt = function(message, defaultValue = '', titleText = 'Input Required') {
+            return new Promise(resolve => {
+                const modal = document.getElementById('global_prompt_modal');
+                const cancelBtn = document.getElementById('global_prompt_cancel_btn');
+                const okBtn = document.getElementById('global_prompt_ok_btn');
+                const input = document.getElementById('global_prompt_input');
+                
+                document.getElementById('global_prompt_message').innerText = message;
+                document.getElementById('global_prompt_title').innerText = titleText;
+                input.value = defaultValue;
+                
+                modal.classList.remove('hidden');
+                input.focus();
+                if (defaultValue) input.select();
+                
+                // Clean up previous event listeners by cloning
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                const newOkBtn = okBtn.cloneNode(true);
+                const newInput = input.cloneNode(true);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+                okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+                input.parentNode.replaceChild(newInput, input);
+                
+                const close = (value) => {
+                    modal.classList.add('hidden');
+                    resolve(value);
+                };
+                
+                newCancelBtn.addEventListener('click', () => close(null));
+                newOkBtn.addEventListener('click', () => close(newInput.value));
+                
+                newInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        close(newInput.value);
+                    }
+                    if (e.key === 'Escape') {
+                        close(null);
+                    }
                 });
             });
         };

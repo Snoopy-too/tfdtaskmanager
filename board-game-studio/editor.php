@@ -628,57 +628,62 @@ require_once __DIR__ . '/../templates/header.php';
 <script>
     function makeCopy() {
         const originalName = window.studioConfig.templateName;
-        const newName = prompt("Enter a name for the duplicated template:", originalName + " (Copy)");
-        if (newName === null) return;
-        const trimmed = newName.trim();
-        if (trimmed === "") {
-            alert("Template name cannot be empty.");
-            return;
-        }
-        
-        if (window.editorCore && typeof window.editorCore.setSaveStatus === 'function') {
-            window.editorCore.setSaveStatus('Saving and duplicating...', 'pulse');
-        }
-        
-        // Save canvas first if NOT in view mode
-        let savePromise = Promise.resolve();
-        if (!window.studioConfig.isViewMode && window.editorCore && typeof window.editorCore.saveCanvas === 'function') {
-            const res = window.editorCore.saveCanvas();
-            if (res instanceof Promise) {
-                savePromise = res;
+        window.studioPrompt("Enter a name for the duplicated template:", originalName + " (Copy)", "Duplicate Template")
+        .then(newName => {
+            if (newName === null) return;
+            const trimmed = newName.trim();
+            if (trimmed === "") {
+                window.studioAlert("Template name cannot be empty.", "Validation Error");
+                return;
             }
-        }
-        
-        savePromise
-            .then(() => {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '';
-                
-                const actionInput = document.createElement('input');
-                actionInput.type = 'hidden';
-                actionInput.name = 'action';
-                actionInput.value = 'duplicate_template';
-                form.appendChild(actionInput);
-                
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = 'csrf_token';
-                csrfInput.value = window.studioConfig.csrfToken;
-                form.appendChild(csrfInput);
-                
-                const nameInput = document.createElement('input');
-                nameInput.type = 'hidden';
-                nameInput.name = 'new_name';
-                nameInput.value = trimmed;
-                form.appendChild(nameInput);
-                
-                document.body.appendChild(form);
-                form.submit();
-            })
-            .catch(err => {
-                alert("Could not save the current state before duplicating: " + err.message);
-            });
+            
+            if (window.editorCore && typeof window.editorCore.setSaveStatus === 'function') {
+                window.editorCore.setSaveStatus('Saving and duplicating...', 'pulse');
+            }
+            
+            // Save canvas first if NOT in view mode
+            let savePromise = Promise.resolve();
+            if (!window.studioConfig.isViewMode && window.editorCore && typeof window.editorCore.saveCanvas === 'function') {
+                const res = window.editorCore.saveCanvas();
+                if (res instanceof Promise) {
+                    savePromise = res;
+                }
+            }
+            
+            savePromise
+                .then(() => {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '';
+                    
+                    const actionInput = document.createElement('input');
+                    actionInput.type = 'hidden';
+                    actionInput.name = 'action';
+                    actionInput.value = 'duplicate_template';
+                    form.appendChild(actionInput);
+                    
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrf_token';
+                    csrfInput.value = window.studioConfig.csrfToken;
+                    form.appendChild(csrfInput);
+                    
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'hidden';
+                    nameInput.name = 'new_name';
+                    nameInput.value = trimmed;
+                    form.appendChild(nameInput);
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                })
+                .catch(err => {
+                    window.studioAlert("Could not save the current state before duplicating: " + err.message, "Error");
+                    if (window.editorCore && typeof window.editorCore.setSaveStatus === 'function') {
+                        window.editorCore.setSaveStatus('Duplication failed', 'error');
+                    }
+                });
+        });
     }
 
     function showFullscreenPreview() {

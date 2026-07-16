@@ -446,7 +446,7 @@ require_once __DIR__ . '/../templates/header.php';
                                     <span class="block text-[10px] text-slate-500 mt-0.5"><?php echo count($data->getRowData()); ?> rows | <?php echo count($data->getColumnMap()); ?> cols</span>
                                 </a>
                                 
-                                <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.customConfirm('Are you sure you want to delete this dataset? This may break active variable bindings on templates.', (confirmed) => { if (confirmed) this.submit(); });">
+                                <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.studioConfirm('Are you sure you want to delete this dataset? This may break active variable bindings on templates.', 'Delete', 'Delete Dataset').then((confirmed) => { if (confirmed) this.submit(); });">
                                     <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                     <input type="hidden" name="action" value="delete_dataset">
                                     <input type="hidden" name="dataset_id" value="<?php echo $data->getId(); ?>">
@@ -480,7 +480,7 @@ require_once __DIR__ . '/../templates/header.php';
                             <p class="text-xs text-slate-400 mt-0.5">Use binding format `{{ColumnName}}` on card layers to substitute values.</p>
                         </div>
                         <div class="flex space-x-2">
-                            <form action="" method="POST" class="m-0" id="form-add-column-inspect" onsubmit="event.preventDefault(); window.customPrompt('Enter new column name (e.g. Health, Attack, Image):', '', (newCol) => { if (newCol && newCol.trim()) { this.querySelector('[name=column_name]').value = newCol.trim(); this.submit(); } });">
+                            <form action="" method="POST" class="m-0" id="form-add-column-inspect" onsubmit="event.preventDefault(); window.studioPrompt('Enter new column name (e.g. Health, Attack, Image):', '', 'Add Column').then((newCol) => { if (newCol && newCol.trim()) { this.querySelector('[name=column_name]').value = newCol.trim(); this.submit(); } });">
                                 <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                 <input type="hidden" name="action" value="add_dataset_column">
                                 <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
@@ -520,7 +520,7 @@ require_once __DIR__ . '/../templates/header.php';
                                         <?php foreach ($inspectDataset->getColumnMap() as $col): ?>
                                             <th class="p-3 font-semibold relative group pr-6">
                                                 <span><?php echo SecurityHelper::escape($col); ?></span>
-                                                <form action="" method="POST" class="absolute right-1 top-2.5 m-0 inline" onsubmit="event.preventDefault(); window.customConfirm('Remove column: <?php echo SecurityHelper::escape($col); ?>? This will delete all cell values for this column.', (confirmed) => { if (confirmed) this.submit(); });">
+                                                <form action="" method="POST" class="absolute right-1 top-2.5 m-0 inline" onsubmit="event.preventDefault(); window.studioConfirm('Remove column: <?php echo SecurityHelper::escape($col); ?>? This will delete all cell values for this column.', 'Remove', 'Remove Column').then((confirmed) => { if (confirmed) this.submit(); });">
                                                     <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="delete_dataset_column">
                                                     <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
@@ -561,7 +561,7 @@ require_once __DIR__ . '/../templates/header.php';
                                                     </td>
                                                 <?php endforeach; ?>
                                                 <td class="p-3 text-center bg-slate-950/20 border-l border-slate-800/40">
-                                                    <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.customConfirm('Delete Row <?php echo $index + 1; ?>?', (confirmed) => { if (confirmed) this.submit(); });">
+                                                    <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.studioConfirm('Delete Row <?php echo $index + 1; ?>?', 'Delete', 'Delete Row').then((confirmed) => { if (confirmed) this.submit(); });">
                                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="delete_dataset_row">
                                                         <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
