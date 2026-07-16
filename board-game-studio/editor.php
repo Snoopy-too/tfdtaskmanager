@@ -592,20 +592,20 @@ require_once __DIR__ . '/../templates/header.php';
                                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.062 10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm0 0H21m-9.75 0H3m9.75 0V3m0 7.125V21"/></svg>
                                 Crop Image
                             </button>
-                            
-                            <div id="crop-actions-group" class="grid grid-cols-2 gap-2 hidden">
-                                <button type="button" id="btn-crop-apply" class="py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold uppercase rounded-xl transition flex items-center justify-center gap-1">
-                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                    Apply
-                                </button>
-                                <button type="button" id="btn-crop-cancel" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase rounded-xl transition flex items-center justify-center gap-1">
-                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    Cancel
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </form>
+                <!-- ponytail: crop actions live outside the form/image-section so they stay visible when the crop rect (non-image) is selected -->
+                <div id="crop-actions-group" class="grid grid-cols-2 gap-2 px-4 pb-4 hidden">
+                    <button type="button" id="btn-crop-apply" class="py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold uppercase rounded-xl transition flex items-center justify-center gap-1">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        Apply Crop
+                    </button>
+                    <button type="button" id="btn-crop-cancel" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase rounded-xl transition flex items-center justify-center gap-1">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     </div>

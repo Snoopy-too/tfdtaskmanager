@@ -283,6 +283,8 @@
 
     // Set form fields based on active selection
     function inspect(obj) {
+        // ponytail: skip temp crop overlay objects — they shouldn't update the inspector
+        if (obj && (obj.id === '_crop_box' || obj.id === '_crop_bg')) return;
         activeObj = obj;
         isUpdatingForm = true;
 
@@ -427,6 +429,8 @@
 
     // Clear Inspector state
     function clearInspect() {
+        // ponytail: don't wipe the inspector while crop mode is active
+        if (isCropMode) return;
         activeObj = null;
         document.getElementById('inspector-none-selected').classList.remove('hidden');
         document.getElementById('inspector-form').classList.add('hidden');
@@ -524,7 +528,9 @@
                         startImageCrop(options.target);
                     }
                 });
-                canvas.on('selection:cleared', () => { if (isCropMode) cancelImageCrop(); });
+                canvas.on('selection:cleared', () => {
+                    // ponytail: don't auto-cancel crop on selection:cleared — it fires during startImageCrop setup
+                });
                 
                 // Initialize canvas properties inspector once canvas is ready
                 initCanvasInspector();
