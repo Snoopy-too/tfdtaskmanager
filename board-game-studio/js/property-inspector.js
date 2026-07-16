@@ -163,6 +163,17 @@
             });
         }
 
+        // Image crop controls
+        ['left', 'right', 'top', 'bottom'].forEach(side => {
+            const range = document.getElementById(`prop-crop-${side}`);
+            if (range) {
+                range.addEventListener('input', (e) => {
+                    document.getElementById(`label-crop-${side}`).textContent = `${e.target.value}%`;
+                    updateImageCrop();
+                });
+            }
+        });
+
         const btnFitContain = document.getElementById('btn-inspector-fit-contain');
         if (btnFitContain) {
             btnFitContain.addEventListener('click', () => {
@@ -377,6 +388,30 @@
         } else if (obj.type === 'image') {
             imgSec.classList.remove('hidden');
             document.getElementById('prop-image-filename').textContent = obj.original_filename || 'Uploaded Image';
+            
+            const originalWidth = obj._originalElement.naturalWidth || obj._originalElement.width || 1;
+            const originalHeight = obj._originalElement.naturalHeight || obj._originalElement.height || 1;
+            
+            // Calculate percentages from crop values
+            const cropX = obj.cropX || 0;
+            const cropY = obj.cropY || 0;
+            const cropW = obj.width || originalWidth;
+            const cropH = obj.height || originalHeight;
+            
+            const cropLeftPct = Math.round((cropX / originalWidth) * 100);
+            const cropTopPct = Math.round((cropY / originalHeight) * 100);
+            const cropRightPct = Math.round(((originalWidth - cropW - cropX) / originalWidth) * 100);
+            const cropBottomPct = Math.round(((originalHeight - cropH - cropY) / originalHeight) * 100);
+            
+            document.getElementById('prop-crop-left').value = cropLeftPct;
+            document.getElementById('prop-crop-right').value = cropRightPct;
+            document.getElementById('prop-crop-top').value = cropTopPct;
+            document.getElementById('prop-crop-bottom').value = cropBottomPct;
+            
+            document.getElementById('label-crop-left').textContent = `${cropLeftPct}%`;
+            document.getElementById('label-crop-right').textContent = `${cropRightPct}%`;
+            document.getElementById('label-crop-top').textContent = `${cropTopPct}%`;
+            document.getElementById('label-crop-bottom').textContent = `${cropBottomPct}%`;
         }
 
         isUpdatingForm = false;
@@ -513,6 +548,64 @@
             }
         }, 100);
     });
+
+    function updateImageCrop() {
+        if (!activeObj || activeObj.type !== 'image' || !window.editorCanvas || isUpdatingForm) return;
+
+        const originalWidth = activeObj._originalElement.naturalWidth || activeObj._originalElement.width || 1;
+        const originalHeight = activeObj._originalElement.naturalHeight || activeObj._originalElement.height || 1;
+
+        const cropLeftPct = parseFloat(document.getElementById('prop-crop-left').value) || 0;
+        const cropRightPct = parseFloat(document.getElementById('prop-crop-right').value) || 0;
+        const cropTopPct = parseFloat(document.getElementById('prop-crop-top').value) || 0;
+        const cropBottomPct = parseFloat(document.getElementById('prop-crop-bottom').value) || 0;
+
+        // Prevent cropping beyond boundaries
+        if (cropLeftPct + cropRightPct >= 100) return;
+        if (cropTopPct + cropBottomPct >= 100) return;
+
+        // Calculate crop bounds in original pixel space
+        const cropX = (cropLeftPct / 100) * originalWidth;
+        const cropY = (cropTopPct / 100) * originalHeight;
+        const newWidth = originalWidth - ((cropLeftPct + cropRightPct) / 100) * originalWidth;
+        const newHeight = originalHeight - ((cropTopPct + cropBottomPct) / 100) * originalHeight;
+
+        // Calculate center shift to keep physical layout stationary
+        const currentCenterX = cropX + newWidth / 2;
+        const currentCenterY = cropY + newHeight / 2;
+        
+        const oldCenterX = (activeObj.cropX || 0) + (activeObj.width || originalWidth) / 2;
+        const oldCenterY = (activeObj.cropY || 0) + (activeObj.height || originalHeight) / 2;
+
+        const shiftX = (currentCenterX - oldCenterX) * activeObj.scaleX;
+        const shiftY = (currentCenterY - oldCenterY) * activeObj.scaleY;
+
+        activeObj.set({
+            cropX: cropX,
+            cropY: cropY,
+            width: newWidth,
+            height: newHeight,
+            left: activeObj.left + shiftX,
+            top: activeObj.top + shiftY
+        });
+
+        // Update inputs
+        const wPx = newWidth * activeObj.scaleX;
+        const hPx = newHeight * activeObj.scaleY;
+        document.getElementById('prop-width').value = Math.round(wPx);
+        document.getElementById('prop-height').value = Math.round(hPx);
+        
+        const wMm = (wPx * 25.4) / 300;
+        const hMm = (hPx * 25.4) / 300;
+        document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
+        document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
+        document.getElementById('prop-left').value = Math.round(activeObj.left);
+        document.getElementById('prop-top').value = Math.round(activeObj.top);
+
+        activeObj.setCoords();
+        window.editorCanvas.renderAll();
+        window.editorCore.triggerAutoSave();
+    }
 
     window.propertyInspector = {
         inspect: inspect,

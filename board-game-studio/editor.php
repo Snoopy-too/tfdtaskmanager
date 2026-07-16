@@ -585,6 +585,42 @@ require_once __DIR__ . '/../templates/header.php';
                                 </button>
                             </div>
                         </div>
+
+                        <div class="space-y-2 border-t border-slate-800/80 pt-3">
+                            <span class="block text-xs font-semibold text-slate-400">Crop Controls</span>
+                            
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] text-slate-500">
+                                    <span>Left</span>
+                                    <span id="label-crop-left">0%</span>
+                                </div>
+                                <input type="range" id="prop-crop-left" min="0" max="90" value="0" class="w-full h-1 bg-slate-850 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                            </div>
+                            
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] text-slate-500">
+                                    <span>Right</span>
+                                    <span id="label-crop-right">0%</span>
+                                </div>
+                                <input type="range" id="prop-crop-right" min="0" max="90" value="0" class="w-full h-1 bg-slate-850 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                            </div>
+                            
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] text-slate-550">
+                                    <span>Top</span>
+                                    <span id="label-crop-top">0%</span>
+                                </div>
+                                <input type="range" id="prop-crop-top" min="0" max="90" value="0" class="w-full h-1 bg-slate-850 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                            </div>
+                            
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] text-slate-550">
+                                    <span>Bottom</span>
+                                    <span id="label-crop-bottom">0%</span>
+                                </div>
+                                <input type="range" id="prop-crop-bottom" min="0" max="90" value="0" class="w-full h-1 bg-slate-850 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
