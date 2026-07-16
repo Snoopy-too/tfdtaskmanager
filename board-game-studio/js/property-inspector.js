@@ -71,6 +71,19 @@
             updateActiveProp('fontFamily', font);
             if (document.fonts) {
                 document.fonts.load(`1em "${font}"`).then(() => {
+                    // Clear character width cache to force dynamic re-measurement
+                    if (typeof fabric !== 'undefined') {
+                        fabric.charWidthsCache = {};
+                        if (fabric.util) {
+                            fabric.util.charWidthsCache = {};
+                        }
+                    }
+                    if (activeObj && (activeObj.type === 'i-text' || activeObj.type === 'text')) {
+                        if (typeof activeObj.initDimensions === 'function') {
+                            activeObj.initDimensions();
+                        }
+                        activeObj.setCoords();
+                    }
                     if (window.editorCanvas) {
                         window.editorCanvas.requestRenderAll();
                     }
@@ -207,6 +220,22 @@
         if (!activeObj || isUpdatingForm) return;
 
         activeObj.set(property, value);
+        
+        // Propagate colors/strokes to group children if editing SVG vector groups
+        if (activeObj.type === 'group' && (property === 'fill' || property === 'stroke' || property === 'strokeWidth')) {
+            if (activeObj.getObjects) {
+                activeObj.getObjects().forEach(child => {
+                    child.set(property, value);
+                });
+            }
+        }
+
+        if (activeObj.type === 'i-text' || activeObj.type === 'text') {
+            if (typeof activeObj.initDimensions === 'function') {
+                activeObj.initDimensions();
+            }
+            activeObj.setCoords();
+        }
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
     }
@@ -298,11 +327,21 @@
             document.getElementById('prop-font-bold').checked = obj.fontWeight === 'bold';
             document.getElementById('prop-font-italic').checked = obj.fontStyle === 'italic';
 
-        } else if (obj.type === 'rect' || obj.type === 'circle') {
+        } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'group' || obj.type === 'path') {
             shapeSec.classList.remove('hidden');
             
-            const fillVal = obj.fill || '';
-            const isTransparent = fillVal === 'transparent' || fillVal === '';
+            let fillVal = obj.fill || '';
+            let strokeVal = obj.stroke || '';
+            let strokeWidthVal = obj.strokeWidth || 0;
+
+            if (obj.type === 'group' && obj.getObjects && obj.getObjects().length > 0) {
+                const firstChild = obj.getObjects()[0];
+                fillVal = fillVal || firstChild.fill || '';
+                strokeVal = strokeVal || firstChild.stroke || '';
+                strokeWidthVal = strokeWidthVal !== undefined ? strokeWidthVal : firstChild.strokeWidth;
+            }
+
+            const isTransparent = fillVal === 'transparent' || fillVal === '' || fillVal === 'none';
             document.getElementById('prop-fill-transparent').checked = isTransparent;
             
             if (isTransparent) {
@@ -318,10 +357,10 @@
                 document.getElementById('prop-fill-opacity').value = 100;
             }
 
-            if (obj.stroke && obj.stroke.startsWith('#')) {
-                document.getElementById('prop-stroke-color').value = obj.stroke;
+            if (strokeVal && strokeVal.startsWith('#')) {
+                document.getElementById('prop-stroke-color').value = strokeVal;
             }
-            document.getElementById('prop-stroke-width').value = obj.strokeWidth || 0;
+            document.getElementById('prop-stroke-width').value = strokeWidthVal || 0;
 
         } else if (obj.type === 'image') {
             imgSec.classList.remove('hidden');
@@ -366,6 +405,83 @@
         activeObj = null;
         document.getElementById('inspector-none-selected').classList.remove('hidden');
         document.getElementById('inspector-form').classList.add('hidden');
+        
+        if (window.propertyInspector && typeof window.propertyInspector.syncCanvasBgInputs === 'function') {
+            window.propertyInspector.syncCanvasBgInputs();
+        }
+    }
+
+    // Canvas properties inspector and binder
+    function initCanvasInspector() {
+        const bgPicker = document.getElementById('prop-canvas-bg');
+        const bgHex = document.getElementById('prop-canvas-bg-hex');
+        const transparentCheck = document.getElementById('prop-canvas-transparent');
+        
+        if (!bgPicker || !bgHex || !transparentCheck) return;
+
+        function updateCanvasBg(color, isTransparent) {
+            const canvas = window.editorCanvas;
+            if (!canvas) return;
+
+            if (isTransparent) {
+                canvas.backgroundColor = 'transparent';
+            } else {
+                canvas.backgroundColor = color;
+            }
+            
+            canvas.renderAll();
+            if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
+                window.editorCore.triggerAutoSave();
+            }
+            
+            syncInputs();
+        }
+
+        function syncInputs() {
+            const canvas = window.editorCanvas;
+            if (!canvas) return;
+
+            const currentBg = canvas.backgroundColor;
+            if (!currentBg || currentBg === 'transparent') {
+                transparentCheck.checked = true;
+                bgHex.value = '#FFFFFF';
+                bgPicker.value = '#ffffff';
+            } else {
+                transparentCheck.checked = false;
+                let hexColor = '#ffffff';
+                if (typeof currentBg === 'string') {
+                    if (currentBg.startsWith('#')) {
+                        hexColor = currentBg;
+                    } else if (currentBg.startsWith('rgb')) {
+                        const parsed = parseRgba(currentBg);
+                        hexColor = parsed.hex;
+                    }
+                }
+                bgHex.value = hexColor;
+                bgPicker.value = hexColor;
+            }
+        }
+
+        bgPicker.addEventListener('input', (e) => {
+            updateCanvasBg(e.target.value, false);
+        });
+
+        bgHex.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val.match(/^#[0-9A-F]{6}$/i)) {
+                updateCanvasBg(val, false);
+            }
+        });
+
+        transparentCheck.addEventListener('change', (e) => {
+            updateCanvasBg(bgHex.value, e.target.checked);
+        });
+
+        window.propertyInspector.syncCanvasBgInputs = syncInputs;
+
+        // Automatically sync inputs when selection is cleared
+        canvas.on('selection:cleared', syncInputs);
+        syncInputs();
     }
 
     // Listen to canvas transform updates to live-sync form fields (like dragging)
@@ -379,12 +495,16 @@
                 canvas.on('object:moving', () => { if (activeObj) inspect(activeObj); });
                 canvas.on('object:scaling', () => { if (activeObj) inspect(activeObj); });
                 canvas.on('object:rotating', () => { if (activeObj) inspect(activeObj); });
+                
+                // Initialize canvas properties inspector once canvas is ready
+                initCanvasInspector();
             }
         }, 100);
     });
 
     window.propertyInspector = {
         inspect: inspect,
-        clearInspect: clearInspect
+        clearInspect: clearInspect,
+        syncCanvasBgInputs: null // populated by initCanvasInspector
     };
 })();

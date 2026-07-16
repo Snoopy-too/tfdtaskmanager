@@ -210,6 +210,33 @@
         });
     }
 
+// Helper to refresh all text layers once their fonts are loaded
+    function refreshCanvasTextLayers() {
+        if (!canvas || !document.fonts) return;
+        const textObjects = canvas.getObjects().filter(obj => obj.type === 'i-text' || obj.type === 'text');
+        
+        // Clear FabricJS character width cache to force dynamic re-measurement
+        if (typeof fabric !== 'undefined') {
+            fabric.charWidthsCache = {};
+            if (fabric.util) {
+                fabric.util.charWidthsCache = {};
+            }
+        }
+
+        textObjects.forEach(obj => {
+            if (!obj.fontFamily) return;
+            document.fonts.load(`1em "${obj.fontFamily}"`).then(() => {
+                if (typeof obj.initDimensions === 'function') {
+                    obj.initDimensions();
+                }
+                obj.setCoords();
+                canvas.requestRenderAll();
+            }).catch(err => {
+                console.warn(`Font load failed for family: ${obj.fontFamily}`, err);
+            });
+        });
+    }
+
     // Load Canvas state
     function loadCanvas() {
         setSaveStatus('Loading canvas...', 'pulse');
@@ -223,6 +250,10 @@
                     if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                         window.guideRenderer.renderGuides();
                     }
+                    
+                    // Recalculate dimensions of all text objects once fonts are ready
+                    refreshCanvasTextLayers();
+
                     canvas.renderAll();
                     setSaveStatus('All changes saved', 'saved');
                     
@@ -230,6 +261,10 @@
 
                     if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                         window.layerManager.renderLayersList();
+                    }
+
+                    if (window.propertyInspector && typeof window.propertyInspector.syncCanvasBgInputs === 'function') {
+                        window.propertyInspector.syncCanvasBgInputs();
                     }
                 });
             } else {
@@ -243,6 +278,10 @@
 
                 if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                     window.layerManager.renderLayersList();
+                }
+
+                if (window.propertyInspector && typeof window.propertyInspector.syncCanvasBgInputs === 'function') {
+                    window.propertyInspector.syncCanvasBgInputs();
                 }
             }
         })
@@ -587,6 +626,11 @@
         initCanvas();
         setupHistoryControls();
 
+        // Register and pre-load project assets/custom fonts immediately on startup
+        if (window.assetPicker && typeof window.assetPicker.loadAssets === 'function') {
+            window.assetPicker.loadAssets();
+        }
+
         if (!window.studioConfig.isViewMode) {
             // Heartbeat lock refresh
             setInterval(() => {
@@ -632,6 +676,8 @@
         undo: undo,
         redo: redo,
         pushState: pushState,
-        duplicateObject: duplicateObject
+        duplicateObject: duplicateObject,
+        refreshCanvasTextLayers: refreshCanvasTextLayers,
+        getZoomLevel: () => zoomLevel
     };
 })();

@@ -87,7 +87,7 @@ require_once __DIR__ . '/../templates/header.php';
 <!-- Google Fonts for Board Game Creators -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400&family=Bangers&family=Cinzel:wght@400;700&family=Comic+Neue:wght@400;700&family=Creepster&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fredoka:wght@400;700&family=Inter:wght@400;700&family=Jolly+Lodger&family=Lora:ital,wght@0,400;0,700;1,400&family=Luckiest+Guy&family=MedievalSharp&family=Metal+Mania&family=Montserrat:wght@400;700&family=Orbitron:wght@400;700&family=Outfit:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Rajdhani:wght@500;700&family=Rye&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400&family=Bangers&family=Cinzel:wght@400;700&family=Comic+Neue:wght@400;700&family=Creepster&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fredoka:wght@400;700&family=Inter:wght@400;700&family=Jolly+Lodger&family=Lora:ital,wght@0,400;0,700;1,400&family=Luckiest+Guy&family=MedievalSharp&family=Metal+Mania&family=Montserrat:wght@400;700&family=Orbitron:wght@400;700&family=Outfit:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Rajdhani:wght@500;700&family=Rye&family=Share+Tech+Mono&family=Courier+Prime&family=Special+Elite&display=swap" rel="stylesheet">
 
 <!-- CSS for Editor Grid -->
 <style>
@@ -141,6 +141,14 @@ require_once __DIR__ . '/../templates/header.php';
     }
     body.view-only-mode #tab-layers-view .grid {
         display: none !important; /* Hide Add layer buttons */
+    }
+
+    /* Drag & Drop Visual Indicator */
+    #canvas-container-wrapper.drag-over {
+        outline: 3px solid #6366f1 !important; /* Indigo-500 */
+        outline-offset: 4px;
+        box-shadow: 0 0 25px rgba(99, 102, 241, 0.4) !important;
+        transition: outline-offset 0.15s ease, box-shadow 0.15s ease;
     }
 </style>
 
@@ -329,9 +337,31 @@ require_once __DIR__ . '/../templates/header.php';
             
             <div id="inspector-content" class="flex-grow overflow-y-auto pt-4 px-4 pb-12 space-y-4">
                 <!-- Fallback notice when nothing is selected -->
-                <div id="inspector-none-selected" class="text-center py-12 text-slate-500 text-xs">
-                    <svg class="mx-auto h-8 w-8 text-slate-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
-                    <span>Select a layer on the canvas to configure properties.</span>
+                <div id="inspector-none-selected" class="space-y-5">
+                    <div class="text-center py-6 text-slate-500 text-xs border-b border-slate-800/80">
+                        <svg class="mx-auto h-8 w-8 text-slate-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+                        <span>Select a layer on the canvas to configure properties.</span>
+                    </div>
+
+                    <div class="space-y-4 pt-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Canvas Properties</h3>
+                        
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="col-span-1">
+                                <label for="prop-canvas-bg" class="block text-xs font-semibold text-slate-400 mb-1">Color</label>
+                                <input type="color" id="prop-canvas-bg" value="#ffffff" class="w-full h-8 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer p-0.5">
+                            </div>
+                            <div class="col-span-2">
+                                <label for="prop-canvas-bg-hex" class="block text-xs font-semibold text-slate-400 mb-1">Hex Value</label>
+                                <input type="text" id="prop-canvas-bg-hex" value="#ffffff" placeholder="#ffffff" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 uppercase focus:ring-indigo-500">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-2.5 pt-1">
+                            <input type="checkbox" id="prop-canvas-transparent" class="h-4 w-4 bg-slate-950 border border-slate-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-950 rounded">
+                            <label for="prop-canvas-transparent" class="text-xs font-medium text-slate-400 cursor-pointer">Transparent Canvas</label>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Form Controls (Visible when layer selected, structured dynamically in JS) -->
@@ -438,6 +468,10 @@ require_once __DIR__ . '/../templates/header.php';
                                         <option value="MedievalSharp">MedievalSharp</option>
                                         <option value="Almendra">Almendra</option>
                                         <option value="Rye">Rye</option>
+                                    </optgroup>
+                                    <optgroup label="Retro & Typewriter">
+                                        <option value="Courier Prime">Courier Prime</option>
+                                        <option value="Special Elite">Special Elite</option>
                                     </optgroup>
                                     <optgroup label="Sci-Fi & Futuristic">
                                         <option value="Orbitron">Orbitron</option>

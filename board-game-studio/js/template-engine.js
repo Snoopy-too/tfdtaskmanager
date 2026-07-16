@@ -108,6 +108,10 @@
                     }
                     
                     obj.set('text', substitutedText);
+                    if (typeof obj.initDimensions === 'function') {
+                        obj.initDimensions();
+                    }
+                    obj.setCoords();
                     needsRender = true;
                 }
             }

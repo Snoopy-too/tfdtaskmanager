@@ -42,6 +42,21 @@
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-950 border border-slate-800 rounded-xl overflow-hidden p-2 hover:border-indigo-500/40 transition cursor-pointer flex flex-col items-center justify-between text-center space-y-2 group";
+                card.setAttribute('draggable', 'true');
+                
+                card.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                        asset: asset,
+                        isImage: isImage,
+                        isFont: isFont
+                    }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                    card.classList.add('opacity-50');
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('opacity-50');
+                });
                 
                 // Set click action
                 card.addEventListener('click', () => {
@@ -80,6 +95,10 @@
                 card.appendChild(label);
                 grid.appendChild(card);
             });
+            // Refresh canvas text layers to apply newly registered custom fonts!
+            if (window.editorCore && typeof window.editorCore.refreshCanvasTextLayers === 'function') {
+                window.editorCore.refreshCanvasTextLayers();
+            }
         })
         .catch(err => {
             grid.innerHTML = '<div class="col-span-2 text-center text-xs text-rose-500 py-6">Failed to load assets.</div>';
@@ -125,38 +144,84 @@
         return fontName;
     }
 
-    // Add Image to Canvas
-    function addImageLayer(asset) {
+    // Add Image or SVG to Canvas
+    function addImageLayer(asset, left, top) {
         const canvas = window.editorCanvas;
         if (!canvas) return;
 
-        fabric.Image.fromURL(asset.url, (img) => {
-            // Keep size reasonable inside card workspace
-            const maxWidth = canvas.width * 0.7;
-            const maxHeight = canvas.height * 0.7;
-            let scale = 1.0;
+        const isSvg = asset.mime_type === 'image/svg+xml' || asset.original_filename.endsWith('.svg');
+        const posX = (typeof left === 'number') ? left : (canvas.width / 2);
+        const posY = (typeof top === 'number') ? top : (canvas.height / 2);
 
-            if (img.width > maxWidth || img.height > maxHeight) {
-                scale = Math.min(maxWidth / img.width, maxHeight / img.height);
-            }
+        if (isSvg) {
+            fabric.loadSVGFromURL(asset.url, (objects, options) => {
+                const svgObj = fabric.util.groupSVGElements(objects, options);
+                
+                // Keep size reasonable inside card workspace
+                const maxWidth = canvas.width * 0.4;
+                const maxHeight = canvas.height * 0.4;
+                let scale = 1.0;
 
-            img.set({
-                left: canvas.width / 2,
-                top: canvas.height / 2,
-                originX: 'center',
-                originY: 'center',
-                scaleX: scale,
-                scaleY: scale,
-                name: asset.original_filename,
-                original_filename: asset.original_filename,
-                stored_filename: asset.stored_filename
+                if (svgObj.width > maxWidth || svgObj.height > maxHeight) {
+                    scale = Math.min(maxWidth / svgObj.width, maxHeight / svgObj.height);
+                }
+
+                svgObj.set({
+                    left: posX,
+                    top: posY,
+                    originX: 'center',
+                    originY: 'center',
+                    scaleX: scale,
+                    scaleY: scale,
+                    name: asset.original_filename,
+                    original_filename: asset.original_filename,
+                    stored_filename: asset.stored_filename
+                });
+
+                // Default our vector icons to dark charcoal (#1e293b) if they don't have a visible stroke
+                if (svgObj.getObjects) {
+                    svgObj.getObjects().forEach(child => {
+                        if (!child.stroke || child.stroke === 'currentColor' || child.stroke === 'none') {
+                            child.set('stroke', '#1e293b');
+                        }
+                    });
+                }
+                svgObj.set('stroke', '#1e293b');
+
+                canvas.add(svgObj);
+                canvas.setActiveObject(svgObj);
+                canvas.renderAll();
+                window.editorCore.triggerAutoSave();
             });
+        } else {
+            fabric.Image.fromURL(asset.url, (img) => {
+                // Keep size reasonable inside card workspace
+                const maxWidth = canvas.width * 0.7;
+                const maxHeight = canvas.height * 0.7;
+                let scale = 1.0;
 
-            canvas.add(img);
-            canvas.setActiveObject(img);
-            canvas.renderAll();
-            window.editorCore.triggerAutoSave();
-        }, { crossOrigin: 'anonymous' });
+                if (img.width > maxWidth || img.height > maxHeight) {
+                    scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+                }
+
+                img.set({
+                    left: posX,
+                    top: posY,
+                    originX: 'center',
+                    originY: 'center',
+                    scaleX: scale,
+                    scaleY: scale,
+                    name: asset.original_filename,
+                    original_filename: asset.original_filename,
+                    stored_filename: asset.stored_filename
+                });
+
+                canvas.add(img);
+                canvas.setActiveObject(img);
+                canvas.renderAll();
+                window.editorCore.triggerAutoSave();
+            }, { crossOrigin: 'anonymous' });
+        }
     }
 
     // Select custom font for active text layer
@@ -178,6 +243,109 @@
             window.studioAlert(`Font "${asset.original_filename}" registered successfully! Select a text layer and apply this font from the Properties panel.`, 'Font Registered');
         }
     }
+
+    // Setup Canvas Drag and Drop Dropzone
+    document.addEventListener('DOMContentLoaded', () => {
+        const wrapper = document.getElementById('canvas-container-wrapper');
+        if (wrapper) {
+            let dragCounter = 0;
+            
+            wrapper.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                if (dragCounter === 1) {
+                    wrapper.classList.add('drag-over');
+                }
+            });
+            
+            wrapper.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    wrapper.classList.remove('drag-over');
+                }
+            });
+            
+            wrapper.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+            
+            wrapper.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                wrapper.classList.remove('drag-over');
+                
+                let data;
+                try {
+                    data = JSON.parse(e.dataTransfer.getData('application/json'));
+                } catch (err) {
+                    console.error("Failed to parse drag and drop JSON:", err);
+                    return;
+                }
+                
+                if (!data || !data.asset) return;
+                
+                const canvas = window.editorCanvas;
+                if (!canvas) return;
+                
+                const rect = canvas.getElement().getBoundingClientRect();
+                const zoom = (window.editorCore && typeof window.editorCore.getZoomLevel === 'function')
+                    ? window.editorCore.getZoomLevel()
+                    : 1.0;
+                    
+                const x = (e.clientX - rect.left) / zoom;
+                const y = (e.clientY - rect.top) / zoom;
+                
+                if (data.isImage) {
+                    addImageLayer(data.asset, x, y);
+                } else if (data.isFont) {
+                    // Detect if dropped over a text object
+                    let targetTextObject = null;
+                    const pointer = new fabric.Point(x, y);
+                    const objects = canvas.getObjects();
+                    
+                    for (let i = objects.length - 1; i >= 0; i--) {
+                        const obj = objects[i];
+                        if (obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') continue;
+                        if (obj.containsPoint(pointer) && (obj.type === 'i-text' || obj.type === 'text')) {
+                            targetTextObject = obj;
+                            break;
+                        }
+                    }
+                    
+                    const fontName = loadFontFace(data.asset);
+                    if (targetTextObject) {
+                        const fontSelect = document.getElementById('prop-font-family');
+                        if (fontSelect) {
+                            fontSelect.value = fontName;
+                        }
+                        targetTextObject.set('fontFamily', fontName);
+                        canvas.setActiveObject(targetTextObject);
+                        canvas.renderAll();
+                        window.editorCore.triggerAutoSave();
+                    } else {
+                        // Create a new text object at the dropped position
+                        const defaultFontSize = Math.max(28, Math.round(canvas.height * 0.05));
+                        const text = new fabric.IText('Text Layer', {
+                            left: x,
+                            top: y,
+                            originX: 'center',
+                            originY: 'center',
+                            fontFamily: fontName,
+                            fontSize: defaultFontSize,
+                            fill: '#1e293b',
+                            name: 'Text Layer'
+                        });
+                        canvas.add(text);
+                        canvas.setActiveObject(text);
+                        canvas.renderAll();
+                        window.editorCore.triggerAutoSave();
+                    }
+                }
+            });
+        }
+    });
 
     window.assetPicker = {
         loadAssets: loadAssets,
