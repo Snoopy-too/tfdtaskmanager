@@ -266,6 +266,9 @@ require_once __DIR__ . '/../templates/header.php';
                         <button id="btn-add-circle" class="py-2 bg-slate-950 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 rounded-xl transition flex items-center justify-center space-x-1">
                             <span>Circle</span>
                         </button>
+                        <button id="btn-add-line" class="col-span-2 py-2 bg-slate-950 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 rounded-xl transition flex items-center justify-center space-x-1">
+                            <span>Line</span>
+                        </button>
                     </div>
 
                     <!-- Layers list container -->
@@ -531,7 +534,7 @@ require_once __DIR__ . '/../templates/header.php';
 
                     <!-- Shape-Specific Properties (Rect, Circle) -->
                     <div id="inspector-shape-section" class="space-y-3 pb-4 border-b border-slate-800/80 hidden">
-                        <div class="grid grid-cols-2 gap-3">
+                        <div id="prop-shape-fill-group" class="grid grid-cols-2 gap-3">
                             <div>
                                 <label for="prop-fill-color" class="block text-xs font-semibold text-slate-400 mb-1">Fill Color</label>
                                 <input type="color" id="prop-fill-color" class="w-full h-8 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
@@ -544,7 +547,7 @@ require_once __DIR__ . '/../templates/header.php';
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3">
+                        <div id="prop-shape-opacity-group" class="grid grid-cols-2 gap-3">
                             <div>
                                 <label for="prop-fill-opacity" class="block text-xs font-semibold text-slate-400 mb-1">Fill Opacity (%)</label>
                                 <input type="number" id="prop-fill-opacity" min="0" max="100" step="5" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">

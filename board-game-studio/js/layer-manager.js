@@ -10,6 +10,7 @@
         document.getElementById('btn-add-text').addEventListener('click', addTextLayer);
         document.getElementById('btn-add-rect').addEventListener('click', addRectLayer);
         document.getElementById('btn-add-circle').addEventListener('click', addCircleLayer);
+        document.getElementById('btn-add-line').addEventListener('click', addLineLayer);
         
         // Image: switch to Assets tab so the user can select an uploaded image to place
         document.getElementById('btn-add-image').addEventListener('click', () => {
@@ -101,6 +102,28 @@
         window.editorCore.triggerAutoSave();
     }
 
+    // Add Line Layer
+    function addLineLayer() {
+        const canvas = window.editorCanvas;
+        const width = Math.max(200, Math.round(canvas.width * 0.4));
+        const line = new fabric.Line([
+            canvas.width / 2 - width / 2,
+            canvas.height / 2,
+            canvas.width / 2 + width / 2,
+            canvas.height / 2
+        ], {
+            stroke: '#94a3b8',
+            strokeWidth: 4,
+            originX: 'center',
+            originY: 'center',
+            name: 'Line Layer'
+        });
+        canvas.add(line);
+        canvas.setActiveObject(line);
+        canvas.renderAll();
+        window.editorCore.triggerAutoSave();
+    }
+
     // Render Sidebar List
     function renderLayersList() {
         const canvas = window.editorCanvas;
@@ -136,7 +159,7 @@
             // Small type indicator badge
             const typeBadge = document.createElement('span');
             typeBadge.className = 'px-1 rounded bg-slate-950 text-[9px] uppercase tracking-wider text-slate-500';
-            typeBadge.textContent = obj.type === 'i-text' ? 'TXT' : (obj.type === 'image' ? 'IMG' : 'SHP');
+            typeBadge.textContent = obj.type === 'i-text' ? 'TXT' : (obj.type === 'image' ? 'IMG' : (obj.type === 'line' ? 'LN' : 'SHP'));
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'truncate pr-2';

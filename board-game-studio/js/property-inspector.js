@@ -327,8 +327,19 @@
             document.getElementById('prop-font-bold').checked = obj.fontWeight === 'bold';
             document.getElementById('prop-font-italic').checked = obj.fontStyle === 'italic';
 
-        } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'group' || obj.type === 'path') {
+        } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'line' || obj.type === 'group' || obj.type === 'path') {
             shapeSec.classList.remove('hidden');
+            
+            // Toggle fill options visibility if it is a Line layer
+            const fillGroup = document.getElementById('prop-shape-fill-group');
+            const opacityGroup = document.getElementById('prop-shape-opacity-group');
+            if (obj.type === 'line') {
+                if (fillGroup) fillGroup.classList.add('hidden');
+                if (opacityGroup) opacityGroup.classList.add('hidden');
+            } else {
+                if (fillGroup) fillGroup.classList.remove('hidden');
+                if (opacityGroup) opacityGroup.classList.remove('hidden');
+            }
             
             let fillVal = obj.fill || '';
             let strokeVal = obj.stroke || '';
