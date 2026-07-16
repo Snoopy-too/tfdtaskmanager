@@ -554,8 +554,9 @@
         document.getElementById('crop-actions-group').classList.remove('hidden');
 
         // Store original size and crop coordinates
-        const originalWidth = img._originalElement.naturalWidth || img._originalElement.width || 1;
-        const originalHeight = img._originalElement.naturalHeight || img._originalElement.height || 1;
+        const imgEl = img.getElement();
+        const originalWidth = imgEl ? (imgEl.naturalWidth || imgEl.width || img.width || 1) : (img.width || 1);
+        const originalHeight = imgEl ? (imgEl.naturalHeight || imgEl.height || img.height || 1) : (img.height || 1);
 
         // Hide original image layer
         img.visible = false;
@@ -570,7 +571,7 @@
         const uncroppedCenterOnCanvas = fabric.util.transformPoint(localPoint, matrix);
 
         // Create dimmed uncropped background placeholder
-        const bgImg = new fabric.Image(img._originalElement, {
+        const bgImg = new fabric.Image(img.getElement(), {
             left: uncroppedCenterOnCanvas.x,
             top: uncroppedCenterOnCanvas.y,
             width: originalWidth,
@@ -638,8 +639,9 @@
         });
 
         if (cropBox && bgImg) {
-            const originalWidth = activeCropImage._originalElement.naturalWidth || activeCropImage._originalElement.width || 1;
-            const originalHeight = activeCropImage._originalElement.naturalHeight || activeCropImage._originalElement.height || 1;
+            const imgEl = activeCropImage.getElement();
+            const originalWidth = imgEl ? (imgEl.naturalWidth || imgEl.width || activeCropImage.width || 1) : (activeCropImage.width || 1);
+            const originalHeight = imgEl ? (imgEl.naturalHeight || imgEl.height || activeCropImage.height || 1) : (activeCropImage.height || 1);
 
             // Invert the transform matrix of the uncropped background image
             const matrix = bgImg.calcTransformMatrix();
