@@ -226,6 +226,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Add Column Action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_dataset_column') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+        $columnName = trim($_POST['column_name'] ?? '');
+        try {
+            $columnName = preg_replace('/[^a-zA-Z0-9_\-]/', '', $columnName);
+            if (empty($columnName)) {
+                throw new \Exception("Invalid column name.");
+            }
+
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if (!$dataset) {
+                throw new \Exception("Dataset not found.");
+            }
+            
+            $columnMap = $dataset->getColumnMap();
+            $rowData = $dataset->getRowData();
+            
+            if (in_array($columnName, $columnMap)) {
+                throw new \Exception("Column '$columnName' already exists.");
+            }
+            
+            $columnMap[] = $columnName;
+            
+            foreach ($rowData as &$row) {
+                $row[$columnName] = '';
+            }
+            
+            $datasetService->updateDataset($datasetId, $dataset->getName(), $columnMap, $rowData);
+            $success = "Column '$columnName' added successfully.";
+        } catch (\Exception $e) {
+            $error = "Failed to add column: " . $e->getMessage();
+        }
+    }
+}
+
+// Handle Add Row Action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_dataset_row') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+        try {
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if (!$dataset) {
+                throw new \Exception("Dataset not found.");
+            }
+            
+            $columnMap = $dataset->getColumnMap();
+            $rowData = $dataset->getRowData();
+            
+            $newRow = [];
+            foreach ($columnMap as $col) {
+                $newRow[$col] = '';
+            }
+            $rowData[] = $newRow;
+            
+            $datasetService->updateDataset($datasetId, $dataset->getName(), $columnMap, $rowData);
+            $success = "New row added successfully.";
+        } catch (\Exception $e) {
+            $error = "Failed to add row: " . $e->getMessage();
+        }
+    }
+}
+
 // Fetch all datasets in active project
 $datasets = $datasetService->getDatasetsByProject($activeProjectId);
 
@@ -408,6 +478,22 @@ require_once __DIR__ . '/../templates/header.php';
                         <div>
                             <h2 class="text-xl font-bold text-slate-200"><?php echo SecurityHelper::escape($inspectDataset->getName()); ?></h2>
                             <p class="text-xs text-slate-400 mt-0.5">Use binding format `{{ColumnName}}` on card layers to substitute values.</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <form action="" method="POST" class="m-0" id="form-add-column-inspect" onsubmit="event.preventDefault(); window.customPrompt('Enter new column name (e.g. Health, Attack, Image):', '', (newCol) => { if (newCol && newCol.trim()) { this.querySelector('[name=column_name]').value = newCol.trim(); this.submit(); } });">
+                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                <input type="hidden" name="action" value="add_dataset_column">
+                                <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                <input type="hidden" name="column_name" value="">
+                                <button type="submit" class="text-xs uppercase font-bold px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl transition">+ Column</button>
+                            </form>
+                            
+                            <form action="" method="POST" class="m-0">
+                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                <input type="hidden" name="action" value="add_dataset_row">
+                                <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                <button type="submit" class="text-xs uppercase font-bold px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl transition">+ Row</button>
+                            </form>
                         </div>
                     </div>
 
