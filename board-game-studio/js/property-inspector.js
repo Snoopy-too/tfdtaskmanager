@@ -333,6 +333,45 @@
         activeObj = obj;
         isUpdatingForm = true;
 
+        // ponytail: auto-correct text originX mismatch upon selecting/inspecting the layer to align anchor point
+        if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+            const alignVal = obj.textAlign || 'left';
+            const expectedOriginX = alignVal === 'justify' ? 'left' : alignVal;
+            if (obj.originX !== expectedOriginX) {
+                let centerLeft;
+                const width = obj.width * obj.scaleX;
+                const oldOriginX = obj.originX || 'left';
+                if (oldOriginX === 'left') {
+                    centerLeft = obj.left + width / 2;
+                } else if (oldOriginX === 'right') {
+                    centerLeft = obj.left - width / 2;
+                } else {
+                    centerLeft = obj.left;
+                }
+
+                let newLeft;
+                if (expectedOriginX === 'left') {
+                    newLeft = centerLeft - width / 2;
+                } else if (expectedOriginX === 'right') {
+                    newLeft = centerLeft + width / 2;
+                } else {
+                    newLeft = centerLeft;
+                }
+
+                obj.set({
+                    originX: expectedOriginX,
+                    left: newLeft
+                });
+                obj.setCoords();
+                if (window.editorCanvas) {
+                    window.editorCanvas.renderAll();
+                }
+                if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
+                    window.editorCore.triggerAutoSave();
+                }
+            }
+        }
+
         const noneSelected = document.getElementById('inspector-none-selected');
         const form = document.getElementById('inspector-form');
         
