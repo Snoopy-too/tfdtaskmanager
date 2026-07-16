@@ -182,6 +182,50 @@ try {
             ]);
             break;
 
+        case 'update_dataset_cell':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+            $rowIndex = isset($_POST['row_index']) ? (int)$_POST['row_index'] : -1;
+            $columnName = $_POST['column_name'] ?? '';
+            $value = $_POST['value'] ?? '';
+
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if (!$dataset) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Dataset not found.']);
+                exit;
+            }
+
+            $rowData = $dataset->getRowData();
+            if ($rowIndex < 0 || $rowIndex >= count($rowData)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid row index.']);
+                exit;
+            }
+
+            $columnMap = $dataset->getColumnMap();
+            if (!in_array($columnName, $columnMap)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Column not found in dataset mapping.']);
+                exit;
+            }
+
+            $rowData[$rowIndex][$columnName] = $value;
+            $datasetService->updateDataset($datasetId, $dataset->getName(), $columnMap, $rowData);
+
+            echo json_encode(['success' => true]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Invalid action or route.']);

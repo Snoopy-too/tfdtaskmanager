@@ -464,8 +464,14 @@ require_once __DIR__ . '/../templates/header.php';
                                             <tr class="border-b border-slate-800/60 hover:bg-slate-800/30 text-slate-300">
                                                 <td class="p-3 text-center text-slate-500 bg-slate-950/40 border-r border-slate-800/40 font-bold"><?php echo $index + 1; ?></td>
                                                 <?php foreach ($inspectDataset->getColumnMap() as $col): ?>
-                                                    <td class="p-3 truncate max-w-[200px]" title="<?php echo SecurityHelper::escape($row[$col] ?? ''); ?>">
-                                                        <?php echo SecurityHelper::escape($row[$col] ?? ''); ?>
+                                                    <td class="p-1 border-r border-slate-800/40 last:border-r-0 transition-colors duration-200">
+                                                        <input type="text" 
+                                                               value="<?php echo SecurityHelper::escape($row[$col] ?? ''); ?>" 
+                                                               data-dataset-id="<?php echo $inspectDataset->getId(); ?>"
+                                                               data-row-index="<?php echo $index; ?>"
+                                                               data-column-name="<?php echo SecurityHelper::escape($col); ?>"
+                                                               class="dataset-cell-input w-full bg-transparent border-0 focus:border-0 focus:ring-0 text-xs text-slate-300 focus:text-white px-2 py-2"
+                                                        >
                                                     </td>
                                                 <?php endforeach; ?>
                                                 <td class="p-3 text-center bg-slate-950/20 border-l border-slate-800/40">
@@ -506,4 +512,66 @@ require_once __DIR__ . '/../templates/header.php';
     });
 </script>
 <?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const cellInputs = document.querySelectorAll('.dataset-cell-input');
+    cellInputs.forEach(input => {
+        input.addEventListener('change', (e) => {
+            const datasetId = e.target.getAttribute('data-dataset-id');
+            const rowIndex = e.target.getAttribute('data-row-index');
+            const columnName = e.target.getAttribute('data-column-name');
+            const value = e.target.value;
+
+            const parentTd = e.target.closest('td');
+            if (parentTd) {
+                parentTd.className = 'p-1 border-r border-slate-800/40 last:border-r-0 transition-colors duration-200 bg-indigo-500/10';
+            }
+
+            const formData = new FormData();
+            formData.append('csrf_token', '<?php echo SecurityHelper::escape($csrfToken); ?>');
+            formData.append('dataset_id', datasetId);
+            formData.append('row_index', rowIndex);
+            formData.append('column_name', columnName);
+            formData.append('value', value);
+
+            fetch('api.php?action=update_dataset_cell', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-Token': '<?php echo SecurityHelper::escape($csrfToken); ?>'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (parentTd) {
+                    parentTd.className = 'p-1 border-r border-slate-800/40 last:border-r-0 transition-colors duration-200';
+                }
+                if (data.success) {
+                    if (parentTd) {
+                        parentTd.classList.add('bg-emerald-500/10');
+                        setTimeout(() => parentTd.classList.remove('bg-emerald-500/10'), 600);
+                    }
+                } else {
+                    if (parentTd) {
+                        parentTd.classList.add('bg-rose-500/10');
+                        setTimeout(() => parentTd.classList.remove('bg-rose-500/10'), 1500);
+                    }
+                    console.error("Cell save failed:", data.error);
+                    alert("Failed to save cell: " + data.error);
+                }
+            })
+            .catch(err => {
+                if (parentTd) {
+                    parentTd.className = 'p-1 border-r border-slate-800/40 last:border-r-0 transition-colors duration-200 bg-rose-500/10';
+                    setTimeout(() => parentTd.className = 'p-1 border-r border-slate-800/40 last:border-r-0 transition-colors duration-200', 1500);
+                }
+                console.error("Cell save failed:", err);
+                alert("Failed to save cell due to connection error.");
+            });
+        });
+    });
+});
+</script>
+
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>
