@@ -11,6 +11,9 @@
     // Original template strings stored to prevent loss on row changes
     const textTemplates = new Map();
 
+    // Original image sources stored to restore when binding is removed
+    const imageOriginalSrcs = new Map();
+
     function initTemplateEngine() {
         if (!window.studioConfig.datasetId) {
             return;
@@ -75,6 +78,7 @@
 
         const objects = canvas.getObjects();
         let needsRender = false;
+        const imageSwapPromises = [];
 
         objects.forEach(obj => {
             if (obj.type === 'i-text' || obj.type === 'text') {
@@ -114,10 +118,43 @@
                     obj.setCoords();
                     needsRender = true;
                 }
+            } else if (obj.type === 'image' && obj.variable_binding) {
+                // Image binding: swap image src based on dataset column value
+                if (!imageOriginalSrcs.has(obj)) {
+                    imageOriginalSrcs.set(obj, obj.getSrc ? obj.getSrc() : (obj._element ? obj._element.src : ''));
+                }
+
+                if (dataset && dataset.rowData[currentRowIndex]) {
+                    const row = dataset.rowData[currentRowIndex];
+                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                    const filename = row[colName];
+
+                    if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                        const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
+                        if (assetUrl) {
+                            const currentSrc = obj.getSrc ? obj.getSrc() : '';
+                            // Only swap if URL actually changed to avoid unnecessary reloads
+                            if (!currentSrc.endsWith(assetUrl) && currentSrc !== assetUrl) {
+                                const swapPromise = new Promise((resolve) => {
+                                    obj.setSrc(assetUrl, () => {
+                                        obj.setCoords();
+                                        resolve();
+                                    }, { crossOrigin: 'anonymous' });
+                                });
+                                imageSwapPromises.push(swapPromise);
+                            }
+                        }
+                    }
+                }
             }
         });
 
-        if (needsRender) {
+        if (imageSwapPromises.length > 0) {
+            // Wait for all image swaps to complete, then render
+            Promise.all(imageSwapPromises).then(() => {
+                canvas.renderAll();
+            });
+        } else if (needsRender) {
             canvas.renderAll();
         }
     }

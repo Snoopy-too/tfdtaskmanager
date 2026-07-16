@@ -170,6 +170,8 @@
                     const drawBleedCheckbox = drawBleedEl ? drawBleedEl.checked : false;
                     
                     const toRemove = [];
+                    const imageSwapPromises = [];
+
                     objects.forEach(obj => {
                         if (obj.id === 'safe-zone-guide') {
                             toRemove.push(obj);
@@ -197,27 +199,53 @@
                             }
                             obj.set('text', subText);
                         }
+
+                        // Substitute image source for bound image layers
+                        if (obj.type === 'image' && obj.variable_binding) {
+                            const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                            const filename = row[colName];
+
+                            if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                                const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
+                                if (assetUrl) {
+                                    const swapPromise = new Promise((imgResolve) => {
+                                        obj.setSrc(assetUrl, () => {
+                                            obj.setCoords();
+                                            imgResolve();
+                                        }, { crossOrigin: 'anonymous' });
+                                    });
+                                    imageSwapPromises.push(swapPromise);
+                                }
+                            }
+                        }
                     });
 
                     // Perform removals
                     toRemove.forEach(o => canvas.remove(o));
 
-                    canvas.renderAll();
+                    // Wait for image swaps (if any) before rendering to PNG
+                    const afterImages = imageSwapPromises.length > 0
+                        ? Promise.all(imageSwapPromises)
+                        : Promise.resolve();
 
-                    // Export data URL PNG
-                    const dataUrl = canvas.toDataURL({
-                        format: 'png',
-                        quality: 1.0
-                    });
-                    
-                    images.push({
-                        dataUrl: dataUrl,
-                        name: row.name || `Card ${index + 1}`
-                    });
+                    afterImages.then(() => {
+                        canvas.renderAll();
 
-                    index++;
-                    // Delay slightly to prevent browser freezing
-                    setTimeout(renderNext, 20);
+                        // Export data URL PNG
+                        const dataUrl = canvas.toDataURL({
+                            format: 'png',
+                            quality: 1.0
+                        });
+                        
+                        images.push({
+                            dataUrl: dataUrl,
+                            name: row.name || `Card ${index + 1}`
+                        });
+
+                        index++;
+                        // Delay slightly to prevent browser freezing
+                        setTimeout(renderNext, 20);
+                    });
                 });
             }
 

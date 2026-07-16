@@ -7,6 +7,7 @@
     'use strict';
 
     let assetsLoaded = false;
+    let cachedAssets = [];
     const registeredFonts = new Set();
 
     function loadAssets() {
@@ -23,6 +24,7 @@
         .then(assets => {
             grid.innerHTML = '';
             assetsLoaded = true;
+            cachedAssets = Array.isArray(assets) ? assets : [];
 
             if (!Array.isArray(assets)) {
                 const errMsg = assets.error || 'Failed to load assets. Please log in again.';
@@ -347,8 +349,22 @@
         }
     });
 
+    /**
+     * Resolve an original filename to its full asset URL.
+     * Used by template-engine and export-handler for per-row image binding.
+     * @param {string} filename - The original_filename of the asset.
+     * @returns {string|null} The asset URL, or null if not found.
+     */
+    function getAssetUrlByFilename(filename) {
+        if (!filename) return null;
+        const match = cachedAssets.find(a => a.original_filename === filename);
+        return match ? match.url : null;
+    }
+
     window.assetPicker = {
         loadAssets: loadAssets,
-        loadFontFace: loadFontFace
+        loadFontFace: loadFontFace,
+        getAssetUrlByFilename: getAssetUrlByFilename,
+        getCachedAssets: () => cachedAssets
     };
 })();

@@ -573,6 +573,22 @@ require_once __DIR__ . '/../templates/header.php';
                             <span class="text-slate-400 truncate max-w-[120px]" id="prop-image-filename">No image selected</span>
                             <button type="button" id="btn-inspector-change-image" class="px-2 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">Change</button>
                         </div>
+
+                        <?php if ($dataset): ?>
+                            <div>
+                                <label for="prop-image-bind" class="block text-xs font-semibold text-slate-400 mb-1">Image Source Binding</label>
+                                <select id="prop-image-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                                    <option value="">No Binding (Static Image)</option>
+                                    <?php foreach ($dataset->getColumnMap() as $colName): ?>
+                                        <option value="{{<?php echo SecurityHelper::escape($colName); ?>}}">
+                                            {{<?php echo SecurityHelper::escape($colName); ?>}}
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="text-[10px] text-slate-550 mt-1">Column values should match asset filenames (e.g. fighter01.png)</p>
+                            </div>
+                        <?php endif; ?>
+
                         <div>
                             <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-550 mb-1.5">Canvas Fitting</span>
                             <div class="flex space-x-2">

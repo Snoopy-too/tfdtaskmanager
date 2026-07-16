@@ -154,12 +154,23 @@
         document.getElementById('prop-stroke-color').addEventListener('input', (e) => updateActiveProp('stroke', e.target.value));
         document.getElementById('prop-stroke-width').addEventListener('input', (e) => updateActiveProp('strokeWidth', parseInt(e.target.value) || 0));
 
-        // Image controls
         const changeImgBtn = document.getElementById('btn-inspector-change-image');
         if (changeImgBtn) {
             changeImgBtn.addEventListener('click', () => {
                 // Switch sidebar tab to Assets
                 document.getElementById('tab-assets-btn').click();
+            });
+        }
+
+        // Image source binding dropdown (mirrors text binding pattern)
+        const imgBindSelect = document.getElementById('prop-image-bind');
+        if (imgBindSelect) {
+            imgBindSelect.addEventListener('change', (e) => {
+                updateActiveProp('variable_binding', e.target.value || null);
+                // Trigger rendering update in template engine for live preview
+                if (window.templateEngine && typeof window.templateEngine.applyBindings === 'function') {
+                    window.templateEngine.applyBindings();
+                }
             });
         }
 
@@ -392,6 +403,12 @@
         } else if (obj.type === 'image') {
             imgSec.classList.remove('hidden');
             document.getElementById('prop-image-filename').textContent = obj.original_filename || 'Uploaded Image';
+
+            // Populate image binding dropdown if it exists
+            const imgBindSelect = document.getElementById('prop-image-bind');
+            if (imgBindSelect) {
+                imgBindSelect.value = obj.variable_binding || '';
+            }
         }
 
         isUpdatingForm = false;
