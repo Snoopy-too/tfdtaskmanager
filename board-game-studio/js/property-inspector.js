@@ -244,6 +244,40 @@
     function updateActiveProp(property, value) {
         if (!activeObj || isUpdatingForm) return;
 
+        // ponytail: map textAlign to originX so the text anchor remains consistent for dynamic data bindings
+        if (property === 'textAlign' && (activeObj.type === 'i-text' || activeObj.type === 'text')) {
+            const oldOriginX = activeObj.originX || 'left';
+            let newOriginX = value; // 'left', 'center', 'right', 'justify'
+            if (newOriginX === 'justify') {
+                newOriginX = 'left';
+            }
+            if (oldOriginX !== newOriginX) {
+                let centerLeft;
+                const width = activeObj.width * activeObj.scaleX;
+                if (oldOriginX === 'left') {
+                    centerLeft = activeObj.left + width / 2;
+                } else if (oldOriginX === 'right') {
+                    centerLeft = activeObj.left - width / 2;
+                } else {
+                    centerLeft = activeObj.left;
+                }
+
+                let newLeft;
+                if (newOriginX === 'left') {
+                    newLeft = centerLeft - width / 2;
+                } else if (newOriginX === 'right') {
+                    newLeft = centerLeft + width / 2;
+                } else {
+                    newLeft = centerLeft;
+                }
+
+                activeObj.set({
+                    originX: newOriginX,
+                    left: newLeft
+                });
+            }
+        }
+
         activeObj.set(property, value);
         
         // Propagate colors/strokes to group children if editing SVG vector groups

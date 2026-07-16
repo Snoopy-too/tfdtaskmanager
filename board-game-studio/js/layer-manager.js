@@ -148,6 +148,62 @@
             const item = document.createElement('div');
             item.className = `flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer border ${isActive ? 'bg-indigo-500/10 border-indigo-500/30 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:text-white'} transition`;
 
+            // ponytail: native HTML5 drag and drop layer reordering
+            item.draggable = true;
+            let dragCounter = 0;
+
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', i.toString());
+                item.classList.add('opacity-40');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            item.addEventListener('dragend', () => {
+                item.classList.remove('opacity-40');
+            });
+
+            item.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                item.style.borderColor = '#6366f1';
+                item.style.borderWidth = '2px';
+            });
+
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+
+            item.addEventListener('dragleave', () => {
+                dragCounter--;
+                if (dragCounter === 0) {
+                    item.style.borderColor = '';
+                    item.style.borderWidth = '';
+                }
+            });
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                item.style.borderColor = '';
+                item.style.borderWidth = '';
+                const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                const dropIndex = i;
+                if (!isNaN(dragIndex) && dragIndex !== dropIndex) {
+                    const draggedObj = objects[dragIndex];
+                    if (draggedObj) {
+                        canvas.moveTo(draggedObj, dropIndex);
+                        // Keep guides on top
+                        if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                            window.guideRenderer.renderGuides();
+                        }
+                        canvas.renderAll();
+                        renderLayersList();
+                        window.editorCore.triggerAutoSave();
+                    }
+                }
+            });
+
             // Left part: Icon, Layer Name
             const leftBlock = document.createElement('div');
             leftBlock.className = 'flex items-center space-x-2 truncate flex-grow';

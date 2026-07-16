@@ -534,6 +534,35 @@
                 return;
             }
 
+            // ponytail: delete active canvas object/selection on Delete key
+            if (e.key === 'Delete') {
+                const activeObj = canvas.getActiveObject();
+                if (activeObj && !activeObj.isEditing) {
+                    e.preventDefault();
+                    if (activeObj.id === 'safe-zone-guide' || activeObj.id === 'bleed-zone-guide') {
+                        return;
+                    }
+
+                    if (activeObj.type === 'activeSelection') {
+                        activeObj.forEachObject((obj) => {
+                            canvas.remove(obj);
+                        });
+                        canvas.discardActiveObject();
+                    } else {
+                        canvas.remove(activeObj);
+                        canvas.discardActiveObject();
+                    }
+                    canvas.renderAll();
+                    if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                        window.layerManager.renderLayersList();
+                    }
+                    triggerAutoSave();
+                    if (window.propertyInspector && typeof window.propertyInspector.clearInspect === 'function') {
+                        window.propertyInspector.clearInspect();
+                    }
+                }
+            }
+
             const isCtrl = e.ctrlKey || e.metaKey;
 
             // Ctrl + Z (Undo)
