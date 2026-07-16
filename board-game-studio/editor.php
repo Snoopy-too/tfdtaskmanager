@@ -61,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 $project = $projectService->getProjectById($template->getProjectId());
+$_SESSION['last_project_id'] = $template->getProjectId();
 $compTypes = $templateService->getComponentTypes();
 $compType = null;
 foreach ($compTypes as $ct) {

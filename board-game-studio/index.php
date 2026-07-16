@@ -38,8 +38,24 @@ $csrfToken = SecurityHelper::generateCsrfToken();
 // Fetch all projects to let user choose
 $projects = $projectService->getAllProjects();
 
-// Select active project
-$activeProjectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '') ? (int)$_GET['project_id'] : null;
+// Select active project and synchronize with session storage
+$activeProjectId = null;
+if (isset($_GET['project_id'])) {
+    if ($_GET['project_id'] !== '') {
+        $activeProjectId = (int)$_GET['project_id'];
+        $_SESSION['last_project_id'] = $activeProjectId;
+    } else {
+        // User explicitly cleared project selection (selected "None")
+        unset($_SESSION['last_project_id']);
+    }
+} else {
+    // If no project_id parameter in URL, default to last worked project from session
+    if (isset($_SESSION['last_project_id'])) {
+        $activeProjectId = (int)$_SESSION['last_project_id'];
+        header("Location: index.php?project_id=" . $activeProjectId);
+        exit;
+    }
+}
 
 $activeProject = null;
 if ($activeProjectId) {

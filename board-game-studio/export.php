@@ -19,8 +19,18 @@ $csrfToken = SecurityHelper::generateCsrfToken();
 // Projects dropdown
 $projects = $projectService->getAllProjects();
 $activeProjectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '') ? (int)$_GET['project_id'] : null;
-if ($activeProjectId === null && !isset($_GET['project_id']) && !empty($projects)) {
-    $activeProjectId = $projects[0]->getId();
+
+// Default to last project from session if not specified, otherwise default to first project
+if ($activeProjectId === null && !isset($_GET['project_id'])) {
+    if (isset($_SESSION['last_project_id'])) {
+        $activeProjectId = (int)$_SESSION['last_project_id'];
+    } elseif (!empty($projects)) {
+        $activeProjectId = $projects[0]->getId();
+    }
+}
+
+if ($activeProjectId) {
+    $_SESSION['last_project_id'] = $activeProjectId;
 }
 
 $activeProject = null;
