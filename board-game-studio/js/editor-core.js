@@ -631,6 +631,18 @@
             window.assetPicker.loadAssets();
         }
 
+        // Listen for browser font load completion events to handle asynchronous stylesheet loads (e.g. Google Fonts latency)
+        if (document.fonts) {
+            document.fonts.addEventListener('loadingdone', () => {
+                refreshCanvasTextLayers();
+            });
+        }
+
+        // Fallback layout refresh once all page assets (stylesheets, frames) are fully loaded
+        window.addEventListener('load', () => {
+            refreshCanvasTextLayers();
+        });
+
         if (!window.studioConfig.isViewMode) {
             // Heartbeat lock refresh
             setInterval(() => {
