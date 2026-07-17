@@ -646,7 +646,7 @@
             // Apply mobile styling emulation
             wrapper.classList.remove('max-w-3xl', 'p-10');
             wrapper.classList.add('max-w-sm', 'p-4', 'mx-auto');
-            viewport.classList.add('flex', 'items-center', 'justify-center');
+            viewport.classList.add('flex', 'justify-center');
 
             btnPrev.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 transition';
             btnEdit.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
