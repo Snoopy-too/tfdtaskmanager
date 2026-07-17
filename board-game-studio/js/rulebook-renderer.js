@@ -459,11 +459,11 @@
     };
 
     window.deleteBlock = function(idx) {
-        if (confirm("Are you sure you want to delete this block?")) {
+        showConfirmDialog("Are you sure you want to delete this block?", () => {
             blocks.splice(idx, 1);
             renderBlocks();
             saveRulebook(true);
-        }
+        });
     };
 
     window.moveBlock = function(idx, dir) {
@@ -669,6 +669,37 @@
         }
 
         renderBlocks();
+    };
+
+    window.showConfirmDialog = function(message, onConfirm) {
+        const modal = document.getElementById('custom-confirm-modal');
+        const msgEl = document.getElementById('custom-confirm-message');
+        const btnOk = document.getElementById('btn-confirm-ok');
+        const btnCancel = document.getElementById('btn-confirm-cancel');
+
+        if (!modal || !msgEl || !btnOk || !btnCancel) {
+            // Fallback if DOM elements aren't present
+            if (confirm(message)) onConfirm();
+            return;
+        }
+
+        msgEl.textContent = message;
+        modal.classList.remove('hidden');
+
+        const cleanUp = () => {
+            modal.classList.add('hidden');
+            btnOk.onclick = null;
+            btnCancel.onclick = null;
+        };
+
+        btnOk.onclick = () => {
+            cleanUp();
+            onConfirm();
+        };
+
+        btnCancel.onclick = () => {
+            cleanUp();
+        };
     };
 
     window.triggerPrint = function() {
