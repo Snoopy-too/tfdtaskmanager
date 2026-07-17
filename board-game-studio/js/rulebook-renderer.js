@@ -59,6 +59,52 @@
 
         renderBlocks();
         setupDragEvents();
+
+        if (window.rulebookConfig.isLocked) {
+            isPreviewMode = true;
+            const editBtn = document.getElementById('btn-edit-mode');
+            if (editBtn) editBtn.style.display = 'none';
+
+            const prevBtn = document.getElementById('btn-preview-mode');
+            if (prevBtn) {
+                prevBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 transition';
+            }
+
+            const sidebar = document.getElementById('editor-sidebar');
+            if (sidebar) {
+                sidebar.querySelectorAll('button, select, input, textarea').forEach(el => {
+                    el.disabled = true;
+                    el.style.opacity = '0.5';
+                    el.style.pointerEvents = 'none';
+                });
+            }
+        } else {
+            setInterval(() => {
+                const formData = new FormData();
+                formData.append('rulebook_id', window.rulebookConfig.rulebookId);
+                formData.append('csrf_token', window.rulebookConfig.csrfToken);
+
+                fetch('api.php?action=heartbeat_lock_rulebook', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.locked) {
+                        alert("This rulebook has been locked by another user or your session expired. Entering read-only mode.");
+                        window.location.reload();
+                    }
+                })
+                .catch(err => console.error('Lock heartbeat failed:', err));
+            }, 20000);
+
+            window.addEventListener('beforeunload', () => {
+                const formData = new FormData();
+                formData.append('rulebook_id', window.rulebookConfig.rulebookId);
+                formData.append('csrf_token', window.rulebookConfig.csrfToken);
+                navigator.sendBeacon('api.php?action=release_lock_rulebook', formData);
+            });
+        }
     }
 
     // Dynamic renderer orchestrator
@@ -623,6 +669,10 @@
 
     // Save rulebook document to DB
     window.saveRulebook = function(quiet = false) {
+        if (window.rulebookConfig.isLocked) {
+            if (!quiet) alert("This rulebook is locked in Read-Only Mode.");
+            return;
+        }
         const indicator = document.getElementById('status-indicator');
         if (indicator) {
             indicator.textContent = 'Saving changes...';

@@ -84,8 +84,24 @@ class PDOBgDatasetRepository implements BgDatasetRepositoryInterface
         $stmt->execute(['id' => $id]);
     }
 
+    public function updateLock(int $id, ?int $userId, ?string $lockedAt): void
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE bg_datasets
+            SET locked_by_user_id = :locked_by_user_id, locked_at = :locked_at
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'id' => $id,
+            'locked_by_user_id' => $userId,
+            'locked_at' => $lockedAt
+        ]);
+    }
+
     private function mapRowToEntity(array $row): BgDataset
     {
+        $lockedByUserId = isset($row['locked_by_user_id']) && $row['locked_by_user_id'] !== null ? (int)$row['locked_by_user_id'] : null;
+        $lockedAt = $row['locked_at'] ?? null;
         return new BgDataset(
             (int)$row['id'],
             (int)$row['project_id'],
@@ -94,7 +110,9 @@ class PDOBgDatasetRepository implements BgDatasetRepositoryInterface
             json_decode($row['row_data'], true) ?: [],
             (int)$row['created_by'],
             $row['created_at'],
-            $row['updated_at']
+            $row['updated_at'],
+            $lockedByUserId,
+            $lockedAt
         );
     }
 }

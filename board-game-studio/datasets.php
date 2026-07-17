@@ -44,6 +44,17 @@ if (!$activeProject) {
     exit;
 }
 
+// Global dataset locking check for modifications
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dataset_id'])) {
+    $dsId = (int)$_POST['dataset_id'];
+    $ds = $datasetService->getDatasetById($dsId);
+    $currUid = (int)($_SESSION['user_id'] ?? 0);
+    if ($ds && $datasetService->isDatasetLockedByOther($ds, $currUid)) {
+        $error = "Action failed: This dataset is currently locked for editing by another user.";
+        $_SERVER['REQUEST_METHOD'] = 'GET'; // Bypass mutation execution
+    }
+}
+
 // Handle CSV File Upload or Pasted CSV Import
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'import_dataset') {
     $submittedToken = $_POST['csrf_token'] ?? '';
@@ -312,8 +323,21 @@ $datasets = $datasetService->getDatasetsByProject($activeProjectId);
 // Active dataset to inspect in detail
 $inspectDatasetId = isset($_GET['inspect_id']) ? (int)$_GET['inspect_id'] : null;
 $inspectDataset = null;
+$lockUser = null;
+$isDatasetLocked = false;
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
 if ($inspectDatasetId) {
     $inspectDataset = $datasetService->getDatasetById($inspectDatasetId);
+    if ($inspectDataset) {
+        if ($datasetService->isDatasetLockedByOther($inspectDataset, $currentUserId)) {
+            $isDatasetLocked = true;
+            $userService = $container->get(\App\Application\Services\UserService::class);
+            $lockUser = $userService->getUserById($inspectDataset->getLockedByUserId());
+        } else {
+            $datasetService->acquireOrRefreshLock($inspectDataset->getId(), $currentUserId);
+        }
+    }
 }
 
 require_once __DIR__ . '/../templates/header.php';
@@ -484,26 +508,37 @@ require_once __DIR__ . '/../templates/header.php';
                 </div>
             <?php else: ?>
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+                    <?php if ($isDatasetLocked): ?>
+                        <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-xl text-sm flex items-center justify-between gap-4 mb-4">
+                            <div class="flex items-center space-x-2">
+                                <svg class="h-5 w-5 text-rose-500 animate-pulse flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                <span><strong>Read-Only View:</strong> This dataset is currently locked for editing by <strong><?php echo SecurityHelper::escape($lockUser ? $lockUser->getName() : 'another user'); ?></strong>.</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="flex items-center justify-between border-b border-slate-800 pb-4">
                         <div>
                             <h2 class="text-xl font-bold text-slate-200"><?php echo SecurityHelper::escape($inspectDataset->getName()); ?></h2>
                             <p class="text-xs text-slate-400 mt-0.5">Use binding format `{{ColumnName}}` on card layers to substitute values.</p>
                         </div>
                         <div class="flex space-x-2">
-                            <form action="" method="POST" class="m-0" id="form-add-column-inspect" onsubmit="event.preventDefault(); window.studioPrompt('Enter new column name (e.g. Health, Attack, Image):', '', 'Add Column').then((newCol) => { if (newCol && newCol.trim()) { this.querySelector('[name=column_name]').value = newCol.trim(); this.submit(); } });">
-                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                                <input type="hidden" name="action" value="add_dataset_column">
-                                <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
-                                <input type="hidden" name="column_name" value="">
-                                <button type="submit" class="text-xs uppercase font-bold px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl transition">+ Column</button>
-                            </form>
-                            
-                            <form action="" method="POST" class="m-0">
-                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                                <input type="hidden" name="action" value="add_dataset_row">
-                                <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
-                                <button type="submit" class="text-xs uppercase font-bold px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl transition">+ Row</button>
-                            </form>
+                            <?php if (!$isDatasetLocked): ?>
+                                <form action="" method="POST" class="m-0" id="form-add-column-inspect" onsubmit="event.preventDefault(); window.studioPrompt('Enter new column name (e.g. Health, Attack, Image):', '', 'Add Column').then((newCol) => { if (newCol && newCol.trim()) { this.querySelector('[name=column_name]').value = newCol.trim(); this.submit(); } });">
+                                    <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                    <input type="hidden" name="action" value="add_dataset_column">
+                                    <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                    <input type="hidden" name="column_name" value="">
+                                    <button type="submit" class="text-xs uppercase font-bold px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl transition">+ Column</button>
+                                </form>
+                                
+                                <form action="" method="POST" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                    <input type="hidden" name="action" value="add_dataset_row">
+                                    <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                    <button type="submit" class="text-xs uppercase font-bold px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl transition">+ Row</button>
+                                </form>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -530,16 +565,20 @@ require_once __DIR__ . '/../templates/header.php';
                                         <?php foreach ($inspectDataset->getColumnMap() as $col): ?>
                                             <th class="p-3 font-semibold relative group pr-6">
                                                 <span><?php echo SecurityHelper::escape($col); ?></span>
-                                                <form action="" method="POST" class="absolute right-1 top-2.5 m-0 inline" onsubmit="event.preventDefault(); window.studioConfirm('Remove column: <?php echo SecurityHelper::escape($col); ?>? This will delete all cell values for this column.', 'Remove', 'Remove Column').then((confirmed) => { if (confirmed) this.submit(); });">
-                                                    <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                                                    <input type="hidden" name="action" value="delete_dataset_column">
-                                                    <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
-                                                    <input type="hidden" name="column_name" value="<?php echo SecurityHelper::escape($col); ?>">
-                                                    <button type="submit" class="text-rose-500 hover:text-rose-450 font-bold opacity-0 group-hover:opacity-100 transition text-[13px] leading-none" title="Delete Column">&times;</button>
-                                                </form>
+                                                <?php if (!$isDatasetLocked): ?>
+                                                    <form action="" method="POST" class="absolute right-1 top-2.5 m-0 inline" onsubmit="event.preventDefault(); window.studioConfirm('Remove column: <?php echo SecurityHelper::escape($col); ?>? This will delete all cell values for this column.', 'Remove', 'Remove Column').then((confirmed) => { if (confirmed) this.submit(); });">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                                        <input type="hidden" name="action" value="delete_dataset_column">
+                                                        <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                                        <input type="hidden" name="column_name" value="<?php echo SecurityHelper::escape($col); ?>">
+                                                        <button type="submit" class="text-rose-500 hover:text-rose-450 font-bold opacity-0 group-hover:opacity-100 transition text-[13px] leading-none" title="Delete Column">&times;</button>
+                                                    </form>
+                                                <?php endif; ?>
                                             </th>
                                         <?php endforeach; ?>
-                                        <th class="p-3 font-semibold w-16 text-center">Action</th>
+                                        <?php if (!$isDatasetLocked): ?>
+                                            <th class="p-3 font-semibold w-16 text-center">Action</th>
+                                        <?php endif; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -551,7 +590,7 @@ require_once __DIR__ . '/../templates/header.php';
                                     if (empty($rows)): 
                                     ?>
                                         <tr>
-                                            <td colspan="<?php echo count($inspectDataset->getColumnMap()) + 2; ?>" class="p-8 text-center text-slate-500">
+                                            <td colspan="<?php echo count($inspectDataset->getColumnMap()) + ($isDatasetLocked ? 1 : 2); ?>" class="p-8 text-center text-slate-500">
                                                 No rows of data found.
                                             </td>
                                         </tr>
@@ -567,23 +606,26 @@ require_once __DIR__ . '/../templates/header.php';
                                                                data-row-index="<?php echo $index; ?>"
                                                                data-column-name="<?php echo SecurityHelper::escape($col); ?>"
                                                                class="dataset-cell-input w-full bg-transparent border-0 focus:border-0 focus:ring-0 text-xs text-slate-300 focus:text-white px-2 py-2"
+                                                               <?php echo $isDatasetLocked ? 'disabled' : ''; ?>
                                                         >
                                                     </td>
                                                 <?php endforeach; ?>
-                                                <td class="p-3 text-center bg-slate-950/20 border-l border-slate-800/40">
-                                                    <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.studioConfirm('Delete Row <?php echo $index + 1; ?>?', 'Delete', 'Delete Row').then((confirmed) => { if (confirmed) this.submit(); });">
-                                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                                                        <input type="hidden" name="action" value="delete_dataset_row">
-                                                        <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
-                                                        <input type="hidden" name="row_index" value="<?php echo $index; ?>">
-                                                        <button type="submit" class="text-rose-500 hover:text-rose-450 font-bold text-sm px-1" title="Delete Row">&times;</button>
-                                                    </form>
-                                                </td>
+                                                <?php if (!$isDatasetLocked): ?>
+                                                    <td class="p-3 text-center bg-slate-950/20 border-l border-slate-800/40">
+                                                        <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.studioConfirm('Delete Row <?php echo $index + 1; ?>?', 'Delete', 'Delete Row').then((confirmed) => { if (confirmed) this.submit(); });">
+                                                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                                            <input type="hidden" name="action" value="delete_dataset_row">
+                                                            <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                                                            <input type="hidden" name="row_index" value="<?php echo $index; ?>">
+                                                            <button type="submit" class="text-rose-500 hover:text-rose-450 font-bold text-sm px-1" title="Delete Row">&times;</button>
+                                                        </form>
+                                                    </td>
+                                                <?php endif; ?>
                                             </tr>
                                         <?php endforeach; ?>
                                         <?php if ($totalRows > $previewLimit): ?>
                                             <tr>
-                                                <td colspan="<?php echo count($inspectDataset->getColumnMap()) + 2; ?>" class="p-3 text-center text-xs text-amber-500/80 bg-amber-500/5 border-t border-amber-500/20">
+                                                <td colspan="<?php echo count($inspectDataset->getColumnMap()) + ($isDatasetLocked ? 1 : 2); ?>" class="p-3 text-center text-xs text-amber-500/80 bg-amber-500/5 border-t border-amber-500/20">
                                                     Showing first <?php echo $previewLimit; ?> of <?php echo $totalRows; ?> rows. All rows will be used during export.
                                                 </td>
                                             </tr>
@@ -666,8 +708,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Failed to save cell due to connection error.");
             });
         });
-    });
 });
+
+<?php if ($inspectDataset && !$isDatasetLocked): ?>
+// Heartbeat lock refresh
+setInterval(() => {
+    const formData = new FormData();
+    formData.append('dataset_id', '<?php echo $inspectDataset->getId(); ?>');
+    formData.append('csrf_token', '<?php echo SecurityHelper::escape($csrfToken); ?>');
+
+    fetch('api.php?action=heartbeat_lock_dataset', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.locked) {
+            alert("This dataset has been locked by another user or your session expired. Entering read-only mode.");
+            window.location.reload();
+        }
+    })
+    .catch(err => console.error('Lock heartbeat failed:', err));
+}, 20000);
+
+// Release lock on page unload
+window.addEventListener('beforeunload', () => {
+    const formData = new FormData();
+    formData.append('dataset_id', '<?php echo $inspectDataset->getId(); ?>');
+    formData.append('csrf_token', '<?php echo SecurityHelper::escape($csrfToken); ?>');
+    navigator.sendBeacon('api.php?action=release_lock_dataset', formData);
+});
+<?php endif; ?>
 </script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>

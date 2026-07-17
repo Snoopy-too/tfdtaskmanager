@@ -19,4 +19,6 @@ interface BgDatasetRepositoryInterface
     public function update(BgDataset $dataset): void;
 
     public function delete(int $id): void;
+
+    public function updateLock(int $id, ?int $userId, ?string $lockedAt): void;
 }

@@ -142,6 +142,106 @@ try {
             echo json_encode(['success' => true]);
             break;
 
+        case 'heartbeat_lock_rulebook':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $rulebookId = isset($_POST['rulebook_id']) ? (int)$_POST['rulebook_id'] : 0;
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            $rulebook = $rulebookService->getRulebookById($rulebookId);
+            if (!$rulebook) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Rulebook not found.']);
+                exit;
+            }
+
+            if ($rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
+                echo json_encode(['success' => false, 'locked' => true]);
+                exit;
+            }
+
+            $success = $rulebookService->acquireOrRefreshLock($rulebookId, $currentUserId);
+            echo json_encode(['success' => $success, 'locked' => !$success]);
+            break;
+
+        case 'release_lock_rulebook':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $rulebookId = isset($_POST['rulebook_id']) ? (int)$_POST['rulebook_id'] : 0;
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            $rulebookService->releaseLock($rulebookId, $currentUserId);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'heartbeat_lock_dataset':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if (!$dataset) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Dataset not found.']);
+                exit;
+            }
+
+            if ($datasetService->isDatasetLockedByOther($dataset, $currentUserId)) {
+                echo json_encode(['success' => false, 'locked' => true]);
+                exit;
+            }
+
+            $success = $datasetService->acquireOrRefreshLock($datasetId, $currentUserId);
+            echo json_encode(['success' => $success, 'locked' => !$success]);
+            break;
+
+        case 'release_lock_dataset':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            $datasetService->releaseLock($datasetId, $currentUserId);
+            echo json_encode(['success' => true]);
+            break;
+
         case 'list_assets':
             if ($method !== 'GET') {
                 throw new \InvalidArgumentException('Method not allowed.');
@@ -205,6 +305,13 @@ try {
             if (!$dataset) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Dataset not found.']);
+                exit;
+            }
+
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($datasetService->isDatasetLockedByOther($dataset, $currentUserId)) {
+                http_response_code(423);
+                echo json_encode(['error' => 'This dataset is currently locked by another user.']);
                 exit;
             }
 
@@ -274,6 +381,12 @@ try {
             if ($rulebookId === null) {
                 $saved = $rulebookService->createRulebook($projectId, $name, $content, $currentUserId);
             } else {
+                $rulebook = $rulebookService->getRulebookById($rulebookId);
+                if ($rulebook && $rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
+                    http_response_code(423);
+                    echo json_encode(['error' => 'This rulebook is currently locked by another user.']);
+                    exit;
+                }
                 $saved = $rulebookService->updateRulebook($rulebookId, $name, $content);
             }
 
@@ -300,6 +413,13 @@ try {
             }
 
             $rulebookId = isset($_POST['rulebook_id']) ? (int)$_POST['rulebook_id'] : 0;
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $rulebook = $rulebookService->getRulebookById($rulebookId);
+            if ($rulebook && $rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
+                http_response_code(423);
+                echo json_encode(['error' => 'This rulebook is currently locked by another user.']);
+                exit;
+            }
             $rulebookService->deleteRulebook($rulebookId);
             echo json_encode(['success' => true]);
             break;

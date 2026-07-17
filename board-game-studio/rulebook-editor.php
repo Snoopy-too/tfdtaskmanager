@@ -8,6 +8,7 @@ use App\Application\Services\ProjectService;
 use App\Application\Services\BgRulebookService;
 use App\Application\Services\BgTemplateService;
 use App\Application\Services\BgAssetService;
+use App\Application\Services\UserService;
 
 SecurityHelper::requireLogin();
 
@@ -15,6 +16,7 @@ $projectService = $container->get(ProjectService::class);
 $rulebookService = $container->get(BgRulebookService::class);
 $templateService = $container->get(BgTemplateService::class);
 $assetService = $container->get(BgAssetService::class);
+$userService = $container->get(UserService::class);
 
 $rulebookId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $rulebook = $rulebookService->getRulebookById($rulebookId);
@@ -23,6 +25,18 @@ if (!$rulebook) {
     header("Location: rulebooks.php");
     exit;
 }
+
+$lockUser = null;
+$isLocked = false;
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+if ($rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
+    $isLocked = true;
+    $lockUser = $userService->getUserById($rulebook->getLockedByUserId());
+} else {
+    $rulebookService->acquireOrRefreshLock($rulebook->getId(), $currentUserId);
+}
+
+
 
 $project = $projectService->getProjectById($rulebook->getProjectId());
 $_SESSION['last_project_id'] = $rulebook->getProjectId();
@@ -260,6 +274,18 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
         </div>
 
+        <?php if ($isLocked): ?>
+            <div class="bg-rose-500/10 border-b border-rose-500/20 text-rose-400 px-6 py-3 text-xs flex items-center justify-between gap-4 flex-shrink-0">
+                <div class="flex items-center space-x-2">
+                    <svg class="h-4 w-4 text-rose-500 animate-pulse flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    <span><strong>Read-Only View:</strong> This rulebook is currently locked for editing by <strong><?php echo SecurityHelper::escape($lockUser ? $lockUser->getName() : 'another user'); ?></strong>.</span>
+                </div>
+                <a href="rulebooks.php?project_id=<?php echo $rulebook->getProjectId(); ?>" class="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-white rounded-lg text-[10px] font-semibold transition flex-shrink-0">
+                    Back to Dashboard
+                </a>
+            </div>
+        <?php endif; ?>
+
         <!-- Scrollable Blocks Canvas -->
         <div class="flex-grow overflow-y-auto p-8" id="rulebook-viewport-container">
             <div id="rulebook-content-wrapper" class="max-w-3xl mx-auto bg-slate-900 border border-slate-850 shadow-2xl rounded-2xl min-h-[80vh] p-10 relative space-y-8 transition-colors duration-300">
@@ -340,6 +366,7 @@ require_once __DIR__ . '/../templates/header.php';
         rulebookId: <?php echo $rulebook->getId(); ?>,
         projectId: <?php echo $rulebook->getProjectId(); ?>,
         csrfToken: '<?php echo SecurityHelper::escape($csrfToken); ?>',
+        isLocked: <?php echo $isLocked ? 'true' : 'false'; ?>,
         initialBlocks: <?php echo json_encode($rulebook->getContent()); ?>,
         templates: <?php echo json_encode(array_map(function($t) {
             return [

@@ -17,4 +17,6 @@ interface BgRulebookRepositoryInterface
     public function save(BgRulebook $rulebook): BgRulebook;
 
     public function delete(int $id): void;
+
+    public function updateLock(int $id, ?int $userId, ?string $lockedAt): void;
 }

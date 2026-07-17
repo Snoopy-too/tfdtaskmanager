@@ -13,6 +13,8 @@ class BgDataset
     private int $createdBy;
     private string $createdAt;
     private string $updatedAt;
+    private ?int $lockedByUserId;
+    private ?string $lockedAt;
 
     public function __construct(
         ?int $id,
@@ -22,7 +24,9 @@ class BgDataset
         array $rowData,
         int $createdBy,
         string $createdAt = '',
-        string $updatedAt = ''
+        string $updatedAt = '',
+        ?int $lockedByUserId = null,
+        ?string $lockedAt = null
     ) {
         $this->id = $id;
         $this->projectId = $projectId;
@@ -32,6 +36,8 @@ class BgDataset
         $this->createdBy = $createdBy;
         $this->createdAt = $createdAt;
         $this->updatedAt = $updatedAt;
+        $this->lockedByUserId = $lockedByUserId;
+        $this->lockedAt = $lockedAt;
     }
 
     public function getId(): ?int
@@ -72,5 +78,25 @@ class BgDataset
     public function getUpdatedAt(): string
     {
         return $this->updatedAt;
+    }
+
+    public function getLockedByUserId(): ?int
+    {
+        return $this->lockedByUserId;
+    }
+
+    public function setLockedByUserId(?int $userId): void
+    {
+        $this->lockedByUserId = $userId;
+    }
+
+    public function getLockedAt(): ?string
+    {
+        return $this->lockedAt;
+    }
+
+    public function setLockedAt(?string $lockedAt): void
+    {
+        $this->lockedAt = $lockedAt;
     }
 }

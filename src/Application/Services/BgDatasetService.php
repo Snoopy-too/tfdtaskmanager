@@ -123,4 +123,40 @@ class BgDatasetService
             'rowData' => $rowData
         ];
     }
+
+    public function isDatasetLockedByOther(BgDataset $dataset, int $currentUserId): bool
+    {
+        if ($dataset->getLockedByUserId() === null) {
+            return false;
+        }
+        if ($dataset->getLockedByUserId() === $currentUserId) {
+            return false;
+        }
+        $lockedTime = strtotime($dataset->getLockedAt() ?? '');
+        if ($lockedTime === false) {
+            return false;
+        }
+        return (time() - $lockedTime) < 60; // Lock is valid for 60 seconds
+    }
+
+    public function acquireOrRefreshLock(int $datasetId, int $userId): bool
+    {
+        $dataset = $this->datasetRepository->findById($datasetId);
+        if (!$dataset) {
+            return false;
+        }
+        if ($this->isDatasetLockedByOther($dataset, $userId)) {
+            return false;
+        }
+        $this->datasetRepository->updateLock($datasetId, $userId, date('Y-m-d H:i:s'));
+        return true;
+    }
+
+    public function releaseLock(int $datasetId, int $userId): void
+    {
+        $dataset = $this->datasetRepository->findById($datasetId);
+        if ($dataset && $dataset->getLockedByUserId() === $userId) {
+            $this->datasetRepository->updateLock($datasetId, null, null);
+        }
+    }
 }

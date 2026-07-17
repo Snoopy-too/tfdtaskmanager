@@ -188,10 +188,13 @@ try {
             `column_map` JSON NOT NULL,
             `row_data` JSON NOT NULL,
             `created_by` INT NOT NULL,
+            `locked_by_user_id` INT DEFAULT NULL,
+            `locked_at` TIMESTAMP NULL DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             CONSTRAINT `fk_bg_datasets_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
             CONSTRAINT `fk_bg_datasets_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+            CONSTRAINT `fk_bg_datasets_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
             INDEX `idx_bg_datasets_project` (`project_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
@@ -259,10 +262,13 @@ try {
             `name` VARCHAR(150) NOT NULL,
             `content` JSON NOT NULL,
             `created_by` INT NOT NULL,
+            `locked_by_user_id` INT DEFAULT NULL,
+            `locked_at` TIMESTAMP NULL DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             CONSTRAINT `fk_bg_rulebooks_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
             CONSTRAINT `fk_bg_rulebooks_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+            CONSTRAINT `fk_bg_rulebooks_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
             INDEX `idx_bg_rulebooks_project` (`project_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
@@ -317,6 +323,24 @@ try {
         $pdo->exec("ALTER TABLE `bg_templates` ADD COLUMN `locked_at` TIMESTAMP NULL DEFAULT NULL AFTER `locked_by_user_id`");
         $pdo->exec("ALTER TABLE `bg_templates` ADD CONSTRAINT `fk_bg_templates_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL");
         echo "- Added locking columns and constraint to 'bg_templates' table via migration.\n";
+    }
+
+    // Migration: Check if locks columns exist on bg_rulebooks for existing DBs
+    $rulebookCols = $pdo->query("SHOW COLUMNS FROM `bg_rulebooks` LIKE 'locked_by_user_id'")->fetchAll();
+    if (empty($rulebookCols)) {
+        $pdo->exec("ALTER TABLE `bg_rulebooks` ADD COLUMN `locked_by_user_id` INT DEFAULT NULL AFTER `created_by`");
+        $pdo->exec("ALTER TABLE `bg_rulebooks` ADD COLUMN `locked_at` TIMESTAMP NULL DEFAULT NULL AFTER `locked_by_user_id`");
+        $pdo->exec("ALTER TABLE `bg_rulebooks` ADD CONSTRAINT `fk_bg_rulebooks_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL");
+        echo "- Added locking columns and constraint to 'bg_rulebooks' table via migration.\n";
+    }
+
+    // Migration: Check if locks columns exist on bg_datasets for existing DBs
+    $datasetCols = $pdo->query("SHOW COLUMNS FROM `bg_datasets` LIKE 'locked_by_user_id'")->fetchAll();
+    if (empty($datasetCols)) {
+        $pdo->exec("ALTER TABLE `bg_datasets` ADD COLUMN `locked_by_user_id` INT DEFAULT NULL AFTER `created_by`");
+        $pdo->exec("ALTER TABLE `bg_datasets` ADD COLUMN `locked_at` TIMESTAMP NULL DEFAULT NULL AFTER `locked_by_user_id`");
+        $pdo->exec("ALTER TABLE `bg_datasets` ADD CONSTRAINT `fk_bg_datasets_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL");
+        echo "- Added locking columns and constraint to 'bg_datasets' table via migration.\n";
     }
 
     echo "Database setup completed successfully!\n";

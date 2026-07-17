@@ -82,9 +82,25 @@ class PDOBgRulebookRepository implements BgRulebookRepositoryInterface
         $stmt->execute(['id' => $id]);
     }
 
+    public function updateLock(int $id, ?int $userId, ?string $lockedAt): void
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE bg_rulebooks
+            SET locked_by_user_id = :locked_by_user_id, locked_at = :locked_at
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'id' => $id,
+            'locked_by_user_id' => $userId,
+            'locked_at' => $lockedAt
+        ]);
+    }
+
     private function mapRowToEntity(array $row): BgRulebook
     {
         $content = json_decode($row['content'], true) ?: [];
+        $lockedByUserId = isset($row['locked_by_user_id']) && $row['locked_by_user_id'] !== null ? (int)$row['locked_by_user_id'] : null;
+        $lockedAt = $row['locked_at'] ?? null;
         return new BgRulebook(
             (int)$row['id'],
             (int)$row['project_id'],
@@ -92,7 +108,9 @@ class PDOBgRulebookRepository implements BgRulebookRepositoryInterface
             $content,
             (int)$row['created_by'],
             $row['created_at'],
-            $row['updated_at']
+            $row['updated_at'],
+            $lockedByUserId,
+            $lockedAt
         );
     }
 }

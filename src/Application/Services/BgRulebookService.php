@@ -229,4 +229,40 @@ class BgRulebookService
 
         return $importedCount;
     }
+
+    public function isRulebookLockedByOther(BgRulebook $rulebook, int $currentUserId): bool
+    {
+        if ($rulebook->getLockedByUserId() === null) {
+            return false;
+        }
+        if ($rulebook->getLockedByUserId() === $currentUserId) {
+            return false;
+        }
+        $lockedTime = strtotime($rulebook->getLockedAt() ?? '');
+        if ($lockedTime === false) {
+            return false;
+        }
+        return (time() - $lockedTime) < 60; // Lock is valid for 60 seconds
+    }
+
+    public function acquireOrRefreshLock(int $rulebookId, int $userId): bool
+    {
+        $rulebook = $this->rulebookRepo->findById($rulebookId);
+        if (!$rulebook) {
+            return false;
+        }
+        if ($this->isRulebookLockedByOther($rulebook, $userId)) {
+            return false;
+        }
+        $this->rulebookRepo->updateLock($rulebookId, $userId, date('Y-m-d H:i:s'));
+        return true;
+    }
+
+    public function releaseLock(int $rulebookId, int $userId): void
+    {
+        $rulebook = $this->rulebookRepo->findById($rulebookId);
+        if ($rulebook && $rulebook->getLockedByUserId() === $userId) {
+            $this->rulebookRepo->updateLock($rulebookId, null, null);
+        }
+    }
 }
