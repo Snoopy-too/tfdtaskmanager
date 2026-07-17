@@ -635,6 +635,10 @@
         const workspace = document.getElementById('editor-workspace');
         const viewport = document.getElementById('rulebook-viewport-container');
 
+        if (viewport) {
+            viewport.scrollTop = 0;
+        }
+
         const btnEdit = document.getElementById('btn-edit-mode');
         const btnPrev = document.getElementById('btn-preview-mode');
 
