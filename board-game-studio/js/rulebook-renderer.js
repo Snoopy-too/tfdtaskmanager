@@ -297,7 +297,11 @@
         container.appendChild(titleBar);
 
         const columns = document.createElement('div');
-        columns.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start';
+        if (isPreviewMode) {
+            columns.className = 'grid grid-cols-1 gap-6 items-start';
+        } else {
+            columns.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start';
+        }
 
         // Card Container
         const visualColumn = document.createElement('div');
