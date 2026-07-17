@@ -19,9 +19,11 @@ class BgAssetService
         $this->uploadDirBase = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'board-game-studio';
     }
 
-    public function getAssetsByProject(int $projectId): array
+    public function getAssetsByProject(?int $projectId): array
     {
-        $this->ensureDefaultIconsPopulated($projectId);
+        if ($projectId !== null) {
+            $this->ensureDefaultIconsPopulated($projectId);
+        }
         return $this->assetRepository->findByProjectId($projectId);
     }
 
@@ -91,7 +93,7 @@ class BgAssetService
         return $this->assetRepository->findById($id);
     }
 
-    public function uploadAsset(int $projectId, array $file, ?string $tag, int $uploadedByUserId): BgAsset
+    public function uploadAsset(?int $projectId, array $file, ?string $tag, int $uploadedByUserId): BgAsset
     {
         if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
             throw new ValidationException("Failed to upload file. Error code: " . ($file['error'] ?? 'unknown'));
@@ -151,7 +153,8 @@ class BgAssetService
         $storedFilename = bin2hex(random_bytes(16)) . '.' . $targetExt;
 
         // Ensure directories exist
-        $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $projectId;
+        $folderName = ($projectId === null) ? 'global' : (string)$projectId;
+        $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $folderName;
         if (!is_dir($projectUploadDir)) {
             if (!mkdir($projectUploadDir, 0755, true) && !is_dir($projectUploadDir)) {
                 throw new \RuntimeException("Failed to create upload directory: " . $projectUploadDir);
@@ -192,7 +195,8 @@ class BgAssetService
             throw new ValidationException("Asset not found.");
         }
 
-        $filePath = $this->uploadDirBase . DIRECTORY_SEPARATOR . $asset->getProjectId() . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+        $folderName = ($asset->getProjectId() === null) ? 'global' : (string)$asset->getProjectId();
+        $filePath = $this->uploadDirBase . DIRECTORY_SEPARATOR . $folderName . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
         if (file_exists($filePath)) {
             @unlink($filePath);
         }

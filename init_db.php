@@ -163,7 +163,7 @@ try {
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS `bg_assets` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `project_id` INT NOT NULL,
+            `project_id` INT DEFAULT NULL,
             `original_filename` VARCHAR(255) NOT NULL,
             `stored_filename` VARCHAR(255) NOT NULL,
             `mime_type` VARCHAR(100) NOT NULL,

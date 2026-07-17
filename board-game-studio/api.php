@@ -157,7 +157,7 @@ try {
                     'file_size_bytes' => $asset->getFileSizeBytes(),
                     'tag' => $asset->getTag(),
                     // Client-side relative URL path to files in upload folder
-                    'url' => '../uploads/board-game-studio/' . $asset->getProjectId() . '/' . $asset->getStoredFilename()
+                    'url' => '../uploads/board-game-studio/' . ($asset->getProjectId() === null ? 'global' : $asset->getProjectId()) . '/' . $asset->getStoredFilename()
                 ];
             }
             echo json_encode($formatted);

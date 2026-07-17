@@ -6,7 +6,7 @@ namespace App\Domain\Entities;
 class BgAsset
 {
     private ?int $id;
-    private int $projectId;
+    private ?int $projectId;
     private string $originalFilename;
     private string $storedFilename;
     private string $mimeType;
@@ -17,7 +17,7 @@ class BgAsset
 
     public function __construct(
         ?int $id,
-        int $projectId,
+        ?int $projectId,
         string $originalFilename,
         string $storedFilename,
         string $mimeType,
@@ -42,7 +42,7 @@ class BgAsset
         return $this->id;
     }
 
-    public function getProjectId(): int
+    public function getProjectId(): ?int
     {
         return $this->projectId;
     }

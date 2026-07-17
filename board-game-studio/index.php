@@ -248,7 +248,7 @@ require_once __DIR__ . '/../templates/header.php';
             <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-indigo-400 transition">Global Asset Library</h3>
+                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-indigo-400 transition">Project Asset Library</h3>
                         <p class="text-xs text-slate-400 mt-1">Images, icon tokens, and custom print fonts.</p>
                     </div>
                     <span class="text-2xl font-black text-indigo-400/80 bg-indigo-500/10 px-3 py-1 rounded-lg">

@@ -32,7 +32,7 @@ Because this app is part of a larger ecosystem, its architecture is tightly coup
 
 ### 3.1 Project & Asset Management
 *   **Parent Project Linkage:** Workspaces are defined by the parent task manager. Opening the Board Game Studio from a specific project automatically loads that project's context.
-*   **Global Asset Library:** A centralized repository within the project where users upload images (PNG, JPG, SVG) and custom fonts (TTF, OTF).
+*   **Project Asset Library:** A centralized repository within the project where users upload images (PNG, JPG, SVG) and custom fonts (TTF, OTF).
 *   **Tagging System:** Assets can be tagged (e.g., `[icon_health]`) for dynamic reference in text boxes.
 
 ### 3.2 The Visual Canvas (JavaScript Editor)

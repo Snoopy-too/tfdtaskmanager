@@ -16,10 +16,18 @@ class PDOBgAssetRepository implements BgAssetRepositoryInterface
         $this->pdo = $pdo;
     }
 
-    public function findByProjectId(int $projectId): array
+    public function findByProjectId(?int $projectId, bool $includeGlobal = true): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM bg_assets WHERE project_id = :project_id ORDER BY created_at DESC");
-        $stmt->execute(['project_id' => $projectId]);
+        if ($projectId === null) {
+            $stmt = $this->pdo->prepare("SELECT * FROM bg_assets WHERE project_id IS NULL ORDER BY created_at DESC");
+            $stmt->execute();
+        } else {
+            $sql = $includeGlobal 
+                ? "SELECT * FROM bg_assets WHERE project_id = :project_id OR project_id IS NULL ORDER BY created_at DESC" 
+                : "SELECT * FROM bg_assets WHERE project_id = :project_id ORDER BY created_at DESC";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute(['project_id' => $projectId]);
+        }
         $rows = $stmt->fetchAll();
         $assets = [];
         foreach ($rows as $row) {
@@ -85,13 +93,18 @@ class PDOBgAssetRepository implements BgAssetRepositoryInterface
         $stmt->execute(['id' => $id]);
     }
 
-    public function findByTag(int $projectId, string $tag): array
+    public function findByTag(?int $projectId, string $tag): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM bg_assets WHERE project_id = :project_id AND tag = :tag ORDER BY created_at DESC");
-        $stmt->execute([
-            'project_id' => $projectId,
-            'tag' => $tag
-        ]);
+        if ($projectId === null) {
+            $stmt = $this->pdo->prepare("SELECT * FROM bg_assets WHERE project_id IS NULL AND tag = :tag ORDER BY created_at DESC");
+            $stmt->execute(['tag' => $tag]);
+        } else {
+            $stmt = $this->pdo->prepare("SELECT * FROM bg_assets WHERE (project_id = :project_id OR project_id IS NULL) AND tag = :tag ORDER BY created_at DESC");
+            $stmt->execute([
+                'project_id' => $projectId,
+                'tag' => $tag
+            ]);
+        }
         $rows = $stmt->fetchAll();
         $assets = [];
         foreach ($rows as $row) {
@@ -104,7 +117,7 @@ class PDOBgAssetRepository implements BgAssetRepositoryInterface
     {
         return new BgAsset(
             (int)$row['id'],
-            (int)$row['project_id'],
+            $row['project_id'] !== null ? (int)$row['project_id'] : null,
             $row['original_filename'],
             $row['stored_filename'],
             $row['mime_type'],

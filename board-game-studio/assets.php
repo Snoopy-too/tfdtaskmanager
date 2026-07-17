@@ -39,7 +39,7 @@ if ($activeProjectId) {
     $activeProject = $projectService->getProjectById($activeProjectId);
 }
 
-if (!$activeProject) {
+if ($activeProjectId && !$activeProject) {
     header("Location: index.php");
     exit;
 }
@@ -58,7 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (!$file || $file['error'] === UPLOAD_ERR_NO_FILE) {
                 throw new ValidationException("Please select a file to upload.");
             }
-            $assetService->uploadAsset($activeProjectId, $file, $tag, $currentUserId);
+            $isGlobal = isset($_POST['is_global']) && $_POST['is_global'] === '1';
+            $uploadProjectId = ($activeProjectId === null || $isGlobal) ? null : $activeProjectId;
+            $assetService->uploadAsset($uploadProjectId, $file, $tag, $currentUserId);
             $success = "Asset uploaded successfully.";
         } catch (ValidationException $e) {
             $error = $e->getMessage();
@@ -150,15 +152,21 @@ require_once __DIR__ . '/../templates/header.php';
                 <span>/</span>
                 <span class="text-slate-200">Asset Library</span>
             </div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white mt-1">Global Asset Library</h1>
-            <p class="text-slate-400 mt-1">Upload and organize images, icons, and fonts for canvas template layers.</p>
+            <h1 class="text-3xl font-extrabold tracking-tight text-white mt-1">
+                <?php echo $activeProjectId === null ? 'Global Asset Library' : 'Project Asset Library'; ?>
+            </h1>
+            <p class="text-slate-400 mt-1">
+                <?php echo $activeProjectId === null 
+                    ? 'Upload and organize assets available across all game projects.' 
+                    : 'Upload and organize assets for the current project: <span class="text-indigo-400 font-semibold">' . SecurityHelper::escape($activeProject->getName()) . '</span>'; ?>
+            </p>
         </div>
 
         <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 p-2 rounded-xl">
             <label for="project_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-2">Project:</label>
             <form method="GET" class="m-0">
                 <select id="project_select" name="project_id" onchange="this.form.submit()" class="bg-slate-950 border-0 text-slate-100 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
-                    <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None</option>
+                    <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>Global Library (System-Wide)</option>
                     <?php foreach ($projects as $proj): ?>
                         <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
                             <?php echo SecurityHelper::escape($proj->getName()); ?>
@@ -214,6 +222,13 @@ require_once __DIR__ . '/../templates/header.php';
                         <p class="text-[10px] text-slate-500 mt-1">Tags let you insert dynamic icons via text boxes (e.g. [icon_health]).</p>
                     </div>
 
+                    <?php if ($activeProjectId !== null): ?>
+                        <div class="flex items-center space-x-2 py-1">
+                            <input type="checkbox" id="is_global" name="is_global" value="1" class="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
+                            <label for="is_global" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Make Global (available to all projects)</label>
+                        </div>
+                    <?php endif; ?>
+
                     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl shadow-lg hover:shadow-indigo-500/20 py-2.5 px-4 transition duration-200">
                         Upload Asset
                     </button>
@@ -267,7 +282,8 @@ require_once __DIR__ . '/../templates/header.php';
                         $isImage = str_starts_with($asset->getMimeType(), 'image/');
                         $ext = strtolower(pathinfo($asset->getStoredFilename(), PATHINFO_EXTENSION));
                         $isFont = str_contains($asset->getMimeType(), 'font') || in_array($ext, ['ttf', 'otf']);
-                        $fileUrl = '../uploads/board-game-studio/' . $asset->getProjectId() . '/' . $asset->getStoredFilename();
+                        $folderName = ($asset->getProjectId() === null) ? 'global' : $asset->getProjectId();
+                        $fileUrl = '../uploads/board-game-studio/' . $folderName . '/' . $asset->getStoredFilename();
                         ?>
                         <div class="bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-slate-700 hover:shadow-lg transition group">
                             <!-- Preview Box -->
@@ -291,10 +307,16 @@ require_once __DIR__ . '/../templates/header.php';
 
                             <!-- Details Block -->
                             <div class="p-4 space-y-3">
-                                <div>
-                                    <h4 class="text-sm font-bold text-slate-200 truncate" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-sm font-bold text-slate-200 truncate pr-2" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>">
                                         <?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>
                                     </h4>
+                                    <?php if ($asset->getProjectId() === null): ?>
+                                        <span class="text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 border border-indigo-500/20 rounded-md shrink-0">Global</span>
+                                    <?php else: ?>
+                                        <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 border border-slate-700/80 rounded-md shrink-0">Project</span>
+                                    <?php endif; ?>
+                                </div>
                                     <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1">
                                         <span><?php echo round($asset->getFileSizeBytes() / 1024, 1); ?> KB</span>
                                         <span>Uploaded <?php echo date('Y-m-d', strtotime($asset->getCreatedAt())); ?></span>
