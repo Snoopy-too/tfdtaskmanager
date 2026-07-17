@@ -307,16 +307,17 @@ require_once __DIR__ . '/../templates/header.php';
 
                             <!-- Details Block -->
                             <div class="p-4 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="text-sm font-bold text-slate-200 truncate pr-2" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>">
-                                        <?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>
-                                    </h4>
-                                    <?php if ($asset->getProjectId() === null): ?>
-                                        <span class="text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 border border-indigo-500/20 rounded-md shrink-0">Global</span>
-                                    <?php else: ?>
-                                        <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 border border-slate-700/80 rounded-md shrink-0">Project</span>
-                                    <?php endif; ?>
-                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-bold text-slate-200 truncate pr-2" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>">
+                                            <?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>
+                                        </h4>
+                                        <?php if ($asset->getProjectId() === null): ?>
+                                            <span class="text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 border border-indigo-500/20 rounded-md shrink-0">Global</span>
+                                        <?php else: ?>
+                                            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 border border-slate-700/80 rounded-md shrink-0">Project</span>
+                                        <?php endif; ?>
+                                    </div>
                                     <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1">
                                         <span><?php echo round($asset->getFileSizeBytes() / 1024, 1); ?> KB</span>
                                         <span>Uploaded <?php echo date('Y-m-d', strtotime($asset->getCreatedAt())); ?></span>
