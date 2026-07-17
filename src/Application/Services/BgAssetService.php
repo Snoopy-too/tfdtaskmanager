@@ -21,13 +21,11 @@ class BgAssetService
 
     public function getAssetsByProject(?int $projectId): array
     {
-        if ($projectId !== null) {
-            $this->ensureDefaultIconsPopulated($projectId);
-        }
+        $this->ensureDefaultIconsPopulated($projectId);
         return $this->assetRepository->findByProjectId($projectId);
     }
 
-    private function ensureDefaultIconsPopulated(int $projectId): void
+    private function ensureDefaultIconsPopulated(?int $projectId): void
     {
         $defaultIcons = [
             'icon_speed' => 'icon_speed.svg',
@@ -37,14 +35,15 @@ class BgAssetService
             'icon_stamina' => 'icon_stamina.svg'
         ];
 
-        $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $projectId;
+        $folderName = ($projectId === null) ? 'global' : (string)$projectId;
+        $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $folderName;
         if (!is_dir($projectUploadDir)) {
             mkdir($projectUploadDir, 0755, true);
         }
 
         $srcIconsDir = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'icons';
 
-        $existingAssets = $this->assetRepository->findByProjectId($projectId);
+        $existingAssets = $this->assetRepository->findByProjectId($projectId, false);
         $existingTags = [];
         foreach ($existingAssets as $asset) {
             if ($asset->getTag() !== null) {
