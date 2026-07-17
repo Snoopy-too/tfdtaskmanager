@@ -225,8 +225,14 @@ require_once __DIR__ . '/../templates/header.php';
                 <div class="space-y-2 text-center">
                     <h2 class="text-xl font-bold text-slate-200">Welcome to the Board Game Design Studio!</h2>
                     <p class="text-slate-400 max-w-md mx-auto text-sm">
-                        Please select a project from the dropdown menu in the top right to start prototyping components, managing asset libraries, and binding card datasets.
+                        Please select a project from the dropdown menu in the top right to start prototyping components, or click the button below to manage system-wide global assets.
                     </p>
+                    <div class="pt-4">
+                        <a href="assets.php" class="inline-flex items-center px-4 py-2 border border-slate-700 hover:border-indigo-500/50 hover:bg-slate-800 text-sm font-semibold rounded-xl text-slate-300 hover:text-white transition duration-200">
+                            <span>Manage Global Assets</span>
+                            <svg class="h-4 w-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </a>
+                    </div>
                 </div>
             </div>
         <?php else: ?>
