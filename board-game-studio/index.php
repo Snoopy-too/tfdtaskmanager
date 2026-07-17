@@ -249,7 +249,7 @@ require_once __DIR__ . '/../templates/header.php';
         <?php endif; ?>
 
         <!-- Quick Stats / Navigation Links -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Asset Library Card -->
             <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
                 <div class="flex justify-between items-start">
@@ -302,6 +302,25 @@ require_once __DIR__ . '/../templates/header.php';
                 <div class="mt-6">
                     <a href="export.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
                         <span>Generate Exports</span>
+                        <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Rulebooks & Glossary Card -->
+            <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-amber-400 transition">Rulebooks & Glossary</h3>
+                        <p class="text-xs text-slate-400 mt-1">Write rules with synchronized iconography and glossary terms.</p>
+                    </div>
+                    <svg class="h-8 w-8 text-amber-400/60 bg-amber-500/10 p-1.5 rounded-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                </div>
+                <div class="mt-6">
+                    <a href="rulebooks.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
+                        <span>Manage Rulebooks</span>
                         <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
                 </div>

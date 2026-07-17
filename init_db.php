@@ -251,6 +251,43 @@ try {
     ");
     echo "- 'bg_template_layers' table created.\n";
 
+    // 13. Board Game Rulebooks table
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `bg_rulebooks` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `project_id` INT NOT NULL,
+            `name` VARCHAR(150) NOT NULL,
+            `content` JSON NOT NULL,
+            `created_by` INT NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_bg_rulebooks_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_bg_rulebooks_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+            INDEX `idx_bg_rulebooks_project` (`project_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    echo "- 'bg_rulebooks' table created.\n";
+
+    // 14. Board Game Glossary table
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `bg_glossary` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `project_id` INT NOT NULL,
+            `term_key` VARCHAR(100) NOT NULL,
+            `term_name` VARCHAR(100) NOT NULL,
+            `term_description` TEXT NOT NULL,
+            `created_by` INT NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_bg_glossary_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_bg_glossary_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+            UNIQUE KEY `idx_project_term` (`project_id`, `term_key`),
+            INDEX `idx_bg_glossary_project` (`project_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    echo "- 'bg_glossary' table created.\n";
+
+
     // Seed default Super-Admin if not exists
     $adminEmail = 'admin@tfdtaskmgr.local';
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = :email");
