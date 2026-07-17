@@ -382,7 +382,11 @@
 
         const pins = block.pins || [];
         if (pins.length === 0) {
-            pinsList.innerHTML = `<p class="text-xs text-slate-500 italic">${!block.template_id ? 'Select a template.' : 'Click anywhere on the component to place a numbered label pin.'}</p>`;
+            if (isPreviewMode) {
+                pinsList.innerHTML = `<p class="text-xs text-slate-500 italic">No labels defined for this component.</p>`;
+            } else {
+                pinsList.innerHTML = `<p class="text-xs text-slate-500 italic">${!block.template_id ? 'Select a template.' : 'Click anywhere on the component to place a numbered label pin.'}</p>`;
+            }
         } else {
             pins.forEach((pin, pinIdx) => {
                 const pinRow = document.createElement('div');
