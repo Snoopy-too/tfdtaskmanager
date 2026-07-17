@@ -19,6 +19,25 @@
     const glossaryMap = {};
 
     function init() {
+        if (typeof fabric !== 'undefined' && fabric.Text) {
+            fabric.Text.prototype._setTextStyles = function(ctx, charStyle, forMeasuring) {
+                ctx.textBaseline = 'alphabetic';
+                if (this.path) {
+                    switch (this.pathAlign) {
+                        case 'center':
+                            ctx.textBaseline = 'middle';
+                            break;
+                        case 'ascender':
+                            ctx.textBaseline = 'top';
+                            break;
+                        case 'descender':
+                            ctx.textBaseline = 'bottom';
+                            break;
+                    }
+                }
+                ctx.font = this._getFontDeclaration(charStyle, forMeasuring);
+            };
+        }
         // Build maps
         window.rulebookConfig.assets.forEach(a => {
             if (a.tag) {

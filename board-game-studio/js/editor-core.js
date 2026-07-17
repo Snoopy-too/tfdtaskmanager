@@ -30,8 +30,29 @@
     function initCanvas() {
         // Force FabricJS to append the hidden textarea to the document body instead of the transformed wrapper.
         // This is CRITICAL to prevent massive scroll jumps when entering edit mode inside a scaled container.
-        if (fabric && fabric.IText) {
-            fabric.IText.prototype.hiddenTextareaContainer = document.body;
+        if (fabric) {
+            if (fabric.IText) {
+                fabric.IText.prototype.hiddenTextareaContainer = document.body;
+            }
+            if (fabric.Text) {
+                fabric.Text.prototype._setTextStyles = function(ctx, charStyle, forMeasuring) {
+                    ctx.textBaseline = 'alphabetic';
+                    if (this.path) {
+                        switch (this.pathAlign) {
+                            case 'center':
+                                ctx.textBaseline = 'middle';
+                                break;
+                            case 'ascender':
+                                ctx.textBaseline = 'top';
+                                break;
+                            case 'descender':
+                                ctx.textBaseline = 'bottom';
+                                break;
+                        }
+                    }
+                    ctx.font = this._getFontDeclaration(charStyle, forMeasuring);
+                };
+            }
         }
 
         const width = window.studioConfig.canvasWidth;
