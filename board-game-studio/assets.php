@@ -166,7 +166,7 @@ require_once __DIR__ . '/../templates/header.php';
             <label for="project_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-2">Project:</label>
             <form method="GET" class="m-0">
                 <select id="project_select" name="project_id" onchange="this.form.submit()" class="bg-slate-950 border-0 text-slate-100 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
-                    <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>Global Library (System-Wide)</option>
+                    <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None (Global Library)</option>
                     <?php foreach ($projects as $proj): ?>
                         <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
                             <?php echo SecurityHelper::escape($proj->getName()); ?>
