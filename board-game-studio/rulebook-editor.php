@@ -121,68 +121,111 @@ require_once __DIR__ . '/../templates/header.php';
                 <p class="text-xs text-slate-500">Project: <?php echo SecurityHelper::escape($project->getName()); ?></p>
             </div>
 
-            <!-- Block Adder Options -->
-            <div class="space-y-3">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Add Rulebook Block</h3>
-                <div class="grid grid-cols-1 gap-2">
-                    <button onclick="addBlock('markdown')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
-                        <span class="p-2 rounded-lg bg-amber-500/10 text-amber-400">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
-                        </span>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-200">Markdown Text</p>
-                            <p class="text-[10px] text-slate-500">Write rules, map icons, and terms.</p>
-                        </div>
-                    </button>
+            <!-- Sidebar Tab Buttons -->
+            <div class="flex border-b border-slate-800 text-xs font-semibold mb-4">
+                <button id="btn-sidebar-blocks" onclick="switchEditorSidebarTab('blocks')" class="flex-grow pb-2 border-b-2 border-amber-500 text-white transition">
+                    Blocks
+                </button>
+                <button id="btn-sidebar-theme" onclick="switchEditorSidebarTab('theme')" class="flex-grow pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition">
+                    Theme & CSS
+                </button>
+            </div>
 
-                    <button onclick="addBlock('setup')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
-                        <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                        </span>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-200">Game Setup Diagram</p>
-                            <p class="text-[10px] text-slate-500">Drag & drop visual components.</p>
-                        </div>
-                    </button>
+            <!-- Tab Content: Blocks -->
+            <div id="tab-content-blocks" class="space-y-6">
+                <!-- Block Adder Options -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Add Rulebook Block</h3>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button onclick="addBlock('markdown')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                            <span class="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-200">Markdown Text</p>
+                                <p class="text-[10px] text-slate-500">Write rules, map icons, and terms.</p>
+                            </div>
+                        </button>
 
-                    <button onclick="addBlock('component_list')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
-                        <span class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-                        </span>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-200">Component Inventory</p>
-                            <p class="text-[10px] text-slate-500">Auto-generated templates list.</p>
-                        </div>
-                    </button>
+                        <button onclick="addBlock('setup')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                            <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-200">Game Setup Diagram</p>
+                                <p class="text-[10px] text-slate-500">Drag & drop visual components.</p>
+                            </div>
+                        </button>
 
-                    <button onclick="addBlock('anatomy')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
-                        <span class="p-2 rounded-lg bg-rose-500/10 text-rose-400">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
-                        </span>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-200">Anatomy of a Component</p>
-                            <p class="text-[10px] text-slate-500">Label regions with coordinate pins.</p>
-                        </div>
-                    </button>
+                        <button onclick="addBlock('component_list')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                            <span class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-200">Component Inventory</p>
+                                <p class="text-[10px] text-slate-500">Auto-generated templates list.</p>
+                            </div>
+                        </button>
+
+                        <button onclick="addBlock('anatomy')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                            <span class="p-2 rounded-lg bg-rose-500/10 text-rose-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-200">Anatomy of a Component</p>
+                                <p class="text-[10px] text-slate-500">Label regions with coordinate pins.</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Glossary and Assets list overview -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Icon Tag Cheat Sheet</h3>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 max-h-48 overflow-y-auto">
+                        <?php if (empty($assets)): ?>
+                            <p class="text-[10px] text-slate-500">Upload assets in Studio to see tags.</p>
+                        <?php else: ?>
+                            <?php foreach ($assets as $asset): ?>
+                                <?php if ($asset->getTag()): ?>
+                                    <div class="flex items-center justify-between text-[11px]">
+                                        <code class="text-amber-400 font-mono">[<?php echo SecurityHelper::escape($asset->getTag()); ?>]</code>
+                                        <span class="text-slate-500 truncate max-w-[120px]" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>"><?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?></span>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
-            <!-- Glossary and Assets list overview -->
-            <div class="space-y-3">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Icon Tag Cheat Sheet</h3>
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 max-h-48 overflow-y-auto">
-                    <?php if (empty($assets)): ?>
-                        <p class="text-[10px] text-slate-500">Upload assets in Studio to see tags.</p>
-                    <?php else: ?>
-                        <?php foreach ($assets as $asset): ?>
-                            <?php if ($asset->getTag()): ?>
-                                <div class="flex items-center justify-between text-[11px]">
-                                    <code class="text-amber-400 font-mono">[<?php echo SecurityHelper::escape($asset->getTag()); ?>]</code>
-                                    <span class="text-slate-500 truncate max-w-[120px]" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>"><?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?></span>
-                                </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+            <!-- Tab Content: Theme & CSS -->
+            <div id="tab-content-theme" class="space-y-6 hidden">
+                <div class="space-y-4">
+                    <div>
+                         <label class="block text-xs font-semibold text-slate-400 mb-1">Rulebook Typography</label>
+                         <select id="theme-font-select" onchange="updateThemeFont(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-amber-500">
+                             <option value="Inter">Classic Sans-Serif (Inter)</option>
+                             <option value="Playfair Display">Elegant Classic Serif (Playfair Display)</option>
+                             <option value="Outfit">Modern Clean Geometric (Outfit)</option>
+                             <option value="Cinzel">Fantasy & Medieval Theme (Cinzel)</option>
+                             <option value="Share Tech Mono">Sci-Fi & Cyberpunk (Share Tech Mono)</option>
+                         </select>
+                    </div>
+
+                    <div>
+                         <label class="block text-xs font-semibold text-slate-400 mb-1">Primary Accent Color</label>
+                         <div class="flex items-center space-x-3">
+                             <input type="color" id="theme-color-input" onchange="updateThemeColor(this.value)" class="w-10 h-10 bg-transparent border-0 cursor-pointer rounded">
+                             <span id="theme-color-hex" class="text-xs font-mono text-slate-450">#f59e0b</span>
+                         </div>
+                    </div>
+
+                    <div>
+                         <label class="block text-xs font-semibold text-slate-400 mb-1">Custom CSS Styling overrides</label>
+                         <p class="text-[10px] text-slate-500 mb-2">Write custom CSS rules to adjust padding, change borders, background colors, custom titles, page breaks, etc.</p>
+                         <textarea id="theme-css-textarea" oninput="updateThemeCss(this.value)" rows="12" class="w-full font-mono text-[10px] bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:ring-amber-500 focus:border-amber-500" placeholder="/* Custom CSS overrides */&#10;h2 { font-style: italic; }&#10;.block-card { border-radius: 12px; }"></textarea>
+                    </div>
                 </div>
             </div>
         </div>

@@ -31,7 +31,31 @@
 
         // Initialize blocks from config
         const raw = window.rulebookConfig.initialBlocks;
-        blocks = Array.isArray(raw) ? raw : [];
+        let initialBlocksList = Array.isArray(raw) ? raw : [];
+        let themeBlock = initialBlocksList.find(b => b.type === 'theme');
+        if (!themeBlock) {
+            themeBlock = {
+                type: 'theme',
+                fontFamily: 'Inter',
+                accentColor: '#f59e0b',
+                customCss: ''
+            };
+            initialBlocksList.unshift(themeBlock);
+        }
+        blocks = initialBlocksList;
+
+        // Apply theme styles
+        applyThemeSettings();
+
+        // Hydrate sidebar form fields
+        const fontSelect = document.getElementById('theme-font-select');
+        const colorInput = document.getElementById('theme-color-input');
+        const colorHex = document.getElementById('theme-color-hex');
+        const cssTextarea = document.getElementById('theme-css-textarea');
+        if (fontSelect) fontSelect.value = themeBlock.fontFamily || 'Inter';
+        if (colorInput) colorInput.value = themeBlock.accentColor || '#f59e0b';
+        if (colorHex) colorHex.textContent = themeBlock.accentColor || '#f59e0b';
+        if (cssTextarea) cssTextarea.value = themeBlock.customCss || '';
 
         renderBlocks();
         setupDragEvents();
@@ -43,7 +67,8 @@
         const emptyState = document.getElementById('empty-blocks-state');
         list.innerHTML = '';
 
-        if (blocks.length === 0) {
+        const visibleBlocks = blocks.filter(b => b.type !== 'theme');
+        if (visibleBlocks.length === 0) {
             emptyState.classList.remove('hidden');
             return;
         } else {
@@ -51,6 +76,8 @@
         }
 
         blocks.forEach((block, index) => {
+            if (block.type === 'theme') return;
+
             const card = document.createElement('div');
             card.className = `block-card bg-slate-900 border ${isPreviewMode ? 'border-transparent p-0' : 'border-slate-800 p-6'} rounded-2xl relative transition-all duration-200`;
             card.dataset.index = index;
@@ -700,6 +727,91 @@
         btnCancel.onclick = () => {
             cleanUp();
         };
+    };
+
+    // Theme Management functions
+    function applyThemeSettings() {
+        const theme = blocks.find(b => b.type === 'theme') || { fontFamily: 'Inter', accentColor: '#f59e0b', customCss: '' };
+        
+        // 1. Inject Google Font dynamically if needed
+        const fontId = 'gfont-' + theme.fontFamily.replace(/\s+/g, '-');
+        if (!document.getElementById(fontId)) {
+            const link = document.createElement('link');
+            link.id = fontId;
+            link.rel = 'stylesheet';
+            link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(theme.fontFamily)}:wght@400;600;850&display=swap`;
+            document.head.appendChild(link);
+        }
+
+        // 2. Inject CSS rules and overrides
+        let styleTag = document.getElementById('rulebook-custom-styles');
+        if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = 'rulebook-custom-styles';
+            document.head.appendChild(styleTag);
+        }
+
+        styleTag.innerHTML = `
+            #rulebook-content-wrapper, .prose {
+                font-family: '${theme.fontFamily}', sans-serif !important;
+            }
+            :root {
+                --theme-accent-color: ${theme.accentColor} !important;
+            }
+            /* Custom CSS Overrides */
+            ${theme.customCss || ''}
+        `;
+    }
+
+    window.switchEditorSidebarTab = function(tab) {
+        const tabBlocks = document.getElementById('tab-content-blocks');
+        const tabTheme = document.getElementById('tab-content-theme');
+        const btnBlocks = document.getElementById('btn-sidebar-blocks');
+        const btnTheme = document.getElementById('btn-sidebar-theme');
+
+        if (tab === 'theme') {
+            tabBlocks.classList.add('hidden');
+            tabTheme.classList.remove('hidden');
+            btnTheme.classList.remove('border-transparent', 'text-slate-400');
+            btnTheme.classList.add('border-amber-500', 'text-white');
+            btnBlocks.classList.remove('border-amber-500', 'text-white');
+            btnBlocks.classList.add('border-transparent', 'text-slate-400');
+        } else {
+            tabBlocks.classList.remove('hidden');
+            tabTheme.classList.add('hidden');
+            btnBlocks.classList.remove('border-transparent', 'text-slate-400');
+            btnBlocks.classList.add('border-amber-500', 'text-white');
+            btnTheme.classList.remove('border-amber-500', 'text-white');
+            btnTheme.classList.add('border-transparent', 'text-slate-400');
+        }
+    };
+
+    window.updateThemeFont = function(font) {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.fontFamily = font;
+            applyThemeSettings();
+            saveRulebook(true);
+        }
+    };
+
+    window.updateThemeColor = function(color) {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.accentColor = color;
+            document.getElementById('theme-color-hex').textContent = color;
+            applyThemeSettings();
+            saveRulebook(true);
+        }
+    };
+
+    window.updateThemeCss = function(css) {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.customCss = css;
+            applyThemeSettings();
+            saveRulebook(true);
+        }
     };
 
     window.triggerPrint = function() {
