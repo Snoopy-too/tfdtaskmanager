@@ -72,7 +72,7 @@ require_once __DIR__ . '/../templates/header.php';
         ::-webkit-scrollbar {
             display: none !important;
         }
-        .overflow-x-auto, [class*="overflow-x-auto"], [class*="overflow-y-auto"] {
+        .overflow-x-auto {
             overflow: hidden !important;
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
@@ -82,6 +82,14 @@ require_once __DIR__ . '/../templates/header.php';
         }
         .w-\[800px\] {
             max-width: none !important;
+        }
+        /* Prevent dark background leak from parent workspace containers */
+        #editor-workspace, 
+        #editor-workspace > div {
+            background: white !important;
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
         }
         /* Prevent layout columns and notes lists from breaking across pages */
         .layout-stacked > div,
