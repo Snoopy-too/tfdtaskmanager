@@ -589,6 +589,45 @@
                         pinDiv.style.left = `${pin.x}%`;
                         pinDiv.style.top = `${pin.y}%`;
                         pinDiv.textContent = pinIdx + 1;
+                        
+                        // Add dragging events to the pin if in edit mode
+                        if (!isPreviewMode) {
+                            pinDiv.style.touchAction = 'none';
+                            pinDiv.style.cursor = 'grab';
+                            
+                            pinDiv.addEventListener('pointerdown', (e) => {
+                                e.stopPropagation(); // Prevent adding a new pin on canvas click
+                                pinDiv.style.cursor = 'grabbing';
+                                pinDiv.setPointerCapture(e.pointerId);
+                                
+                                const onPointerMove = (moveEvent) => {
+                                    const rect = pinCanvas.getBoundingClientRect();
+                                    let newX = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+                                    let newY = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+                                    
+                                    newX = Math.max(0, Math.min(100, newX));
+                                    newY = Math.max(0, Math.min(100, newY));
+                                    
+                                    pin.x = Math.round(newX);
+                                    pin.y = Math.round(newY);
+                                    
+                                    pinDiv.style.left = `${pin.x}%`;
+                                    pinDiv.style.top = `${pin.y}%`;
+                                };
+                                
+                                const onPointerUp = (upEvent) => {
+                                    pinDiv.style.cursor = 'grab';
+                                    pinDiv.releasePointerCapture(upEvent.pointerId);
+                                    pinDiv.removeEventListener('pointermove', onPointerMove);
+                                    pinDiv.removeEventListener('pointerup', onPointerUp);
+                                    saveRulebook(true);
+                                };
+                                
+                                pinDiv.addEventListener('pointermove', onPointerMove);
+                                pinDiv.addEventListener('pointerup', onPointerUp);
+                            });
+                        }
+                        
                         pinCanvas.appendChild(pinDiv);
                     });
 
