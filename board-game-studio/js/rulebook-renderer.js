@@ -1034,10 +1034,20 @@
         // 1. Inject Google Font dynamically if needed
         const fontId = 'gfont-' + theme.fontFamily.replace(/\s+/g, '-');
         if (!document.getElementById(fontId)) {
+            let fontUrl;
+            if (theme.fontFamily === 'Queensberry Vintage') {
+                fontUrl = `https://fonts.googleapis.com/css2?family=IM+Fell+Double+Pica:ital@0;1&family=Special+Elite&display=swap`;
+            } else {
+                let weights = ':wght@400;600;800';
+                if (theme.fontFamily === 'Share Tech Mono') {
+                    weights = '';
+                }
+                fontUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(theme.fontFamily)}${weights}&display=swap`;
+            }
             const link = document.createElement('link');
             link.id = fontId;
             link.rel = 'stylesheet';
-            link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(theme.fontFamily)}:wght@400;600;850&display=swap`;
+            link.href = fontUrl;
             document.head.appendChild(link);
         }
 
@@ -1049,10 +1059,78 @@
             document.head.appendChild(styleTag);
         }
 
+        let baseCss = '';
+        if (theme.fontFamily === 'Queensberry Vintage') {
+            baseCss = `
+                #rulebook-content-wrapper {
+                    background-color: #f2eee2 !important;
+                    color: #2c2421 !important;
+                    border: 1px solid #dcd7ca !important;
+                    box-sizing: border-box;
+                }
+                #rulebook-content-wrapper .prose, 
+                #rulebook-content-wrapper p, 
+                #rulebook-content-wrapper span, 
+                #rulebook-content-wrapper td, 
+                #rulebook-content-wrapper li {
+                    font-family: 'Special Elite', monospace !important;
+                    color: #37302d !important;
+                }
+                #rulebook-content-wrapper h1, 
+                #rulebook-content-wrapper h2, 
+                #rulebook-content-wrapper h3, 
+                #rulebook-content-wrapper h4 {
+                    font-family: 'IM Fell Double Pica', Georgia, serif !important;
+                    color: #2c2421 !important;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                #rulebook-content-wrapper h2 {
+                    border-bottom: 4px double #2c2421 !important;
+                    padding-bottom: 0.5rem;
+                    margin-top: 2rem;
+                }
+                #rulebook-content-wrapper table {
+                    border-collapse: collapse !important;
+                    border: 2px solid #2c2421 !important;
+                }
+                #rulebook-content-wrapper th {
+                    background-color: #e8e3d5 !important;
+                    border-bottom: 3px double #2c2421 !important;
+                    font-family: 'IM Fell Double Pica', serif !important;
+                    color: #2c2421 !important;
+                    font-weight: 700 !important;
+                    text-transform: uppercase;
+                }
+                #rulebook-content-wrapper td {
+                    border-bottom: 1px solid #dcd7ca !important;
+                    color: #37302d !important;
+                }
+                #rulebook-content-wrapper .alert-box, 
+                #rulebook-content-wrapper .bg-rose-500\\/10,
+                #rulebook-content-wrapper [class*="bg-red-"] {
+                    background-color: #f5eae8 !important;
+                    border: 1px solid #8f2d30 !important;
+                    color: #8f2d30 !important;
+                    border-radius: 4px !important;
+                }
+                #rulebook-content-wrapper .anatomy-pin, 
+                #rulebook-content-wrapper [class*="bg-amber-500"] {
+                    background-color: #1b2d42 !important;
+                    border-color: #1b2d42 !important;
+                    color: #e6c895 !important;
+                }
+            `;
+        } else {
+            baseCss = `
+                #rulebook-content-wrapper, .prose {
+                    font-family: '${theme.fontFamily}', sans-serif !important;
+                }
+            `;
+        }
+
         styleTag.innerHTML = `
-            #rulebook-content-wrapper, .prose {
-                font-family: '${theme.fontFamily}', sans-serif !important;
-            }
+            ${baseCss}
             :root {
                 --theme-accent-color: ${theme.accentColor} !important;
             }

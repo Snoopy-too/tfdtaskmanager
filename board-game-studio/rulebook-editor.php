@@ -296,6 +296,7 @@ require_once __DIR__ . '/../templates/header.php';
                              <option value="Outfit">Modern Clean Geometric (Outfit)</option>
                              <option value="Cinzel">Fantasy & Medieval Theme (Cinzel)</option>
                              <option value="Share Tech Mono">Sci-Fi & Cyberpunk (Share Tech Mono)</option>
+                             <option value="Queensberry Vintage">Queensberry Vintage (Special Elite & Serif)</option>
                          </select>
                     </div>
 
