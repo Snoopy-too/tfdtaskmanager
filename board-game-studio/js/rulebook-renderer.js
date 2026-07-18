@@ -18,6 +18,50 @@
     const assetMap = {};
     const glossaryMap = {};
 
+    // Helper to substitute dynamic dataset row values in canvas JSON before rendering
+    function substituteCanvasJson(canvasJson, row) {
+        if (!canvasJson || !row) return canvasJson;
+        const data = typeof canvasJson === 'string' ? JSON.parse(canvasJson) : canvasJson;
+        
+        if (data.objects) {
+            data.objects.forEach(obj => {
+                // Text substitution
+                if ((obj.type === 'text' || obj.type === 'i-text') && (obj.text || obj.variable_binding)) {
+                    let templateText = obj.variable_binding || obj.text || '';
+                    let substitutedText = templateText;
+                    const matches = templateText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g);
+                    if (matches) {
+                        matches.forEach(placeholder => {
+                            const colName = placeholder.replace(/\{\{|\}\}/g, '');
+                            const replacement = row[colName] !== undefined ? row[colName] : placeholder;
+                            substitutedText = substitutedText.replaceAll(placeholder, replacement);
+                        });
+                    } else if (obj.variable_binding) {
+                        const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                        if (row[colName] !== undefined) {
+                            substitutedText = row[colName];
+                        }
+                    }
+                    obj.text = substitutedText;
+                }
+                
+                // Image substitution
+                if (obj.type === 'image' && obj.variable_binding) {
+                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                    const filename = row[colName];
+                    if (filename) {
+                        let cleanedFilename = filename.replace(/\[\[|\]\]/g, '').toLowerCase().trim();
+                        if (assetMap[cleanedFilename]) {
+                            obj.src = assetMap[cleanedFilename];
+                        }
+                    }
+                }
+            });
+        }
+        
+        return data;
+    }
+
     function init() {
         if (typeof fabric !== 'undefined' && fabric.Text) {
             fabric.Text.prototype._setTextStyles = function(ctx, charStyle, forMeasuring) {
@@ -122,6 +166,67 @@
                 formData.append('rulebook_id', window.rulebookConfig.rulebookId);
                 formData.append('csrf_token', window.rulebookConfig.csrfToken);
                 navigator.sendBeacon('api.php?action=release_lock_rulebook', formData);
+            });
+        }
+
+        const selectTemplate = document.getElementById('diagram-select-template');
+        const selectRow = document.getElementById('diagram-select-row');
+        const rowSelectContainer = document.getElementById('diagram-row-select-container');
+
+        if (selectTemplate && selectRow && rowSelectContainer) {
+            selectTemplate.addEventListener('change', () => {
+                const templateId = selectTemplate.value;
+                if (!templateId) return;
+
+                selectRow.innerHTML = '<option value="">Loading cards...</option>';
+                rowSelectContainer.classList.remove('hidden');
+
+                fetch(`api.php?action=load_canvas&template_id=${templateId}`)
+                .then(r => r.json())
+                .then(details => {
+                    if (details.dataset_id) {
+                        fetch(`api.php?action=get_dataset&dataset_id=${details.dataset_id}`)
+                        .then(r => r.json())
+                        .then(dataset => {
+                            selectRow.innerHTML = '';
+                            if (dataset && dataset.rowData && dataset.rowData.length > 0) {
+                                dataset.rowData.forEach((row, idx) => {
+                                    let displayName = '';
+                                    const possibleKeys = ['name', 'title', 'id', 'card', 'character', 'label'];
+                                    for (const key of possibleKeys) {
+                                        if (row[key] !== undefined && row[key] !== null) {
+                                            displayName = row[key].toString();
+                                            break;
+                                        }
+                                    }
+                                    if (!displayName) {
+                                        const values = Object.values(row);
+                                        displayName = values[0] ? values[0].toString() : `Card Row #${idx + 1}`;
+                                    }
+                                    const opt = document.createElement('option');
+                                    opt.value = idx;
+                                    opt.textContent = `${idx + 1}: ${displayName}`;
+                                    selectRow.appendChild(opt);
+                                });
+                                rowSelectContainer.classList.remove('hidden');
+                            } else {
+                                selectRow.innerHTML = '<option value="">Default Template Design</option>';
+                                rowSelectContainer.classList.add('hidden');
+                            }
+                        })
+                        .catch(() => {
+                            selectRow.innerHTML = '<option value="">Default Template Design</option>';
+                            rowSelectContainer.classList.add('hidden');
+                        });
+                    } else {
+                        selectRow.innerHTML = '<option value="">Default Template Design</option>';
+                        rowSelectContainer.classList.add('hidden');
+                    }
+                })
+                .catch(() => {
+                    selectRow.innerHTML = '<option value="">Default Template Design</option>';
+                    rowSelectContainer.classList.add('hidden');
+                });
             });
         }
     }
@@ -291,7 +396,7 @@
                 imgContainer.style.height = `${containerHeight}px`;
                 imgContainer.innerHTML = `<div class="text-[8px] text-slate-500 font-bold text-center uppercase tracking-widest">Loading</div>`;
                 
-                renderTemplateToImage(el.template_id, (src) => {
+                renderTemplateToImage(el.template_id, el.row_index, (src) => {
                     if (src) {
                         imgContainer.innerHTML = `<img src="${src}" class="max-w-full max-h-full rounded shadow-lg object-contain">`;
                     } else {
@@ -523,27 +628,64 @@
     }
 
     // Load templates cached in memory headlessly using FabricJS
-    window.renderTemplateToImage = function(templateId, callback) {
-        if (renderedTemplateCache[templateId]) {
-            callback(renderedTemplateCache[templateId]);
+    window.renderTemplateToImage = function(templateId, rowIndex, callback) {
+        // Callback shifting for optional parameter compatibility
+        if (typeof rowIndex === 'function') {
+            callback = rowIndex;
+            rowIndex = null;
+        }
+
+        const cacheKey = `${templateId}_${rowIndex !== null && rowIndex !== undefined ? rowIndex : 'default'}`;
+        if (renderedTemplateCache[cacheKey]) {
+            callback(renderedTemplateCache[cacheKey]);
             return;
         }
 
         fetch(`api.php?action=load_canvas&template_id=${templateId}`)
         .then(response => response.json())
         .then(data => {
-            const canvasEl = document.createElement('canvas');
-            canvasEl.width = data.width || 300;
-            canvasEl.height = data.height || 400;
+            if (data.dataset_id && rowIndex !== null && rowIndex !== undefined) {
+                fetch(`api.php?action=get_dataset&dataset_id=${data.dataset_id}`)
+                .then(r => r.json())
+                .then(dataset => {
+                    const row = dataset && dataset.rowData ? dataset.rowData[rowIndex] : null;
+                    const substitutedData = substituteCanvasJson(data.canvas_json, row);
+                    
+                    const canvasEl = document.createElement('canvas');
+                    canvasEl.width = data.width || 300;
+                    canvasEl.height = data.height || 400;
 
-            const fCanvas = new fabric.Canvas(canvasEl, { enableRetinaScaling: false });
-            fCanvas.loadFromJSON(data.canvas_json, () => {
-                fCanvas.renderAll();
-                const dataUrl = fCanvas.toDataURL({ format: 'png' });
-                renderedTemplateCache[templateId] = dataUrl;
-                fCanvas.dispose();
-                callback(dataUrl);
-            });
+                    const fCanvas = new fabric.Canvas(canvasEl, { enableRetinaScaling: false });
+                    fCanvas.loadFromJSON(substitutedData, () => {
+                        fCanvas.renderAll();
+                        const dataUrl = fCanvas.toDataURL({ format: 'png' });
+                        renderedTemplateCache[cacheKey] = dataUrl;
+                        fCanvas.dispose();
+                        callback(dataUrl);
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to substitute dataset values:', err);
+                    renderDefault(data);
+                });
+            } else {
+                renderDefault(data);
+            }
+
+            function renderDefault(details) {
+                const canvasEl = document.createElement('canvas');
+                canvasEl.width = details.width || 300;
+                canvasEl.height = details.height || 400;
+
+                const fCanvas = new fabric.Canvas(canvasEl, { enableRetinaScaling: false });
+                fCanvas.loadFromJSON(details.canvas_json, () => {
+                    fCanvas.renderAll();
+                    const dataUrl = fCanvas.toDataURL({ format: 'png' });
+                    renderedTemplateCache[cacheKey] = dataUrl;
+                    fCanvas.dispose();
+                    callback(dataUrl);
+                });
+            }
         })
         .catch(err => {
             console.error('Failed to parse dynamic template preview:', err);
@@ -606,6 +748,10 @@
     window.openDiagramPicker = function(blockIdx) {
         activeBlockIndexForPicker = blockIdx;
         document.getElementById('diagram-item-picker').classList.remove('hidden');
+        const selectTemplate = document.getElementById('diagram-select-template');
+        if (selectTemplate) {
+            selectTemplate.dispatchEvent(new Event('change'));
+        }
     };
 
     window.closeDiagramPicker = function() {
@@ -620,12 +766,20 @@
         const scale = parseFloat(document.getElementById('diagram-item-scale').value);
         const rotation = parseInt(document.getElementById('diagram-item-rotation').value);
 
+        const selectRow = document.getElementById('diagram-select-row');
+        const rowSelectContainer = document.getElementById('diagram-row-select-container');
+        let rowIndex = null;
+        if (rowSelectContainer && !rowSelectContainer.classList.contains('hidden') && selectRow.value !== '') {
+            rowIndex = parseInt(selectRow.value);
+        }
+
         if (!blocks[activeBlockIndexForPicker].elements) {
             blocks[activeBlockIndexForPicker].elements = [];
         }
 
         blocks[activeBlockIndexForPicker].elements.push({
             template_id: templateId,
+            row_index: rowIndex,
             x: 100, // Spawn centered coordinates
             y: 100,
             scale: scale,

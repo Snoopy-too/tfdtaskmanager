@@ -343,6 +343,12 @@ require_once __DIR__ . '/../templates/header.php';
                 <?php endforeach; ?>
             </select>
         </div>
+        <div id="diagram-row-select-container" class="hidden">
+            <label class="block text-xs font-semibold text-slate-400 mb-1 font-semibold text-slate-400">Select Specific Card/Row</label>
+            <select id="diagram-select-row" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl p-2.5">
+                <!-- Dynamically populated -->
+            </select>
+        </div>
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs font-semibold text-slate-400 mb-1">Scale (0.1 to 2.0)</label>
