@@ -287,7 +287,7 @@ require_once __DIR__ . '/../templates/header.php';
         <?php endif; ?>
 
         <!-- Scrollable Blocks Canvas -->
-        <div class="flex-grow overflow-y-auto p-8" id="rulebook-viewport-container">
+        <div class="flex-grow overflow-y-auto p-4 md:p-8" id="rulebook-viewport-container">
             <div id="rulebook-content-wrapper" class="max-w-3xl mx-auto bg-slate-900 border border-slate-850 shadow-2xl rounded-2xl min-h-[80vh] p-10 relative space-y-8 transition-colors duration-300">
                 
                 <!-- Crop mark targets (will show during print layout) -->

@@ -546,8 +546,9 @@
         // Relative Pin target element
         const pinCanvas = document.createElement('div');
         pinCanvas.className = 'relative border border-slate-800 rounded-xl bg-slate-950 overflow-hidden flex items-center justify-center p-2 mx-auto';
-        pinCanvas.style.width = '240px';
-        pinCanvas.style.height = '336px';
+        pinCanvas.style.width = '100%';
+        pinCanvas.style.maxWidth = '240px';
+        pinCanvas.style.aspectRatio = '5 / 7';
 
         if (!block.template_id) {
             pinCanvas.innerHTML = `<div class="text-slate-500 text-xs italic text-center p-4">Select a component template above to annotate.</div>`;
@@ -943,7 +944,10 @@
             // Apply mobile styling emulation
             wrapper.classList.remove('max-w-3xl', 'p-10');
             wrapper.classList.add('max-w-sm', 'p-4', 'mx-auto');
-            viewport.classList.add('flex', 'justify-center');
+            if (viewport) {
+                viewport.classList.remove('p-8');
+                viewport.classList.add('p-4', 'flex', 'justify-center');
+            }
 
             btnPrev.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 transition';
             btnEdit.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
@@ -951,7 +955,10 @@
             // Revert to editor desktop page layout
             wrapper.classList.remove('max-w-sm', 'p-4', 'mx-auto');
             wrapper.classList.add('max-w-3xl', 'p-10');
-            viewport.classList.remove('flex', 'items-center', 'justify-center');
+            if (viewport) {
+                viewport.classList.remove('p-4', 'flex', 'items-center', 'justify-center');
+                viewport.classList.add('p-8');
+            }
 
             btnEdit.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 transition';
             btnPrev.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
