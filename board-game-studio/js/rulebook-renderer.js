@@ -357,9 +357,12 @@
         `;
         container.appendChild(titleBar);
 
-        // Virtual Table Area
+        // Virtual Table Area Wrapper for horizontal panning on mobile
+        const scrollWrapper = document.createElement('div');
+        scrollWrapper.className = 'w-full overflow-x-auto border border-slate-800 rounded-xl';
+
         const tableArea = document.createElement('div');
-        tableArea.className = 'w-full h-[500px] bg-slate-950 border border-slate-800 rounded-xl relative overflow-hidden pattern-grid';
+        tableArea.className = 'min-w-[800px] w-full h-[500px] bg-slate-950 relative overflow-hidden pattern-grid';
         tableArea.dataset.blockIndex = index;
         
         if (elements.length === 0) {
@@ -424,7 +427,8 @@
             });
         }
 
-        container.appendChild(tableArea);
+        scrollWrapper.appendChild(tableArea);
+        container.appendChild(scrollWrapper);
         card.appendChild(container);
     }
 
@@ -438,8 +442,11 @@
             </div>
         `;
 
+        const tableWrapper = document.createElement('div');
+        tableWrapper.className = 'w-full overflow-x-auto border border-slate-800 rounded-xl';
+
         const table = document.createElement('table');
-        table.className = 'w-full text-left text-xs border border-slate-800 rounded-xl overflow-hidden';
+        table.className = 'w-full text-left text-xs';
         table.innerHTML = `
             <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
                 <tr>
@@ -493,7 +500,8 @@
             });
         }
 
-        container.appendChild(table);
+        tableWrapper.appendChild(table);
+        container.appendChild(tableWrapper);
         card.appendChild(container);
     }
 
@@ -547,7 +555,7 @@
             pinCanvas.innerHTML = `<div class="text-[10px] text-slate-650 font-bold uppercase tracking-widest">Rendering</div>`;
             renderTemplateToImage(block.template_id, (src) => {
                 if (src) {
-                    pinCanvas.innerHTML = `<img src="${src}" class="max-w-full max-h-full rounded shadow-xl object-contain absolute z-0 pointer-events-none">`;
+                    pinCanvas.innerHTML = `<img src="${src}" class="w-full h-full object-contain absolute inset-0 rounded shadow-xl pointer-events-none z-0">`;
                     
                     // Render pins
                     const pins = block.pins || [];
@@ -855,8 +863,8 @@
             el.y = Math.round(elementStartY + dy);
 
             // Bounds constraint for visual table diagram container
-            el.x = Math.max(20, Math.min(600, el.x));
-            el.y = Math.max(20, Math.min(300, el.y));
+            el.x = Math.max(20, Math.min(780, el.x));
+            el.y = Math.max(20, Math.min(480, el.y));
 
             // Move element in real-time DOM
             draggingElement.style.left = `${el.x}px`;
