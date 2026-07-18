@@ -351,10 +351,18 @@
         
         const titleBar = document.createElement('div');
         titleBar.className = 'flex items-center justify-between';
-        titleBar.innerHTML = `
-            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Interactive Game Setup Diagram</span>
-            ${!isPreviewMode ? `<button onclick="openDiagramPicker(${index})" class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded-lg transition duration-200">+ Add Template Component</button>` : ''}
-        `;
+        if (isPreviewMode) {
+            titleBar.innerHTML = `
+                <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">${block.title || 'Interactive Game Setup Diagram'}</span>
+            `;
+        } else {
+            titleBar.innerHTML = `
+                <input type="text" value="${block.title || 'Interactive Game Setup Diagram'}" 
+                    class="bg-transparent border-b border-slate-800 text-xs font-bold text-indigo-400 uppercase tracking-wider focus:outline-none focus:border-indigo-500 w-64"
+                    oninput="updateBlockTitle(${index}, this.value)" placeholder="Interactive Game Setup Diagram">
+                <button onclick="openDiagramPicker(${index})" class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded-lg transition duration-200">+ Add Template Component</button>
+            `;
+        }
         container.appendChild(titleBar);
 
         // Virtual Table Area Wrapper for horizontal panning on mobile
@@ -436,11 +444,21 @@
     function renderComponentListBlock(card, block, index) {
         const container = document.createElement('div');
         container.className = 'space-y-3';
-        container.innerHTML = `
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Inventory List (Automatic Component Sync)</span>
-            </div>
-        `;
+        
+        const titleBar = document.createElement('div');
+        titleBar.className = 'flex items-center justify-between';
+        if (isPreviewMode) {
+            titleBar.innerHTML = `
+                <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">${block.title || 'Inventory List (Automatic Component Sync)'}</span>
+            `;
+        } else {
+            titleBar.innerHTML = `
+                <input type="text" value="${block.title || 'Inventory List (Automatic Component Sync)'}" 
+                    class="bg-transparent border-b border-slate-800 text-xs font-bold text-emerald-400 uppercase tracking-wider focus:outline-none focus:border-emerald-500 w-full"
+                    oninput="updateBlockTitle(${index}, this.value)" placeholder="Inventory List (Automatic Component Sync)">
+            `;
+        }
+        container.appendChild(titleBar);
 
         const tableWrapper = document.createElement('div');
         tableWrapper.className = 'w-full overflow-x-auto border border-slate-800 rounded-xl';
@@ -512,9 +530,17 @@
         
         const titleBar = document.createElement('div');
         titleBar.className = 'flex items-center justify-between';
-        titleBar.innerHTML = `
-            <span class="text-xs font-bold text-rose-400 uppercase tracking-wider">Anatomy of a Component</span>
-        `;
+        if (isPreviewMode) {
+            titleBar.innerHTML = `
+                <span class="text-xs font-bold text-rose-400 uppercase tracking-wider">${block.title || 'Anatomy of a Component'}</span>
+            `;
+        } else {
+            titleBar.innerHTML = `
+                <input type="text" value="${block.title || 'Anatomy of a Component'}" 
+                    class="bg-transparent border-b border-slate-800 text-xs font-bold text-rose-400 uppercase tracking-wider focus:outline-none focus:border-rose-500 w-full"
+                    oninput="updateBlockTitle(${index}, this.value)" placeholder="Anatomy of a Component">
+            `;
+        }
         container.appendChild(titleBar);
 
         const columns = document.createElement('div');
@@ -734,6 +760,12 @@
 
     window.updateBlockText = function(idx, text) {
         blocks[idx].text = text;
+        saveRulebook(true);
+    };
+
+    window.updateBlockTitle = function(idx, title) {
+        // ponytail: inline block title update
+        blocks[idx].title = title;
         saveRulebook(true);
     };
 
