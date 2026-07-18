@@ -45,7 +45,8 @@ try {
                 'width' => $template->getCanvasWidthPx(),
                 'height' => $template->getCanvasHeightPx(),
                 'bleed_mm' => $template->getBleedMm(),
-                'safe_margin_mm' => $template->getSafeMarginMm()
+                'safe_margin_mm' => $template->getSafeMarginMm(),
+                'dataset_id' => $template->getDatasetId()
             ]);
             break;
 

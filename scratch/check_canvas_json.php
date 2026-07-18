@@ -1,13 +1,33 @@
 <?php
 declare(strict_types=1);
 
-$content = file_get_contents('https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.js');
-if ($content === false) {
-    echo "Failed to fetch Fabric.js source.\n";
-    exit(1);
-}
+$pdo = new PDO('mysql:host=127.0.0.1;charset=utf8mb4', 'root', '', [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+]);
 
-$pos = strpos($content, '_setTextStyles: function');
-if ($pos !== false) {
-    echo substr($content, $pos, 800) . "\n";
+$dbsStmt = $pdo->query("SHOW DATABASES");
+while ($dbName = $dbsStmt->fetchColumn()) {
+    if (in_array($dbName, ['information_schema', 'mysql', 'performance_schema', 'sys'])) {
+        continue;
+    }
+    
+    try {
+        $pdo->exec("USE `$dbName`");
+        $tablesStmt = $pdo->query("SHOW TABLES");
+        while ($table = $tablesStmt->fetchColumn()) {
+            if (preg_match('/templates|rulebooks/i', $table)) {
+                echo "Database: $dbName | Table: $table\n";
+                try {
+                    $rows = $pdo->query("SELECT * FROM `$table`")->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($rows as $r) {
+                        echo "  Row: ID=" . ($r['id'] ?? 'N/A') . " | Name=" . ($r['name'] ?? 'N/A') . "\n";
+                    }
+                } catch (Exception $e) {
+                    echo "  Failed to query table: " . $e->getMessage() . "\n";
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // Skip inaccessible databases
+    }
 }
