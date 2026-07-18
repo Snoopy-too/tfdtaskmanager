@@ -18,6 +18,7 @@
     let zoomLevel = 1.0;
     let isSaving = false;
     let saveTimeout = null;
+    let clipboard = null;
 
     // History undo/redo state variables
     const historyStack = [];
@@ -604,6 +605,24 @@
                 redo();
             }
 
+            // Ctrl + C (Copy)
+            if (isCtrl && e.key.toLowerCase() === 'c') {
+                const activeObj = canvas.getActiveObject();
+                if (activeObj && !activeObj.isEditing) {
+                    e.preventDefault();
+                    copyObjects(activeObj);
+                }
+            }
+
+            // Ctrl + V (Paste)
+            if (isCtrl && e.key.toLowerCase() === 'v') {
+                const activeObj = canvas.getActiveObject();
+                if (!activeObj || !activeObj.isEditing) {
+                    e.preventDefault();
+                    pasteObjects();
+                }
+            }
+
             // Ctrl + D (Duplicate)
             if (isCtrl && e.key.toLowerCase() === 'd') {
                 e.preventDefault();
@@ -656,14 +675,84 @@
             clonedObj.set({
                 left: obj.left + 30, // Offset by 30px X and Y
                 top: obj.top + 30,
-                name: obj.name ? (obj.name + ' Copy') : (obj.type.charAt(0).toUpperCase() + obj.type.slice(1) + ' Copy'),
                 evented: true
             });
 
-            canvas.add(clonedObj);
-            canvas.setActiveObject(clonedObj);
-            canvas.renderAll();
+            if (clonedObj.type === 'activeSelection') {
+                clonedObj.canvas = canvas;
+                clonedObj.forEachObject((o) => {
+                    o.set({
+                        name: o.name ? (o.name + ' Copy') : (o.type.charAt(0).toUpperCase() + o.type.slice(1) + ' Copy'),
+                        evented: true
+                    });
+                    canvas.add(o);
+                });
+                clonedObj.setCoords();
+                canvas.setActiveObject(clonedObj);
+            } else {
+                clonedObj.set({
+                    name: clonedObj.name ? (clonedObj.name + ' Copy') : (clonedObj.type.charAt(0).toUpperCase() + clonedObj.type.slice(1) + ' Copy')
+                });
+                canvas.add(clonedObj);
+                canvas.setActiveObject(clonedObj);
+            }
 
+            canvas.renderAll();
+            triggerAutoSave();
+
+            // Refresh layer list
+            if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                window.layerManager.renderLayersList();
+            }
+        }, ['id', 'name', 'layerType', 'variable_binding', 'properties', 'original_filename', 'stored_filename', 'is_locked']);
+    }
+
+    // Copy active object(s)
+    function copyObjects(obj) {
+        if (!obj || obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') return;
+
+        obj.clone((cloned) => {
+            clipboard = cloned;
+        }, ['id', 'name', 'layerType', 'variable_binding', 'properties', 'original_filename', 'stored_filename', 'is_locked']);
+    }
+
+    // Paste copied object(s)
+    function pasteObjects() {
+        if (!clipboard) return;
+
+        clipboard.clone((clonedObj) => {
+            canvas.discardActiveObject();
+
+            clonedObj.set({
+                left: clonedObj.left + 30,
+                top: clonedObj.top + 30,
+                evented: true
+            });
+
+            if (clonedObj.type === 'activeSelection') {
+                clonedObj.canvas = canvas;
+                clonedObj.forEachObject((obj) => {
+                    obj.set({
+                        name: obj.name ? (obj.name + ' Copy') : (obj.type.charAt(0).toUpperCase() + obj.type.slice(1) + ' Copy'),
+                        evented: true
+                    });
+                    canvas.add(obj);
+                });
+                clonedObj.setCoords();
+                canvas.setActiveObject(clonedObj);
+            } else {
+                clonedObj.set({
+                    name: clonedObj.name ? (clonedObj.name + ' Copy') : (clonedObj.type.charAt(0).toUpperCase() + clonedObj.type.slice(1) + ' Copy')
+                });
+                canvas.add(clonedObj);
+                canvas.setActiveObject(clonedObj);
+            }
+
+            // Offset clipboard for subsequent paste operations
+            clipboard.top += 30;
+            clipboard.left += 30;
+
+            canvas.renderAll();
             triggerAutoSave();
 
             // Refresh layer list
