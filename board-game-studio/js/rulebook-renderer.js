@@ -401,10 +401,10 @@
 
         // Virtual Table Area Wrapper for horizontal panning on mobile
         const scrollWrapper = document.createElement('div');
-        scrollWrapper.className = 'w-full overflow-x-auto border border-slate-800 rounded-xl';
+        scrollWrapper.className = 'w-full max-w-[800px] mx-auto overflow-x-auto border border-slate-800 rounded-xl';
 
         const tableArea = document.createElement('div');
-        tableArea.className = 'min-w-[800px] w-full h-[500px] bg-slate-950 relative overflow-hidden pattern-grid';
+        tableArea.className = 'w-[800px] h-[500px] bg-slate-950 relative overflow-hidden pattern-grid';
         tableArea.dataset.blockIndex = index;
         
         if (elements.length === 0 && pins.length === 0) {
