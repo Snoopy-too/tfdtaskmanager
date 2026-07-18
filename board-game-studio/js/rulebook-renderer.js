@@ -545,18 +545,15 @@
 
         // Relative Pin target element
         const pinCanvas = document.createElement('div');
-        pinCanvas.className = 'relative border border-slate-800 rounded-xl bg-slate-950 overflow-hidden flex items-center justify-center p-2 mx-auto';
-        pinCanvas.style.width = '100%';
-        pinCanvas.style.maxWidth = '240px';
-        pinCanvas.style.aspectRatio = '5 / 7';
+        pinCanvas.className = 'relative border border-slate-800 rounded-xl bg-slate-950 overflow-hidden mx-auto w-full max-w-[240px]';
 
         if (!block.template_id) {
             pinCanvas.innerHTML = `<div class="text-slate-500 text-xs italic text-center p-4">Select a component template above to annotate.</div>`;
         } else {
-            pinCanvas.innerHTML = `<div class="text-[10px] text-slate-650 font-bold uppercase tracking-widest">Rendering</div>`;
+            pinCanvas.innerHTML = `<div class="text-[10px] text-slate-650 font-bold uppercase tracking-widest text-center py-12">Rendering</div>`;
             renderTemplateToImage(block.template_id, (src) => {
                 if (src) {
-                    pinCanvas.innerHTML = `<img src="${src}" class="w-full h-full object-contain absolute inset-0 rounded shadow-xl pointer-events-none z-0">`;
+                    pinCanvas.innerHTML = `<img src="${src}" class="w-full h-auto rounded shadow-xl pointer-events-none block">`;
                     
                     // Render pins
                     const pins = block.pins || [];
