@@ -296,6 +296,8 @@
                 renderComponentListBlock(card, block, index);
             } else if (block.type === 'anatomy') {
                 renderAnatomyBlock(card, block, index);
+            } else if (block.type === 'page_break') {
+                renderPageBreakBlock(card, block, index);
             }
 
             list.appendChild(card);
@@ -323,6 +325,27 @@
                 </div>
             `;
             card.appendChild(container);
+        }
+    }
+
+    // Page Break Block
+    function renderPageBreakBlock(card, block, index) {
+        if (isPreviewMode) {
+            // In preview mode (print layout), we render a clean page-break class
+            // which sets break-after / page-break-after: always
+            card.className = 'page-break';
+            card.innerHTML = ''; // Nothing visible on the page itself
+        } else {
+            // In Editor Mode, we render a clear, beautiful separator line that says "PAGE BREAK (FOR PRINT)"
+            card.className = 'py-4 relative flex items-center justify-center';
+            card.innerHTML = `
+                <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div class="w-full border-t-2 border-dashed border-teal-500/40"></div>
+                </div>
+                <div class="relative flex justify-center text-xs uppercase bg-slate-900 px-4 text-teal-400 font-black tracking-widest border border-teal-500/20 rounded-full py-1">
+                    ✂ Page Break (For Print Layout)
+                </div>
+            `;
         }
     }
 
@@ -919,6 +942,8 @@
             blocks.push({ type: 'component_list' });
         } else if (type === 'anatomy') {
             blocks.push({ type: 'anatomy', template_id: null, pins: [] });
+        } else if (type === 'page_break') {
+            blocks.push({ type: 'page_break' });
         }
         renderBlocks();
         saveRulebook(true); // Autosave quietly

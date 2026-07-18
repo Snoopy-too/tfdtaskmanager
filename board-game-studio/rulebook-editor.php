@@ -68,6 +68,19 @@ require_once __DIR__ . '/../templates/header.php';
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
+        /* Hide all print scrollbars and prevent cut-off */
+        ::-webkit-scrollbar {
+            display: none !important;
+        }
+        .overflow-x-auto, [class*="overflow-x-auto"], [class*="overflow-y-auto"] {
+            overflow: visible !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        .w-\[800px\] {
+            max-width: 100% !important;
+            zoom: 0.9;
+        }
         header, body > nav, #editor-sidebar, #editor-controls, #add-block-panel {
             display: none !important;
         }
@@ -294,6 +307,16 @@ require_once __DIR__ . '/../templates/header.php';
                             <div>
                                 <p class="text-sm font-semibold text-slate-200">Anatomy of a Component</p>
                                 <p class="text-[10px] text-slate-500">Label regions with coordinate pins.</p>
+                            </div>
+                        </button>
+
+                        <button onclick="addBlock('page_break')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                            <span class="p-2 rounded-lg bg-teal-500/10 text-teal-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 5h16M4 12h16M4 19h16"/></svg>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-200">Page Break</p>
+                                <p class="text-[10px] text-slate-500">Force content after this block to next page.</p>
                             </div>
                         </button>
                     </div>
