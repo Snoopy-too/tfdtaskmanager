@@ -59,12 +59,17 @@ require_once __DIR__ . '/../templates/header.php';
 <style>
     /* Styling rules for print view vs screen view */
     @media print {
+        @page {
+            size: auto;
+            margin: 0; /* Hides browser default header, footer, date, and URL */
+        }
         body {
             background: white !important;
             color: #111827 !important;
             height: auto !important;
             min-height: 0 !important;
             overflow: visible !important;
+            margin: 15mm !important; /* Restores safe page margins for actual content */
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
