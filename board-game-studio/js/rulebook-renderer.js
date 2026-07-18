@@ -50,9 +50,18 @@
                     const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
                     const filename = row[colName];
                     if (filename) {
-                        let cleanedFilename = filename.replace(/\[\[|\]\]/g, '').toLowerCase().trim();
-                        if (assetMap[cleanedFilename]) {
-                            obj.src = assetMap[cleanedFilename];
+                        let cleaned = filename.replace(/\[\[|\]\]/g, '').toLowerCase().trim();
+                        // Try direct match, normalized match, or extension-stripped match
+                        let matchUrl = assetMap[cleaned] || assetMap[cleaned.replace(/[\s_\-]+/g, '')];
+                        if (!matchUrl) {
+                            const dotIdx = cleaned.lastIndexOf('.');
+                            if (dotIdx > 0) {
+                                const noExt = cleaned.substring(0, dotIdx);
+                                matchUrl = assetMap[noExt] || assetMap[noExt.replace(/[\s_\-]+/g, '')];
+                            }
+                        }
+                        if (matchUrl) {
+                            obj.src = matchUrl;
                         }
                     }
                 }
@@ -85,7 +94,21 @@
         // Build maps
         window.rulebookConfig.assets.forEach(a => {
             if (a.tag) {
+                assetMap[a.tag.toLowerCase().replace(/[\s_\-]+/g, '')] = a.url;
                 assetMap[a.tag.toLowerCase()] = a.url;
+            }
+            if (a.filename) {
+                const nameLower = a.filename.toLowerCase();
+                assetMap[nameLower] = a.url;
+                assetMap[nameLower.replace(/[\s_\-]+/g, '')] = a.url;
+                
+                // Also map with extension removed
+                const dotIdx = nameLower.lastIndexOf('.');
+                if (dotIdx > 0) {
+                    const noExt = nameLower.substring(0, dotIdx);
+                    assetMap[noExt] = a.url;
+                    assetMap[noExt.replace(/[\s_\-]+/g, '')] = a.url;
+                }
             }
         });
         window.rulebookConfig.glossary.forEach(g => {
