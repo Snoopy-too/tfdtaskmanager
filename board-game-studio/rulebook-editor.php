@@ -367,6 +367,36 @@ require_once __DIR__ . '/../templates/header.php';
             <!-- Tab Content: Theme & CSS -->
             <div id="tab-content-theme" class="space-y-6 hidden">
                 <div class="space-y-4">
+                    <!-- Presets & Exchange Actions -->
+                    <div class="border-b border-slate-800 pb-4 mb-4 space-y-3">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Theme Presets</label>
+                        <div class="flex space-x-2">
+                            <select id="theme-presets-select" onchange="loadThemePreset(this.value)" class="flex-grow bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-amber-500">
+                                <option value="">-- Select Saved Preset --</option>
+                            </select>
+                            <button onclick="deleteThemePreset()" title="Delete Preset" class="px-3 bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 border border-rose-900/50 rounded-xl text-xs transition">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button onclick="saveThemePreset()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 py-1.5 px-2.5 rounded-xl text-xs font-semibold transition text-center flex items-center justify-center space-x-1.5">
+                                <svg class="h-3.5 w-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                                <span>Save Preset</span>
+                            </button>
+                            <button onclick="document.getElementById('theme-import-input').click()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 py-1.5 px-2.5 rounded-xl text-xs font-semibold transition text-center flex items-center justify-center space-x-1.5">
+                                <svg class="h-3.5 w-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                <span>Import File</span>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 pt-1">
+                            <button onclick="exportTheme()" class="bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/20 hover:border-amber-500/30 text-amber-400 py-1.5 px-3 rounded-xl text-xs font-semibold transition text-center flex items-center justify-center space-x-1.5 w-full">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                <span>Export Theme JSON</span>
+                            </button>
+                        </div>
+                        <input type="file" id="theme-import-input" accept=".json" onchange="importTheme(this.files[0])" class="hidden">
+                    </div>
+
                     <div>
                          <label class="block text-xs font-semibold text-slate-400 mb-1">Rulebook Typography</label>
                          <select id="theme-font-select" onchange="updateThemeFont(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-amber-500">

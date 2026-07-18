@@ -132,6 +132,7 @@
 
         // Apply theme styles
         applyThemeSettings();
+        initPresetsDropdown();
 
         // Hydrate sidebar form fields
         const fontSelect = document.getElementById('theme-font-select');
@@ -1492,6 +1493,181 @@
             applyThemeSettings();
             saveRulebook(true);
         }
+    };
+
+    // --- Theme Presets & Exchange Actions ---
+    function initPresetsDropdown() {
+        const select = document.getElementById('theme-presets-select');
+        if (!select) return;
+        
+        // Clear old options (preserve default option)
+        select.innerHTML = '<option value="">-- Select Saved Preset --</option>';
+        
+        let presets = {};
+        try {
+            presets = JSON.parse(localStorage.getItem('bg_theme_presets')) || {};
+        } catch (e) {
+            presets = {};
+        }
+        
+        for (const name in presets) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+        }
+    }
+
+    window.saveThemePreset = function() {
+        const name = prompt("Enter a name for this theme preset:");
+        if (!name) return;
+        const trimmedName = name.trim();
+        if (!trimmedName) return;
+        
+        const theme = blocks.find(b => b.type === 'theme');
+        if (!theme) return;
+        
+        let presets = {};
+        try {
+            presets = JSON.parse(localStorage.getItem('bg_theme_presets')) || {};
+        } catch (e) {
+            presets = {};
+        }
+        
+        presets[trimmedName] = {
+            fontFamily: theme.fontFamily || 'Inter',
+            accentColor: theme.accentColor || '#f59e0b',
+            customCss: theme.customCss || ''
+        };
+        
+        localStorage.setItem('bg_theme_presets', JSON.stringify(presets));
+        initPresetsDropdown();
+        document.getElementById('theme-presets-select').value = trimmedName;
+        alert(`Preset "${trimmedName}" saved successfully!`);
+    };
+
+    window.deleteThemePreset = function() {
+        const select = document.getElementById('theme-presets-select');
+        if (!select) return;
+        const name = select.value;
+        if (!name) {
+            alert("Please select a saved preset to delete.");
+            return;
+        }
+        
+        if (confirm(`Are you sure you want to delete the preset "${name}"?`)) {
+            let presets = {};
+            try {
+                presets = JSON.parse(localStorage.getItem('bg_theme_presets')) || {};
+            } catch (e) {
+                presets = {};
+            }
+            
+            delete presets[name];
+            localStorage.setItem('bg_theme_presets', JSON.stringify(presets));
+            initPresetsDropdown();
+            alert(`Preset "${name}" deleted.`);
+        }
+    };
+
+    window.loadThemePreset = function(name) {
+        if (!name) return;
+        
+        let presets = {};
+        try {
+            presets = JSON.parse(localStorage.getItem('bg_theme_presets')) || {};
+        } catch (e) {
+            presets = {};
+        }
+        
+        const preset = presets[name];
+        if (!preset) return;
+        
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.fontFamily = preset.fontFamily || 'Inter';
+            theme.accentColor = preset.accentColor || '#f59e0b';
+            theme.customCss = preset.customCss || '';
+            
+            // Update UI controls
+            const fontSelect = document.getElementById('theme-font-select');
+            const colorInput = document.getElementById('theme-color-input');
+            const colorHex = document.getElementById('theme-color-hex');
+            const cssTextarea = document.getElementById('theme-css-textarea');
+            
+            if (fontSelect) fontSelect.value = theme.fontFamily;
+            if (colorInput) colorInput.value = theme.accentColor;
+            if (colorHex) colorHex.textContent = theme.accentColor;
+            if (cssTextarea) cssTextarea.value = theme.customCss;
+            
+            applyThemeSettings();
+            saveRulebook(true);
+        }
+    };
+
+    window.exportTheme = function() {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (!theme) return;
+        
+        const themeData = {
+            name: (theme.fontFamily || 'Custom') + ' Theme',
+            fontFamily: theme.fontFamily || 'Inter',
+            accentColor: theme.accentColor || '#f59e0b',
+            customCss: theme.customCss || ''
+        };
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(themeData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `${themeData.name.toLowerCase().replace(/\s+/g, '-')}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    };
+
+    window.importTheme = function(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const imported = JSON.parse(event.target.result);
+                
+                // Basic Schema Validation
+                if (!imported.fontFamily || !imported.accentColor) {
+                    alert("Invalid theme file: fontFamily and accentColor are required.");
+                    return;
+                }
+                
+                const theme = blocks.find(b => b.type === 'theme');
+                if (theme) {
+                    theme.fontFamily = imported.fontFamily;
+                    theme.accentColor = imported.accentColor;
+                    theme.customCss = imported.customCss || '';
+                    
+                    // Update UI controls
+                    const fontSelect = document.getElementById('theme-font-select');
+                    const colorInput = document.getElementById('theme-color-input');
+                    const colorHex = document.getElementById('theme-color-hex');
+                    const cssTextarea = document.getElementById('theme-css-textarea');
+                    
+                    if (fontSelect) fontSelect.value = theme.fontFamily;
+                    if (colorInput) colorInput.value = theme.accentColor;
+                    if (colorHex) colorHex.textContent = theme.accentColor;
+                    if (cssTextarea) cssTextarea.value = theme.customCss;
+                    
+                    applyThemeSettings();
+                    saveRulebook(true);
+                    
+                    // Clear file input so it can be re-imported
+                    document.getElementById('theme-import-input').value = '';
+                    
+                    alert(`Theme "${imported.name || 'Imported'}" applied successfully!`);
+                }
+            } catch (e) {
+                alert("Error reading theme JSON file: " + e.message);
+            }
+        };
+        reader.readAsText(file);
     };
 
     window.triggerPrint = function() {
