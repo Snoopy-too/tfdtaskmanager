@@ -1113,10 +1113,14 @@
     };
 
     window.triggerPrint = function() {
-        // Automatically switch to full width layout, force preview compiling for rendering output, then print
-        togglePreviewMode(false);
+        // ponytail: temporary preview mode during print, revert after
+        const wasPreview = isPreviewMode;
+        togglePreviewMode(true);
         setTimeout(() => {
             window.print();
+            if (!wasPreview) {
+                togglePreviewMode(false);
+            }
         }, 300);
     };
 

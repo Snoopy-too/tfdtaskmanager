@@ -60,15 +60,37 @@ require_once __DIR__ . '/../templates/header.php';
         body {
             background: white !important;
             color: black !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
-        body > nav, #editor-sidebar, #editor-controls, #add-block-panel {
+        header, body > nav, #editor-sidebar, #editor-controls, #add-block-panel {
             display: none !important;
+        }
+        #editor-workspace {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        #rulebook-viewport-container {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
         #rulebook-content-wrapper {
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
             width: 100% !important;
+            max-width: 100% !important;
+            border: none !important;
+            background: transparent !important;
         }
         .page-break {
             page-break-after: always;
