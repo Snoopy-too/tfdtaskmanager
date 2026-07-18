@@ -174,11 +174,20 @@ require_once __DIR__ . '/../templates/header.php';
             border-color: #d97706 !important;
         }
         /* Light background for the virtual table setup canvas */
-        #rulebook-content-wrapper [class*="bg-slate-950"] {
+        #rulebook-content-wrapper .pattern-grid {
             background-color: #f9fafb !important;
             background-image: radial-gradient(#e5e7eb 1px, transparent 0) !important;
             background-size: 20px 20px !important;
             border: 1px solid #e5e7eb !important;
+        }
+        /* Force definition list rows to be clean, transparent text blocks in print mode for all themes */
+        #rulebook-content-wrapper .flex.items-start.space-x-3.bg-slate-950\/60,
+        #rulebook-content-wrapper [class*="bg-slate-950/60"] {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            margin-bottom: 0.75rem !important;
         }
         .page-break {
             page-break-after: always;
