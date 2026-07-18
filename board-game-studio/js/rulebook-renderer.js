@@ -1251,6 +1251,23 @@
                     background-image: radial-gradient(#c5bba4 1px, transparent 0) !important;
                     border: 1px solid #b9b09c !important;
                 }
+                /* Labels & Definitions rows and fields */
+                #rulebook-content-wrapper:not(.preview-mode) .flex.items-start.space-x-3.bg-slate-950\\/60,
+                #rulebook-content-wrapper:not(.preview-mode) [class*="bg-slate-950/60"] {
+                    background-color: #faf8f5 !important;
+                    border: 1px solid #d4cbb5 !important;
+                    color: #2c2421 !important;
+                    border-radius: 8px !important;
+                    padding: 0.75rem !important;
+                }
+                #rulebook-content-wrapper.preview-mode .flex.items-start.space-x-3.bg-slate-950\\/60,
+                #rulebook-content-wrapper.preview-mode [class*="bg-slate-950/60"] {
+                    background: transparent !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    margin-bottom: 0.75rem !important;
+                    box-shadow: none !important;
+                }
             `;
         } else {
             baseCss = `
