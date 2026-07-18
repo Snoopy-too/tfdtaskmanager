@@ -595,6 +595,11 @@
                             pinDiv.style.touchAction = 'none';
                             pinDiv.style.cursor = 'grab';
                             
+                            // Stop click events on the pin from bubbling to the canvas click handler
+                            pinDiv.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                            });
+                            
                             pinDiv.addEventListener('pointerdown', (e) => {
                                 e.stopPropagation(); // Prevent adding a new pin on canvas click
                                 pinDiv.style.cursor = 'grabbing';
@@ -634,6 +639,11 @@
                     // Add Pin event listener in edit mode
                     if (!isPreviewMode) {
                         pinCanvas.addEventListener('click', (e) => {
+                            // If the click targeted a pin, ignore it to prevent creating a duplicate
+                            if (e.target.closest('.anatomy-pin')) {
+                                return;
+                            }
+                            
                             const rect = pinCanvas.getBoundingClientRect();
                             const x = ((e.clientX - rect.left) / rect.width) * 100;
                             const y = ((e.clientY - rect.top) / rect.height) * 100;
