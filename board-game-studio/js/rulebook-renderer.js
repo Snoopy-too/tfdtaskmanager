@@ -286,14 +286,14 @@
 
                 // Load and draw template thumbnail asynchronously
                 const imgContainer = document.createElement('div');
-                imgContainer.className = 'bg-slate-900 border border-slate-700/80 rounded-lg shadow-lg flex items-center justify-center p-1';
+                imgContainer.className = 'bg-transparent flex items-center justify-center';
                 imgContainer.style.width = `${containerWidth}px`;
                 imgContainer.style.height = `${containerHeight}px`;
                 imgContainer.innerHTML = `<div class="text-[8px] text-slate-500 font-bold text-center uppercase tracking-widest">Loading</div>`;
                 
                 renderTemplateToImage(el.template_id, (src) => {
                     if (src) {
-                        imgContainer.innerHTML = `<img src="${src}" class="max-w-full max-h-full rounded object-contain">`;
+                        imgContainer.innerHTML = `<img src="${src}" class="max-w-full max-h-full rounded shadow-lg object-contain">`;
                     } else {
                         imgContainer.innerHTML = `<div class="text-[8px] text-rose-500 text-center font-bold">Failed</div>`;
                     }
