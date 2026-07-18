@@ -270,11 +270,25 @@
                 elementDiv.dataset.blockIndex = index;
                 elementDiv.dataset.elementIndex = elIdx;
 
+                const template = window.rulebookConfig.templates.find(t => t.id === el.template_id);
+                let containerWidth = 70;
+                let containerHeight = 100;
+                if (template && template.width && template.height) {
+                    const ratio = template.width / template.height;
+                    if (ratio >= 1) {
+                        containerWidth = 100;
+                        containerHeight = Math.round(100 / ratio);
+                    } else {
+                        containerHeight = 100;
+                        containerWidth = Math.round(100 * ratio);
+                    }
+                }
+
                 // Load and draw template thumbnail asynchronously
                 const imgContainer = document.createElement('div');
                 imgContainer.className = 'bg-slate-900 border border-slate-700/80 rounded-lg shadow-lg flex items-center justify-center p-1';
-                imgContainer.style.width = '70px';
-                imgContainer.style.height = '100px';
+                imgContainer.style.width = `${containerWidth}px`;
+                imgContainer.style.height = `${containerHeight}px`;
                 imgContainer.innerHTML = `<div class="text-[8px] text-slate-500 font-bold text-center uppercase tracking-widest">Loading</div>`;
                 
                 renderTemplateToImage(el.template_id, (src) => {
