@@ -290,10 +290,12 @@
                 // Small control panel in edit mode
                 if (!isPreviewMode) {
                     const elControls = document.createElement('div');
-                    elControls.className = 'absolute -top-6 bg-slate-950 border border-slate-800 text-[9px] px-1 rounded flex space-x-1.5 opacity-0 group-hover:opacity-100 transition shadow';
+                    elControls.className = 'absolute -top-6 bg-slate-950 border border-slate-800 text-[9px] px-1 rounded flex space-x-1.5 opacity-0 group-hover:opacity-100 transition shadow z-10';
                     elControls.innerHTML = `
-                        <button onclick="rotateElement(${index}, ${elIdx})" class="text-indigo-400">↻</button>
-                        <button onclick="deleteElement(${index}, ${elIdx})" class="text-rose-500">✕</button>
+                        <button onclick="scaleElementUp(${index}, ${elIdx})" class="text-emerald-400 font-bold px-0.5 hover:text-emerald-350" title="Scale Up">+</button>
+                        <button onclick="scaleElementDown(${index}, ${elIdx})" class="text-amber-400 font-bold px-0.5 hover:text-amber-350" title="Scale Down">-</button>
+                        <button onclick="rotateElement(${index}, ${elIdx})" class="text-indigo-400 hover:text-indigo-350" title="Rotate">↻</button>
+                        <button onclick="deleteElement(${index}, ${elIdx})" class="text-rose-500 hover:text-rose-450" title="Delete">✕</button>
                     `;
                     elementDiv.appendChild(elControls);
                     elementDiv.classList.add('group');
@@ -624,6 +626,20 @@
     window.rotateElement = function(blockIdx, elIdx) {
         const el = blocks[blockIdx].elements[elIdx];
         el.rotation = ((el.rotation || 0) + 45) % 360;
+        renderBlocks();
+        saveRulebook(true);
+    };
+
+    window.scaleElementUp = function(blockIdx, elIdx) {
+        const el = blocks[blockIdx].elements[elIdx];
+        el.scale = Math.min((el.scale || 1.0) + 0.1, 2.5);
+        renderBlocks();
+        saveRulebook(true);
+    };
+
+    window.scaleElementDown = function(blockIdx, elIdx) {
+        const el = blocks[blockIdx].elements[elIdx];
+        el.scale = Math.max((el.scale || 1.0) - 0.1, 0.4);
         renderBlocks();
         saveRulebook(true);
     };
