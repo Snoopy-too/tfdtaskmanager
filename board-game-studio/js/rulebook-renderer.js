@@ -368,6 +368,7 @@
     // 2. Setup Diagram Builder
     function renderSetupBlock(card, block, index) {
         const elements = block.elements || [];
+        const pins = block.pins || [];
 
         const container = document.createElement('div');
         container.className = 'space-y-4';
@@ -380,10 +381,20 @@
             `;
         } else {
             titleBar.innerHTML = `
-                <input type="text" value="${block.title || 'Interactive Game Setup Diagram'}" 
-                    class="bg-transparent border-b border-slate-800 text-xs font-bold text-indigo-400 uppercase tracking-wider focus:outline-none focus:border-indigo-500 w-64"
-                    oninput="updateBlockTitle(${index}, this.value)" placeholder="Interactive Game Setup Diagram">
-                <button onclick="openDiagramPicker(${index})" class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded-lg transition duration-200">+ Add Template Component</button>
+                <div class="flex items-center space-x-4 w-full">
+                    <input type="text" value="${block.title || 'Interactive Game Setup Diagram'}" 
+                        class="bg-transparent border-b border-slate-800 text-xs font-bold text-indigo-400 uppercase tracking-wider focus:outline-none focus:border-indigo-500 flex-grow"
+                        oninput="updateBlockTitle(${index}, this.value)" placeholder="Interactive Game Setup Diagram">
+                    <div class="flex items-center space-x-1.5 flex-shrink-0">
+                        <button onclick="openDiagramPicker(${index})" class="text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded-lg transition duration-200">+ Add Component</button>
+                        <button onclick="addSetupPin(${index})" class="text-[10px] font-bold bg-rose-600 hover:bg-rose-500 text-white px-2 py-1 rounded-lg transition duration-200">+ Add Label Pin</button>
+                        <span class="text-[10px] text-slate-550 font-semibold uppercase tracking-wider">Layout:</span>
+                        <select onchange="updateBlockLayout(${index}, this.value)" class="bg-slate-950 border border-slate-800 text-slate-200 text-[10px] rounded-lg p-1 focus:ring-indigo-500">
+                            <option value="stacked" ${block.layout === 'stacked' || !block.layout ? 'selected' : ''}>Stacked</option>
+                            <option value="side-by-side" ${block.layout === 'side-by-side' ? 'selected' : ''}>Side-by-Side</option>
+                        </select>
+                    </div>
+                </div>
             `;
         }
         container.appendChild(titleBar);
@@ -396,9 +407,15 @@
         tableArea.className = 'min-w-[800px] w-full h-[500px] bg-slate-950 relative overflow-hidden pattern-grid';
         tableArea.dataset.blockIndex = index;
         
-        if (elements.length === 0) {
+        if (elements.length === 0 && pins.length === 0) {
             tableArea.innerHTML = `<div class="absolute inset-0 flex items-center justify-center text-xs text-slate-500">No components placed on virtual table yet.</div>`;
         } else {
+            if (elements.length === 0) {
+                tableArea.innerHTML = `<div class="absolute inset-0 flex items-center justify-center text-xs text-slate-500">No components placed on virtual table yet.</div>`;
+            } else {
+                tableArea.innerHTML = '';
+            }
+            
             elements.forEach((el, elIdx) => {
                 const elementDiv = document.createElement('div');
                 elementDiv.className = 'absolute cursor-move select-none flex flex-col items-center';
@@ -456,10 +473,118 @@
 
                 tableArea.appendChild(elementDiv);
             });
+            
+            // Render Pins in Setup Diagram
+            pins.forEach((pin, pinIdx) => {
+                const pinDiv = document.createElement('div');
+                pinDiv.className = 'anatomy-pin z-10';
+                pinDiv.style.left = `${pin.x}%`;
+                pinDiv.style.top = `${pin.y}%`;
+                pinDiv.textContent = pinIdx + 1;
+                
+                if (!isPreviewMode) {
+                    pinDiv.style.touchAction = 'none';
+                    pinDiv.style.cursor = 'grab';
+                    
+                    pinDiv.addEventListener('click', (e) => e.stopPropagation());
+                    pinDiv.addEventListener('pointerdown', (e) => {
+                        e.stopPropagation();
+                        pinDiv.style.cursor = 'grabbing';
+                        pinDiv.setPointerCapture(e.pointerId);
+                        
+                        const onPointerMove = (moveEvent) => {
+                            const rect = tableArea.getBoundingClientRect();
+                            let newX = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+                            let newY = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+                            
+                            newX = Math.max(0, Math.min(100, newX));
+                            newY = Math.max(0, Math.min(100, newY));
+                            
+                            pin.x = Math.round(newX);
+                            pin.y = Math.round(newY);
+                            
+                            pinDiv.style.left = `${pin.x}%`;
+                            pinDiv.style.top = `${pin.y}%`;
+                        };
+                        
+                        const onPointerUp = (upEvent) => {
+                            pinDiv.style.cursor = 'grab';
+                            pinDiv.releasePointerCapture(upEvent.pointerId);
+                            pinDiv.removeEventListener('pointermove', onPointerMove);
+                            pinDiv.removeEventListener('pointerup', onPointerUp);
+                            saveRulebook(true);
+                        };
+                        
+                        pinDiv.addEventListener('pointermove', onPointerMove);
+                        pinDiv.addEventListener('pointerup', onPointerUp);
+                    });
+                }
+                
+                tableArea.appendChild(pinDiv);
+            });
         }
 
         scrollWrapper.appendChild(tableArea);
-        container.appendChild(scrollWrapper);
+
+        // Layout wrapping columns
+        const columns = document.createElement('div');
+        const layout = block.layout || 'stacked';
+        columns.className = 'anatomy-columns ' + (layout === 'stacked' ? 'layout-stacked' : 'layout-side-by-side');
+
+        // Left Column (diagram)
+        const visualColumn = document.createElement('div');
+        visualColumn.className = 'space-y-3';
+        visualColumn.appendChild(scrollWrapper);
+        columns.appendChild(visualColumn);
+
+        // Right Column (Labels & Explanations)
+        const notesColumn = document.createElement('div');
+        notesColumn.className = 'space-y-3';
+
+        if (pins.length > 0 || !isPreviewMode) {
+            notesColumn.innerHTML = `<h4 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Labels & Explanations</h4>`;
+            
+            // Check if Queensberry Vintage is active to apply header color override
+            const themeBlock = blocks.find(b => b.type === 'theme');
+            const isVintage = themeBlock && themeBlock.fontFamily === 'Queensberry Vintage';
+            if (isVintage) {
+                const header = notesColumn.querySelector('h4');
+                if (header) {
+                    header.style.color = '#8f2d30';
+                    header.style.fontFamily = "'Special Elite', monospace";
+                }
+            }
+
+            const pinsList = document.createElement('div');
+            pinsList.className = 'space-y-2';
+
+            if (pins.length === 0) {
+                pinsList.innerHTML = `<p class="text-xs text-slate-500 italic">Click "+ Add Label Pin" above to place an explanation pin on the setup diagram.</p>`;
+            } else {
+                pins.forEach((pin, pinIdx) => {
+                    const pinRow = document.createElement('div');
+                    pinRow.className = 'flex items-start space-x-3 bg-slate-950/60 p-3 border border-slate-850 rounded-xl';
+                    
+                    if (isPreviewMode) {
+                        pinRow.innerHTML = `
+                            <span class="w-5 h-5 flex-shrink-0 bg-amber-500 text-white rounded-full flex items-center justify-center font-black text-xs">${pinIdx + 1}</span>
+                            <div class="text-xs text-slate-300 pt-0.5">${parseMarkdownText(pin.text)}</div>
+                        `;
+                    } else {
+                        pinRow.innerHTML = `
+                            <span class="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold text-xs mt-1.5 flex-shrink-0">${pinIdx + 1}</span>
+                            <input type="text" value="${pin.text}" class="flex-grow bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-indigo-500" oninput="updatePinText(${index}, ${pinIdx}, this.value)">
+                            <button onclick="deletePin(${index}, ${pinIdx})" class="text-rose-500 hover:text-rose-450 text-xs px-1 mt-1.5">✕</button>
+                        `;
+                    }
+                    pinsList.appendChild(pinRow);
+                });
+            }
+            notesColumn.appendChild(pinsList);
+            columns.appendChild(notesColumn);
+        }
+
+        container.appendChild(columns);
         card.appendChild(container);
     }
 
@@ -830,6 +955,19 @@
 
     window.updateBlockLayout = function(idx, layout) {
         blocks[idx].layout = layout;
+        renderBlocks();
+        saveRulebook(true);
+    };
+
+    window.addSetupPin = function(blockIdx) {
+        if (!blocks[blockIdx].pins) {
+            blocks[blockIdx].pins = [];
+        }
+        blocks[blockIdx].pins.push({
+            x: 50,
+            y: 50,
+            text: 'New label explanation...'
+        });
         renderBlocks();
         saveRulebook(true);
     };
