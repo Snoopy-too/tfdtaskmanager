@@ -943,7 +943,7 @@
             wrapper.classList.add('max-w-sm', 'p-4', 'mx-auto');
             if (viewport) {
                 viewport.classList.remove('p-8');
-                viewport.classList.add('p-4', 'flex', 'justify-center');
+                viewport.classList.add('p-4', 'flex', 'justify-center', 'items-start');
             }
 
             btnPrev.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 transition';
@@ -953,7 +953,7 @@
             wrapper.classList.remove('max-w-sm', 'p-4', 'mx-auto');
             wrapper.classList.add('max-w-3xl', 'p-10');
             if (viewport) {
-                viewport.classList.remove('p-4', 'flex', 'items-center', 'justify-center');
+                viewport.classList.remove('p-4', 'flex', 'items-center', 'justify-center', 'items-start');
                 viewport.classList.add('p-8');
             }
 
