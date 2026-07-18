@@ -972,7 +972,7 @@
         if (preview) {
             // Apply mobile styling emulation
             wrapper.classList.remove('max-w-3xl', 'p-10');
-            wrapper.classList.add('max-w-sm', 'p-4', 'mx-auto');
+            wrapper.classList.add('max-w-sm', 'p-4', 'mx-auto', 'preview-mode');
             if (viewport) {
                 viewport.classList.remove('p-8');
                 viewport.classList.add('p-4', 'flex', 'justify-center', 'items-start');
@@ -982,7 +982,7 @@
             btnEdit.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
         } else {
             // Revert to editor desktop page layout
-            wrapper.classList.remove('max-w-sm', 'p-4', 'mx-auto');
+            wrapper.classList.remove('max-w-sm', 'p-4', 'mx-auto', 'preview-mode');
             wrapper.classList.add('max-w-3xl', 'p-10');
             if (viewport) {
                 viewport.classList.remove('p-4', 'flex', 'items-center', 'justify-center', 'items-start');
@@ -1076,6 +1076,20 @@
                     font-family: 'Special Elite', monospace !important;
                     color: #37302d !important;
                 }
+                /* High contrast overrides for Tailwind's prose-invert and slate colors inside the live preview */
+                #rulebook-content-wrapper .prose-invert,
+                #rulebook-content-wrapper .prose-invert *,
+                #rulebook-content-wrapper .text-slate-300,
+                #rulebook-content-wrapper .text-slate-400 {
+                    color: #37302d !important;
+                }
+                #rulebook-content-wrapper .prose-invert h1,
+                #rulebook-content-wrapper .prose-invert h2,
+                #rulebook-content-wrapper .prose-invert h3,
+                #rulebook-content-wrapper .prose-invert h4,
+                #rulebook-content-wrapper .prose-invert strong {
+                    color: #2c2421 !important;
+                }
                 #rulebook-content-wrapper h1, 
                 #rulebook-content-wrapper h2, 
                 #rulebook-content-wrapper h3, 
@@ -1090,22 +1104,60 @@
                     padding-bottom: 0.5rem;
                     margin-top: 2rem;
                 }
+                /* Block cards background and border styling depending on view mode */
+                #rulebook-content-wrapper:not(.preview-mode) .block-card {
+                    background-color: #eae6db !important;
+                    border: 1px dashed #b9b09c !important;
+                    box-shadow: 0 4px 12px rgba(44, 36, 33, 0.06) !important;
+                }
+                #rulebook-content-wrapper.preview-mode .block-card {
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                }
+                /* Inputs and Textareas in Editor Mode */
+                #rulebook-content-wrapper:not(.preview-mode) textarea,
+                #rulebook-content-wrapper:not(.preview-mode) select,
+                #rulebook-content-wrapper:not(.preview-mode) input[type="text"] {
+                    background-color: #faf8f5 !important;
+                    color: #2c2421 !important;
+                    border: 1px solid #b9b09c !important;
+                }
+                #rulebook-content-wrapper:not(.preview-mode) .bg-slate-950\\/40,
+                #rulebook-content-wrapper:not(.preview-mode) [class*="bg-slate-950"] {
+                    background-color: #faf8f5 !important;
+                    border-color: #d4cbb5 !important;
+                    color: #37302d !important;
+                }
+                #rulebook-content-wrapper span[class*="text-amber-400"],
+                #rulebook-content-wrapper h3[class*="text-slate-400"],
+                #rulebook-content-wrapper h4[class*="text-slate-350"] {
+                    font-family: 'Special Elite', monospace !important;
+                    color: #8f2d30 !important;
+                    font-weight: bold !important;
+                }
+                /* Table styling */
                 #rulebook-content-wrapper table {
                     border-collapse: collapse !important;
                     border: 2px solid #2c2421 !important;
                 }
-                #rulebook-content-wrapper th {
-                    background-color: #e8e3d5 !important;
-                    border-bottom: 3px double #2c2421 !important;
-                    font-family: 'IM Fell Double Pica', serif !important;
+                #rulebook-content-wrapper table thead,
+                #rulebook-content-wrapper table thead th {
+                    background-color: #eae6db !important;
+                    border-bottom: 2px solid #2c2421 !important;
                     color: #2c2421 !important;
+                    font-family: 'IM Fell Double Pica', serif !important;
                     font-weight: 700 !important;
                     text-transform: uppercase;
                 }
-                #rulebook-content-wrapper td {
+                #rulebook-content-wrapper table tbody,
+                #rulebook-content-wrapper table tbody tr,
+                #rulebook-content-wrapper table tbody td {
+                    background-color: transparent !important;
                     border-bottom: 1px solid #dcd7ca !important;
                     color: #37302d !important;
                 }
+                /* Warning Banners */
                 #rulebook-content-wrapper .alert-box, 
                 #rulebook-content-wrapper .bg-rose-500\\/10,
                 #rulebook-content-wrapper [class*="bg-red-"] {
@@ -1114,11 +1166,18 @@
                     color: #8f2d30 !important;
                     border-radius: 4px !important;
                 }
+                /* Anatomy Pins and Setup Grid */
                 #rulebook-content-wrapper .anatomy-pin, 
                 #rulebook-content-wrapper [class*="bg-amber-500"] {
                     background-color: #1b2d42 !important;
                     border-color: #1b2d42 !important;
                     color: #e6c895 !important;
+                }
+                #rulebook-content-wrapper .pattern-grid,
+                #rulebook-content-wrapper [class*="pattern-grid"] {
+                    background-color: #eae6db !important;
+                    background-image: radial-gradient(#c5bba4 1px, transparent 0) !important;
+                    border: 1px solid #b9b09c !important;
                 }
             `;
         } else {
