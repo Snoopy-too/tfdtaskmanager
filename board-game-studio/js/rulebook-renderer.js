@@ -653,6 +653,7 @@
     // Client-side Pointer Event tracking for diagram positioning
     function setupDragEvents() {
         document.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('button')) return; // Allow button clicks without triggering drag
             const target = e.target.closest('[data-element-index]');
             if (!target || isPreviewMode) return;
 
