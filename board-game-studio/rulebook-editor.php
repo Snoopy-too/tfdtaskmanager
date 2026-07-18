@@ -8,6 +8,7 @@ use App\Application\Services\ProjectService;
 use App\Application\Services\BgRulebookService;
 use App\Application\Services\BgTemplateService;
 use App\Application\Services\BgAssetService;
+use App\Application\Services\BgDatasetService;
 use App\Application\Services\UserService;
 
 SecurityHelper::requireLogin();
@@ -16,6 +17,7 @@ $projectService = $container->get(ProjectService::class);
 $rulebookService = $container->get(BgRulebookService::class);
 $templateService = $container->get(BgTemplateService::class);
 $assetService = $container->get(BgAssetService::class);
+$datasetService = $container->get(BgDatasetService::class);
 $userService = $container->get(UserService::class);
 
 $rulebookId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -447,13 +449,21 @@ require_once __DIR__ . '/../templates/header.php';
         csrfToken: '<?php echo SecurityHelper::escape($csrfToken); ?>',
         isLocked: <?php echo $isLocked ? 'true' : 'false'; ?>,
         initialBlocks: <?php echo json_encode($rulebook->getContent()); ?>,
-        templates: <?php echo json_encode(array_map(function($t) {
+        templates: <?php echo json_encode(array_map(function($t) use ($datasetService) {
+            $qty = 1;
+            if ($t->getDatasetId() !== null) {
+                $dataset = $datasetService->getDatasetById($t->getDatasetId());
+                if ($dataset && is_array($dataset->getRowData())) {
+                    $qty = count($dataset->getRowData());
+                }
+            }
             return [
                 'id' => $t->getId(),
                 'name' => $t->getName(),
                 'width' => $t->getCanvasWidthPx(),
                 'height' => $t->getCanvasHeightPx(),
-                'component_type' => $t->getComponentTypeId()
+                'component_type' => $t->getComponentTypeId(),
+                'quantity' => $qty
             ];
         }, $templates)); ?>,
         assets: <?php echo json_encode(array_map(function($a) {

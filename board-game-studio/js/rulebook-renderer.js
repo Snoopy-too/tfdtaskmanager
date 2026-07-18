@@ -504,38 +504,19 @@
         if (window.rulebookConfig.templates.length === 0) {
             tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-4 text-center text-slate-500 italic">No design templates in project.</td></tr>`;
         } else {
-            // Count templates. If bound to datasets, we must pull dataset info
             window.rulebookConfig.templates.forEach(t => {
-                // Read from client dataset info if available
-                let qty = 1;
+                const qty = t.quantity || 1;
                 
                 // Let's resolve component type display label
                 const mmWidth = Math.round(t.width / 11.81);
                 const mmHeight = Math.round(t.height / 11.81);
-
-                // Check if card is bound to dataset in backend
-                fetch(`api.php?action=load_canvas&template_id=${t.id}`)
-                .then(r => r.json())
-                .then(details => {
-                    if (details.dataset_id) {
-                        fetch(`api.php?action=get_dataset&dataset_id=${details.dataset_id}`)
-                        .then(r => r.json())
-                        .then(dataset => {
-                            if (dataset && dataset.rowData) {
-                                qty = dataset.rowData.length;
-                                const qtyCell = document.getElementById(`inv-qty-${t.id}`);
-                                if (qtyCell) qtyCell.textContent = `${qty}x`;
-                            }
-                        });
-                    }
-                });
 
                 const row = document.createElement('tr');
                 row.className = 'text-slate-300';
                 row.innerHTML = `
                     <td class="px-4 py-3 font-semibold text-slate-200">${t.name}</td>
                     <td class="px-4 py-3 text-slate-450">${mmWidth}x${mmHeight}mm</td>
-                    <td class="px-4 py-3 text-right font-black text-emerald-400" id="inv-qty-${t.id}">1x</td>
+                    <td class="px-4 py-3 text-right font-black text-emerald-400" id="inv-qty-${t.id}">${qty}x</td>
                 `;
                 tbody.appendChild(row);
             });
