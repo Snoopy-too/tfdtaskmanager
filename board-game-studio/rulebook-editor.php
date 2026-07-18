@@ -193,6 +193,38 @@ require_once __DIR__ . '/../templates/header.php';
     .anatomy-pin:hover {
         transform: translate(-50%, -50%) scale(1.2);
     }
+    
+    /* Anatomy Block Layout styles */
+    .layout-stacked {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1.5rem !important;
+    }
+    .layout-side-by-side {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1.5rem !important;
+    }
+    @media (min-width: 768px) {
+        #rulebook-content-wrapper:not(.max-w-sm) .layout-side-by-side {
+            flex-direction: row !important;
+            align-items: start !important;
+        }
+        #rulebook-content-wrapper:not(.max-w-sm) .layout-side-by-side > div {
+            flex: 1 !important;
+            width: 50% !important;
+        }
+    }
+    @media print {
+        .layout-side-by-side {
+            flex-direction: row !important;
+            align-items: start !important;
+        }
+        .layout-side-by-side > div {
+            flex: 1 !important;
+            width: 50% !important;
+        }
+    }
 </style>
 
 <div class="h-[calc(100vh-4rem)] flex flex-col md:flex-row -mx-4 md:-mx-8 -my-8 overflow-hidden" id="editor-workspace">

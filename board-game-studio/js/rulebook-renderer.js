@@ -540,19 +540,25 @@
             `;
         } else {
             titleBar.innerHTML = `
-                <input type="text" value="${block.title || 'Anatomy of a Component'}" 
-                    class="bg-transparent border-b border-slate-800 text-xs font-bold text-rose-400 uppercase tracking-wider focus:outline-none focus:border-rose-500 w-full"
-                    oninput="updateBlockTitle(${index}, this.value)" placeholder="Anatomy of a Component">
+                <div class="flex items-center space-x-4 w-full">
+                    <input type="text" value="${block.title || 'Anatomy of a Component'}" 
+                        class="bg-transparent border-b border-slate-800 text-xs font-bold text-rose-400 uppercase tracking-wider focus:outline-none focus:border-rose-500 flex-grow"
+                        oninput="updateBlockTitle(${index}, this.value)" placeholder="Anatomy of a Component">
+                    <div class="flex items-center space-x-1.5 flex-shrink-0">
+                        <span class="text-[10px] text-slate-550 font-semibold uppercase tracking-wider">Layout:</span>
+                        <select onchange="updateBlockLayout(${index}, this.value)" class="bg-slate-950 border border-slate-800 text-slate-200 text-[10px] rounded-lg p-1 focus:ring-rose-500">
+                            <option value="side-by-side" ${block.layout === 'side-by-side' || !block.layout ? 'selected' : ''}>Side-by-Side</option>
+                            <option value="stacked" ${block.layout === 'stacked' ? 'selected' : ''}>Stacked</option>
+                        </select>
+                    </div>
+                </div>
             `;
         }
         container.appendChild(titleBar);
 
         const columns = document.createElement('div');
-        if (isPreviewMode) {
-            columns.className = 'grid grid-cols-1 gap-6 items-start';
-        } else {
-            columns.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start';
-        }
+        const layout = block.layout || 'side-by-side';
+        columns.className = 'anatomy-columns ' + (layout === 'stacked' ? 'layout-stacked' : 'layout-side-by-side');
 
         // Card Container
         const visualColumn = document.createElement('div');
@@ -819,6 +825,12 @@
     window.updateBlockTitle = function(idx, title) {
         // ponytail: inline block title update
         blocks[idx].title = title;
+        saveRulebook(true);
+    };
+
+    window.updateBlockLayout = function(idx, layout) {
+        blocks[idx].layout = layout;
+        renderBlocks();
         saveRulebook(true);
     };
 
