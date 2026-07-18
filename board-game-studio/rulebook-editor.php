@@ -69,7 +69,7 @@ require_once __DIR__ . '/../templates/header.php';
             height: auto !important;
             min-height: 0 !important;
             overflow: visible !important;
-            margin: 15mm !important; /* Restores safe page margins for actual content */
+            margin: 20mm !important; /* Restores safe page margins for actual content */
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
@@ -182,20 +182,10 @@ require_once __DIR__ . '/../templates/header.php';
         .page-break {
             page-break-after: always;
         }
-        /* Crop marks styling */
+        /* Hide crop marks in rulebook print layout */
         .crop-mark {
-            display: block !important;
-            position: absolute;
-            width: 15px;
-            height: 15px;
-            border-color: #666;
-            border-style: solid;
-            pointer-events: none;
+            display: none !important;
         }
-        .crop-tl { top: -5mm; left: -5mm; border-width: 0 1px 1px 0; }
-        .crop-tr { top: -5mm; right: -5mm; border-width: 0 0 1px 1px; }
-        .crop-bl { bottom: -5mm; left: -5mm; border-width: 1px 1px 0 0; }
-        .crop-br { bottom: -5mm; right: -5mm; border-width: 1px 0 0 1px; }
     }
 
     .crop-mark {
