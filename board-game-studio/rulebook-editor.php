@@ -85,7 +85,7 @@ require_once __DIR__ . '/../templates/header.php';
         }
         /* Prevent dark background leak from parent workspace containers */
         #editor-workspace, 
-        #editor-workspace > div {
+        #main-workspace-container {
             background: white !important;
             display: block !important;
             height: auto !important;
@@ -404,7 +404,7 @@ require_once __DIR__ . '/../templates/header.php';
     </div>
 
     <!-- Main Workspace Container -->
-    <div class="flex-grow flex flex-col bg-slate-950 overflow-hidden h-full">
+    <div id="main-workspace-container" class="flex-grow flex flex-col bg-slate-950 overflow-hidden h-full">
         <!-- Top Toolbar -->
         <div id="editor-controls" class="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 flex-shrink-0">
             <div class="flex items-center space-x-4">
