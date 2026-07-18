@@ -134,8 +134,9 @@ require_once __DIR__ . '/../templates/header.php';
         .block-card {
             background: transparent !important;
             border: none !important;
-            padding: 0 !important;
-            margin-bottom: 2rem !important;
+            padding-top: 1.5rem !important;
+            padding-bottom: 1.5rem !important;
+            margin-bottom: 1rem !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
