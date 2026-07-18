@@ -59,7 +59,7 @@ require_once __DIR__ . '/../templates/header.php';
     @media print {
         body {
             background: white !important;
-            color: black !important;
+            color: #111827 !important;
             height: auto !important;
             min-height: 0 !important;
             overflow: visible !important;
@@ -75,6 +75,7 @@ require_once __DIR__ . '/../templates/header.php';
             overflow: visible !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
         }
         #rulebook-viewport-container {
             display: block !important;
@@ -82,6 +83,7 @@ require_once __DIR__ . '/../templates/header.php';
             overflow: visible !important;
             padding: 0 !important;
             margin: 0 !important;
+            background: white !important;
         }
         #rulebook-content-wrapper {
             margin: 0 !important;
@@ -91,6 +93,54 @@ require_once __DIR__ . '/../templates/header.php';
             max-width: 100% !important;
             border: none !important;
             background: transparent !important;
+        }
+        .block-card {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin-bottom: 2rem !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        /* Darken all text for readability on white paper */
+        #rulebook-content-wrapper h2,
+        #rulebook-content-wrapper h3,
+        #rulebook-content-wrapper h4,
+        #rulebook-content-wrapper p,
+        #rulebook-content-wrapper span,
+        #rulebook-content-wrapper td,
+        #rulebook-content-wrapper th,
+        #rulebook-content-wrapper div {
+            color: #111827 !important;
+        }
+        /* Clean table borders and headers */
+        #rulebook-content-wrapper table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            border: 1px solid #e5e7eb !important;
+        }
+        #rulebook-content-wrapper th {
+            background-color: #f3f4f6 !important;
+            border-bottom: 2px solid #e5e7eb !important;
+            font-weight: 700 !important;
+        }
+        #rulebook-content-wrapper td {
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+        /* High contrast for pin badges and coordinate numbers */
+        .anatomy-pin, [class*="bg-amber-500"] {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background-color: #d97706 !important; /* Darker amber for print contrast */
+            color: white !important;
+            border-color: #d97706 !important;
+        }
+        /* Light background for the virtual table setup canvas */
+        #rulebook-content-wrapper [class*="bg-slate-950"] {
+            background-color: #f9fafb !important;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 0) !important;
+            background-size: 20px 20px !important;
+            border: 1px solid #e5e7eb !important;
         }
         .page-break {
             page-break-after: always;
