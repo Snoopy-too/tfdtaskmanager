@@ -76,6 +76,7 @@ require_once __DIR__ . '/../templates/header.php';
             overflow: hidden !important;
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
+            width: 800px !important;
             max-width: 100% !important;
             zoom: 0.9;
         }
