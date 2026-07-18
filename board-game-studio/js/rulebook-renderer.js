@@ -138,10 +138,19 @@
         const fontSelect = document.getElementById('theme-font-select');
         const colorInput = document.getElementById('theme-color-input');
         const colorHex = document.getElementById('theme-color-hex');
+        const styleSelect = document.getElementById('theme-style-select');
+        const sizeSelect = document.getElementById('theme-size-select');
+        const densitySelect = document.getElementById('theme-density-select');
+        const alignSelect = document.getElementById('theme-align-select');
         const cssTextarea = document.getElementById('theme-css-textarea');
+        
         if (fontSelect) fontSelect.value = themeBlock.fontFamily || 'Inter';
         if (colorInput) colorInput.value = themeBlock.accentColor || '#f59e0b';
         if (colorHex) colorHex.textContent = themeBlock.accentColor || '#f59e0b';
+        if (styleSelect) styleSelect.value = themeBlock.themeStyle || 'dark';
+        if (sizeSelect) sizeSelect.value = themeBlock.textSize || 'medium';
+        if (densitySelect) densitySelect.value = themeBlock.spacingDensity || 'normal';
+        if (alignSelect) alignSelect.value = themeBlock.headerAlign || 'left';
         if (cssTextarea) cssTextarea.value = themeBlock.customCss || '';
 
         renderBlocks();
@@ -1288,9 +1297,46 @@
             document.head.appendChild(styleTag);
         }
 
+        // Determine active theme style
+        const activeStyle = theme.themeStyle || (theme.fontFamily === 'Queensberry Vintage' ? 'parchment' : 'dark');
+
         let baseCss = '';
+        
+        // Font setup rules
         if (theme.fontFamily === 'Queensberry Vintage') {
-            baseCss = `
+            baseCss += `
+                #rulebook-content-wrapper .prose, 
+                #rulebook-content-wrapper p, 
+                #rulebook-content-wrapper span, 
+                #rulebook-content-wrapper td, 
+                #rulebook-content-wrapper li {
+                    font-family: 'Special Elite', monospace !important;
+                }
+                #rulebook-content-wrapper h1, 
+                #rulebook-content-wrapper h2, 
+                #rulebook-content-wrapper h3, 
+                #rulebook-content-wrapper h4 {
+                    font-family: 'IM Fell Double Pica', Georgia, serif !important;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                #rulebook-content-wrapper h2 {
+                    border-bottom: 4px double currentColor !important;
+                    padding-bottom: 0.5rem;
+                    margin-top: 2rem;
+                }
+            `;
+        } else {
+            baseCss += `
+                #rulebook-content-wrapper, #rulebook-content-wrapper .prose {
+                    font-family: '${theme.fontFamily}', sans-serif !important;
+                }
+            `;
+        }
+
+        // Background / Theme color rules
+        if (activeStyle === 'parchment') {
+            baseCss += `
                 #rulebook-content-wrapper {
                     background-color: #f2eee2 !important;
                     color: #2c2421 !important;
@@ -1302,10 +1348,8 @@
                 #rulebook-content-wrapper span, 
                 #rulebook-content-wrapper td, 
                 #rulebook-content-wrapper li {
-                    font-family: 'Special Elite', monospace !important;
                     color: #37302d !important;
                 }
-                /* High contrast overrides for Tailwind's prose-invert and slate colors inside the live preview */
                 #rulebook-content-wrapper .prose-invert,
                 #rulebook-content-wrapper .prose-invert *,
                 #rulebook-content-wrapper .text-slate-300,
@@ -1323,17 +1367,8 @@
                 #rulebook-content-wrapper h2, 
                 #rulebook-content-wrapper h3, 
                 #rulebook-content-wrapper h4 {
-                    font-family: 'IM Fell Double Pica', Georgia, serif !important;
                     color: #2c2421 !important;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
                 }
-                #rulebook-content-wrapper h2 {
-                    border-bottom: 4px double #2c2421 !important;
-                    padding-bottom: 0.5rem;
-                    margin-top: 2rem;
-                }
-                /* Block cards background and border styling depending on view mode */
                 #rulebook-content-wrapper:not(.preview-mode) .block-card {
                     background-color: #eae6db !important;
                     border: 1px dashed #b9b09c !important;
@@ -1344,7 +1379,6 @@
                     border: none !important;
                     box-shadow: none !important;
                 }
-                /* Inputs and Textareas in Editor Mode */
                 #rulebook-content-wrapper:not(.preview-mode) textarea,
                 #rulebook-content-wrapper:not(.preview-mode) select,
                 #rulebook-content-wrapper:not(.preview-mode) input[type="text"] {
@@ -1358,14 +1392,6 @@
                     border-color: #d4cbb5 !important;
                     color: #37302d !important;
                 }
-                #rulebook-content-wrapper span[class*="text-amber-400"],
-                #rulebook-content-wrapper h3[class*="text-slate-400"],
-                #rulebook-content-wrapper h4[class*="text-slate-350"] {
-                    font-family: 'Special Elite', monospace !important;
-                    color: #8f2d30 !important;
-                    font-weight: bold !important;
-                }
-                /* Table styling */
                 #rulebook-content-wrapper table {
                     border-collapse: collapse !important;
                     border: 2px solid #2c2421 !important;
@@ -1375,61 +1401,182 @@
                     background-color: #eae6db !important;
                     border-bottom: 2px solid #2c2421 !important;
                     color: #2c2421 !important;
-                    font-family: 'IM Fell Double Pica', serif !important;
-                    font-weight: 700 !important;
-                    text-transform: uppercase;
                 }
-                #rulebook-content-wrapper table tbody,
                 #rulebook-content-wrapper table tbody tr,
                 #rulebook-content-wrapper table tbody td {
                     background-color: transparent !important;
                     border-bottom: 1px solid #dcd7ca !important;
                     color: #37302d !important;
                 }
-                /* Warning Banners */
                 #rulebook-content-wrapper .alert-box, 
                 #rulebook-content-wrapper .bg-rose-500\\/10,
                 #rulebook-content-wrapper [class*="bg-red-"] {
                     background-color: #f5eae8 !important;
                     border: 1px solid #8f2d30 !important;
                     color: #8f2d30 !important;
-                    border-radius: 4px !important;
                 }
-                /* Anatomy Pins and Setup Grid */
                 #rulebook-content-wrapper .anatomy-pin, 
                 #rulebook-content-wrapper [class*="bg-amber-500"] {
                     background-color: #1b2d42 !important;
                     border-color: #1b2d42 !important;
                     color: #e6c895 !important;
                 }
-                #rulebook-content-wrapper .pattern-grid,
-                #rulebook-content-wrapper [class*="pattern-grid"] {
+                #rulebook-content-wrapper .pattern-grid {
                     background-color: #eae6db !important;
                     background-image: radial-gradient(#c5bba4 1px, transparent 0) !important;
                     border: 1px solid #b9b09c !important;
                 }
-                /* Labels & Definitions rows and fields */
-                #rulebook-content-wrapper:not(.preview-mode) .flex.items-start.space-x-3.bg-slate-950\\/60,
-                #rulebook-content-wrapper:not(.preview-mode) [class*="bg-slate-950/60"] {
-                    background-color: #faf8f5 !important;
-                    border: 1px solid #d4cbb5 !important;
+                #rulebook-content-wrapper .flex.items-start.space-x-3.bg-slate-950\\/60,
+                #rulebook-content-wrapper [class*="bg-slate-950/60"] {
                     color: #2c2421 !important;
-                    border-radius: 8px !important;
-                    padding: 0.75rem !important;
-                }
-                #rulebook-content-wrapper.preview-mode .flex.items-start.space-x-3.bg-slate-950\\/60,
-                #rulebook-content-wrapper.preview-mode [class*="bg-slate-950/60"] {
-                    background: transparent !important;
-                    border: none !important;
-                    padding: 0 !important;
-                    margin-bottom: 0.75rem !important;
-                    box-shadow: none !important;
                 }
             `;
-        } else {
-            baseCss = `
-                #rulebook-content-wrapper, .prose {
-                    font-family: '${theme.fontFamily}', sans-serif !important;
+        } else if (activeStyle === 'light') {
+            baseCss += `
+                #rulebook-content-wrapper {
+                    background-color: #ffffff !important;
+                    color: #1f2937 !important;
+                    border: 1px solid #e5e7eb !important;
+                    box-sizing: border-box;
+                }
+                #rulebook-content-wrapper .prose, 
+                #rulebook-content-wrapper p, 
+                #rulebook-content-wrapper span, 
+                #rulebook-content-wrapper td, 
+                #rulebook-content-wrapper li {
+                    color: #374151 !important;
+                }
+                #rulebook-content-wrapper .prose-invert,
+                #rulebook-content-wrapper .prose-invert *,
+                #rulebook-content-wrapper .text-slate-300,
+                #rulebook-content-wrapper .text-slate-400 {
+                    color: #374151 !important;
+                }
+                #rulebook-content-wrapper .prose-invert h1,
+                #rulebook-content-wrapper .prose-invert h2,
+                #rulebook-content-wrapper .prose-invert h3,
+                #rulebook-content-wrapper .prose-invert h4,
+                #rulebook-content-wrapper .prose-invert strong {
+                    color: #111827 !important;
+                }
+                #rulebook-content-wrapper h1, 
+                #rulebook-content-wrapper h2, 
+                #rulebook-content-wrapper h3, 
+                #rulebook-content-wrapper h4 {
+                    color: #111827 !important;
+                }
+                #rulebook-content-wrapper:not(.preview-mode) .block-card {
+                    background-color: #f9fafb !important;
+                    border: 1px solid #e5e7eb !important;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+                }
+                #rulebook-content-wrapper.preview-mode .block-card {
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                }
+                #rulebook-content-wrapper:not(.preview-mode) textarea,
+                #rulebook-content-wrapper:not(.preview-mode) select,
+                #rulebook-content-wrapper:not(.preview-mode) input[type="text"] {
+                    background-color: #ffffff !important;
+                    color: #1f2937 !important;
+                    border: 1px solid #d1d5db !important;
+                }
+                #rulebook-content-wrapper:not(.preview-mode) .bg-slate-950\\/40,
+                #rulebook-content-wrapper:not(.preview-mode) [class*="bg-slate-950"] {
+                    background-color: #f3f4f6 !important;
+                    border-color: #e5e7eb !important;
+                    color: #1f2937 !important;
+                }
+                #rulebook-content-wrapper table {
+                    border-collapse: collapse !important;
+                    border: 1px solid #e5e7eb !important;
+                }
+                #rulebook-content-wrapper table thead,
+                #rulebook-content-wrapper table thead th {
+                    background-color: #f3f4f6 !important;
+                    border-bottom: 2px solid #e5e7eb !important;
+                    color: #111827 !important;
+                }
+                #rulebook-content-wrapper table tbody tr,
+                #rulebook-content-wrapper table tbody td {
+                    background-color: transparent !important;
+                    border-bottom: 1px solid #f3f4f6 !important;
+                    color: #374151 !important;
+                }
+                #rulebook-content-wrapper .alert-box, 
+                #rulebook-content-wrapper .bg-rose-500\\/10,
+                #rulebook-content-wrapper [class*="bg-red-"] {
+                    background-color: #fef2f2 !important;
+                    border: 1px solid #fee2e2 !important;
+                    color: #991b1b !important;
+                }
+                #rulebook-content-wrapper .anatomy-pin, 
+                #rulebook-content-wrapper [class*="bg-amber-500"] {
+                    background-color: #111827 !important;
+                    border-color: #111827 !important;
+                    color: #ffffff !important;
+                }
+                #rulebook-content-wrapper .pattern-grid {
+                    background-color: #f9fafb !important;
+                    background-image: radial-gradient(#e5e7eb 1px, transparent 0) !important;
+                    border: 1px solid #e5e7eb !important;
+                }
+                #rulebook-content-wrapper .flex.items-start.space-x-3.bg-slate-950\\/60,
+                #rulebook-content-wrapper [class*="bg-slate-950/60"] {
+                    color: #1f2937 !important;
+                }
+            `;
+        }
+
+        // Font Size overrides
+        const textSize = theme.textSize || 'medium';
+        if (textSize === 'small') {
+            baseCss += `
+                #rulebook-content-wrapper { font-size: 13px !important; }
+                #rulebook-content-wrapper h1 { font-size: 1.75rem !important; }
+                #rulebook-content-wrapper h2 { font-size: 1.35rem !important; }
+                #rulebook-content-wrapper h3 { font-size: 1.1rem !important; }
+            `;
+        } else if (textSize === 'large') {
+            baseCss += `
+                #rulebook-content-wrapper { font-size: 17px !important; }
+                #rulebook-content-wrapper h1 { font-size: 2.5rem !important; }
+                #rulebook-content-wrapper h2 { font-size: 1.85rem !important; }
+                #rulebook-content-wrapper h3 { font-size: 1.4rem !important; }
+            `;
+        }
+
+        // Layout Spacing Density overrides
+        const density = theme.spacingDensity || 'normal';
+        if (density === 'compact') {
+            baseCss += `
+                #rulebook-content-wrapper .block-card {
+                    padding-top: 0.75rem !important;
+                    padding-bottom: 0.75rem !important;
+                    margin-bottom: 0.5rem !important;
+                }
+            `;
+        } else if (density === 'spacious') {
+            baseCss += `
+                #rulebook-content-wrapper .block-card {
+                    padding-top: 2.5rem !important;
+                    padding-bottom: 2.5rem !important;
+                    margin-bottom: 2rem !important;
+                }
+            `;
+        }
+
+        // Header alignment overrides
+        const align = theme.headerAlign || 'left';
+        if (align === 'center') {
+            baseCss += `
+                #rulebook-content-wrapper h1,
+                #rulebook-content-wrapper h2,
+                #rulebook-content-wrapper h3,
+                #rulebook-content-wrapper h4,
+                #rulebook-content-wrapper .markdown-header {
+                    text-align: center !important;
                 }
             `;
         }
@@ -1495,6 +1642,42 @@
         }
     };
 
+    window.updateThemeStyle = function(style) {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.themeStyle = style;
+            applyThemeSettings();
+            saveRulebook(true);
+        }
+    };
+
+    window.updateThemeSize = function(size) {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.textSize = size;
+            applyThemeSettings();
+            saveRulebook(true);
+        }
+    };
+
+    window.updateThemeDensity = function(density) {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.spacingDensity = density;
+            applyThemeSettings();
+            saveRulebook(true);
+        }
+    };
+
+    window.updateThemeAlign = function(align) {
+        const theme = blocks.find(b => b.type === 'theme');
+        if (theme) {
+            theme.headerAlign = align;
+            applyThemeSettings();
+            saveRulebook(true);
+        }
+    };
+
     // --- Theme Presets & Exchange Actions ---
     function initPresetsDropdown() {
         const select = document.getElementById('theme-presets-select');
@@ -1537,6 +1720,10 @@
         presets[trimmedName] = {
             fontFamily: theme.fontFamily || 'Inter',
             accentColor: theme.accentColor || '#f59e0b',
+            themeStyle: theme.themeStyle || 'dark',
+            textSize: theme.textSize || 'medium',
+            spacingDensity: theme.spacingDensity || 'normal',
+            headerAlign: theme.headerAlign || 'left',
             customCss: theme.customCss || ''
         };
         
@@ -1587,25 +1774,34 @@
         if (theme) {
             theme.fontFamily = preset.fontFamily || 'Inter';
             theme.accentColor = preset.accentColor || '#f59e0b';
+            theme.themeStyle = preset.themeStyle || 'dark';
+            theme.textSize = preset.textSize || 'medium';
+            theme.spacingDensity = preset.spacingDensity || 'normal';
+            theme.headerAlign = preset.headerAlign || 'left';
             theme.customCss = preset.customCss || '';
             
             // Update UI controls
             const fontSelect = document.getElementById('theme-font-select');
             const colorInput = document.getElementById('theme-color-input');
             const colorHex = document.getElementById('theme-color-hex');
+            const styleSelect = document.getElementById('theme-style-select');
+            const sizeSelect = document.getElementById('theme-size-select');
+            const densitySelect = document.getElementById('theme-density-select');
+            const alignSelect = document.getElementById('theme-align-select');
             const cssTextarea = document.getElementById('theme-css-textarea');
             
             if (fontSelect) fontSelect.value = theme.fontFamily;
             if (colorInput) colorInput.value = theme.accentColor;
             if (colorHex) colorHex.textContent = theme.accentColor;
+            if (styleSelect) styleSelect.value = theme.themeStyle;
+            if (sizeSelect) sizeSelect.value = theme.textSize;
+            if (densitySelect) densitySelect.value = theme.spacingDensity;
+            if (alignSelect) alignSelect.value = theme.headerAlign;
             if (cssTextarea) cssTextarea.value = theme.customCss;
             
             applyThemeSettings();
             saveRulebook(true);
-        }
-    };
-
-    window.exportTheme = function() {
+         window.exportTheme = function() {
         const theme = blocks.find(b => b.type === 'theme');
         if (!theme) return;
         
@@ -1613,6 +1809,10 @@
             name: (theme.fontFamily || 'Custom') + ' Theme',
             fontFamily: theme.fontFamily || 'Inter',
             accentColor: theme.accentColor || '#f59e0b',
+            themeStyle: theme.themeStyle || 'dark',
+            textSize: theme.textSize || 'medium',
+            spacingDensity: theme.spacingDensity || 'normal',
+            headerAlign: theme.headerAlign || 'left',
             customCss: theme.customCss || ''
         };
         
@@ -1624,7 +1824,7 @@
         downloadAnchor.click();
         downloadAnchor.remove();
     };
-
+ 
     window.importTheme = function(file) {
         if (!file) return;
         const reader = new FileReader();
@@ -1642,17 +1842,29 @@
                 if (theme) {
                     theme.fontFamily = imported.fontFamily;
                     theme.accentColor = imported.accentColor;
+                    theme.themeStyle = imported.themeStyle || 'dark';
+                    theme.textSize = imported.textSize || 'medium';
+                    theme.spacingDensity = imported.spacingDensity || 'normal';
+                    theme.headerAlign = imported.headerAlign || 'left';
                     theme.customCss = imported.customCss || '';
                     
                     // Update UI controls
                     const fontSelect = document.getElementById('theme-font-select');
                     const colorInput = document.getElementById('theme-color-input');
                     const colorHex = document.getElementById('theme-color-hex');
+                    const styleSelect = document.getElementById('theme-style-select');
+                    const sizeSelect = document.getElementById('theme-size-select');
+                    const densitySelect = document.getElementById('theme-density-select');
+                    const alignSelect = document.getElementById('theme-align-select');
                     const cssTextarea = document.getElementById('theme-css-textarea');
                     
                     if (fontSelect) fontSelect.value = theme.fontFamily;
                     if (colorInput) colorInput.value = theme.accentColor;
                     if (colorHex) colorHex.textContent = theme.accentColor;
+                    if (styleSelect) styleSelect.value = theme.themeStyle;
+                    if (sizeSelect) sizeSelect.value = theme.textSize;
+                    if (densitySelect) densitySelect.value = theme.spacingDensity;
+                    if (alignSelect) alignSelect.value = theme.headerAlign;
                     if (cssTextarea) cssTextarea.value = theme.customCss;
                     
                     applyThemeSettings();

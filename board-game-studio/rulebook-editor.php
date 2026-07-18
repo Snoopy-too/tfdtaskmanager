@@ -418,6 +418,41 @@ require_once __DIR__ . '/../templates/header.php';
                     </div>
 
                     <div>
+                         <label class="block text-xs font-semibold text-slate-400 mb-1">Page Style</label>
+                         <select id="theme-style-select" onchange="updateThemeStyle(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-amber-500">
+                             <option value="dark">Dark Slate Workspace</option>
+                             <option value="parchment">Warm Vintage Parchment</option>
+                             <option value="light">Clean High-Contrast Light</option>
+                         </select>
+                    </div>
+
+                    <div>
+                         <label class="block text-xs font-semibold text-slate-400 mb-1">Global Font Size</label>
+                         <select id="theme-size-select" onchange="updateThemeSize(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-amber-500">
+                             <option value="small">Small Text</option>
+                             <option value="medium">Medium (Default)</option>
+                             <option value="large">Large Text</option>
+                         </select>
+                    </div>
+
+                    <div>
+                         <label class="block text-xs font-semibold text-slate-400 mb-1">Layout Spacing Density</label>
+                         <select id="theme-density-select" onchange="updateThemeDensity(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-amber-500">
+                             <option value="compact">Compact Spacing</option>
+                             <option value="normal">Normal (Default)</option>
+                             <option value="spacious">Spacious Spacing</option>
+                         </select>
+                    </div>
+
+                    <div>
+                         <label class="block text-xs font-semibold text-slate-400 mb-1">Header Text Alignment</label>
+                         <select id="theme-align-select" onchange="updateThemeAlign(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-amber-500">
+                             <option value="left">Left Aligned</option>
+                             <option value="center">Centered</option>
+                         </select>
+                    </div>
+
+                    <div>
                          <label class="block text-xs font-semibold text-slate-400 mb-1">Custom CSS Styling overrides</label>
                          <p class="text-[10px] text-slate-500 mb-2">Write custom CSS rules to adjust padding, change borders, background colors, custom titles, page breaks, etc.</p>
                          <textarea id="theme-css-textarea" oninput="updateThemeCss(this.value)" rows="12" class="w-full font-mono text-[10px] bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:ring-amber-500 focus:border-amber-500" placeholder="/* Custom CSS overrides */&#10;h2 { font-style: italic; }&#10;.block-card { border-radius: 12px; }"></textarea>
