@@ -73,13 +73,21 @@ require_once __DIR__ . '/../templates/header.php';
             display: none !important;
         }
         .overflow-x-auto, [class*="overflow-x-auto"], [class*="overflow-y-auto"] {
-            overflow: visible !important;
+            overflow: hidden !important;
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
-        }
-        .w-\[800px\] {
             max-width: 100% !important;
             zoom: 0.9;
+        }
+        .w-\[800px\] {
+            max-width: none !important;
+        }
+        /* Prevent layout columns and notes lists from breaking across pages */
+        .layout-stacked > div,
+        .layout-side-by-side > div,
+        .anatomy-columns > div {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
         header, body > nav, #editor-sidebar, #editor-controls, #add-block-panel {
             display: none !important;
