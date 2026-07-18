@@ -402,6 +402,6 @@ require_once __DIR__ . '/../templates/header.php';
     };
 </script>
 
-<script src="js/rulebook-renderer.js"></script>
+<script src="js/rulebook-renderer.js?v=<?php echo time(); ?>"></script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>
