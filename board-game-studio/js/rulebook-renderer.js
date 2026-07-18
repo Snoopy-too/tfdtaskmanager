@@ -1801,7 +1801,10 @@
             
             applyThemeSettings();
             saveRulebook(true);
-         window.exportTheme = function() {
+        }
+    };
+
+    window.exportTheme = function() {
         const theme = blocks.find(b => b.type === 'theme');
         if (!theme) return;
         
