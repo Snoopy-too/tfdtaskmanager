@@ -254,7 +254,7 @@
 
         // Virtual Table Area
         const tableArea = document.createElement('div');
-        tableArea.className = 'w-full h-80 bg-slate-950 border border-slate-800 rounded-xl relative overflow-hidden pattern-grid';
+        tableArea.className = 'w-full h-[500px] bg-slate-950 border border-slate-800 rounded-xl relative overflow-hidden pattern-grid';
         tableArea.dataset.blockIndex = index;
         
         if (elements.length === 0) {
@@ -276,8 +276,8 @@
                 if (template && template.width && template.height) {
                     const ratio = template.width / template.height;
                     if (ratio >= 1) {
-                        containerWidth = 100;
-                        containerHeight = Math.round(100 / ratio);
+                        containerWidth = 150;
+                        containerHeight = Math.round(150 / ratio);
                     } else {
                         containerHeight = 100;
                         containerWidth = Math.round(100 * ratio);
@@ -304,7 +304,7 @@
                 // Small control panel in edit mode
                 if (!isPreviewMode) {
                     const elControls = document.createElement('div');
-                    elControls.className = 'absolute -top-6 bg-slate-950 border border-slate-800 text-[9px] px-1 rounded flex space-x-1.5 opacity-0 group-hover:opacity-100 transition shadow z-10';
+                    elControls.className = 'absolute bottom-1 right-1 bg-slate-950/90 border border-slate-800 text-[9px] px-1.5 py-0.5 rounded flex space-x-1.5 opacity-0 group-hover:opacity-100 transition shadow z-10';
                     elControls.innerHTML = `
                         <button onclick="scaleElementUp(${index}, ${elIdx})" class="text-emerald-400 font-bold px-0.5 hover:text-emerald-350" title="Scale Up">+</button>
                         <button onclick="scaleElementDown(${index}, ${elIdx})" class="text-amber-400 font-bold px-0.5 hover:text-amber-350" title="Scale Down">-</button>
@@ -646,7 +646,7 @@
 
     window.scaleElementUp = function(blockIdx, elIdx) {
         const el = blocks[blockIdx].elements[elIdx];
-        el.scale = Math.min((el.scale || 1.0) + 0.1, 2.5);
+        el.scale = Math.min((el.scale || 1.0) + 0.1, 5.0);
         renderBlocks();
         saveRulebook(true);
     };
