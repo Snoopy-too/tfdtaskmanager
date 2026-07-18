@@ -290,7 +290,7 @@
             const container = document.createElement('div');
             container.className = 'space-y-2';
             container.innerHTML = `
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between ${!isPreviewMode ? 'pr-24' : ''}">
                     <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Markdown Section</span>
                 </div>
                 <textarea class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl p-3 focus:ring-amber-500 focus:border-amber-500 transition h-40 font-mono" placeholder="Write markdown rules here..." oninput="updateBlockText(${index}, this.value)">${block.text || ''}</textarea>
@@ -350,7 +350,7 @@
         container.className = 'space-y-4';
         
         const titleBar = document.createElement('div');
-        titleBar.className = 'flex items-center justify-between';
+        titleBar.className = `flex items-center justify-between ${!isPreviewMode ? 'pr-24' : ''}`;
         if (isPreviewMode) {
             titleBar.innerHTML = `
                 <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">${block.title || 'Interactive Game Setup Diagram'}</span>
@@ -446,7 +446,7 @@
         container.className = 'space-y-3';
         
         const titleBar = document.createElement('div');
-        titleBar.className = 'flex items-center justify-between';
+        titleBar.className = `flex items-center justify-between ${!isPreviewMode ? 'pr-24' : ''}`;
         if (isPreviewMode) {
             titleBar.innerHTML = `
                 <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">${block.title || 'Inventory List (Automatic Component Sync)'}</span>
@@ -529,7 +529,7 @@
         container.className = 'space-y-4';
         
         const titleBar = document.createElement('div');
-        titleBar.className = 'flex items-center justify-between';
+        titleBar.className = `flex items-center justify-between ${!isPreviewMode ? 'pr-24' : ''}`;
         if (isPreviewMode) {
             titleBar.innerHTML = `
                 <span class="text-xs font-bold text-rose-400 uppercase tracking-wider">${block.title || 'Anatomy of a Component'}</span>
