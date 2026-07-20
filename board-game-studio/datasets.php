@@ -588,14 +588,17 @@ require_once __DIR__ . '/../templates/header.php';
 
                     <!-- Row Data Table Preview -->
                     <div class="space-y-2">
-                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Data Rows Preview</h4>
-                        <div class="overflow-x-auto border border-slate-800 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Data Rows Preview</h4>
+                            <span class="text-[10px] text-slate-500 font-mono">Shift + Scroll to pan horizontally</span>
+                        </div>
+                        <div id="dataset-table-container" class="overflow-auto max-h-[calc(100vh-280px)] border border-slate-800 rounded-xl relative shadow-inner">
                             <table class="w-full text-left border-collapse text-xs">
-                                <thead>
-                                    <tr class="bg-slate-950 text-slate-300 border-b border-slate-800">
-                                        <th class="p-3 font-semibold w-12 text-center">Row</th>
+                                <thead class="sticky top-0 z-20 bg-slate-950 text-slate-300 border-b border-slate-800 shadow-sm">
+                                    <tr>
+                                        <th class="p-3 font-semibold w-12 text-center sticky left-0 top-0 z-30 bg-slate-950 border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.5)]">Row</th>
                                         <?php foreach ($inspectDataset->getColumnMap() as $col): ?>
-                                            <th class="p-3 font-semibold relative group pr-6">
+                                            <th class="p-3 font-semibold relative group pr-6 bg-slate-950">
                                                 <span><?php echo SecurityHelper::escape($col); ?></span>
                                                 <?php if (!$isDatasetLocked): ?>
                                                     <form action="" method="POST" class="absolute right-1 top-2.5 m-0 inline" onsubmit="event.preventDefault(); window.studioConfirm('Remove column: <?php echo SecurityHelper::escape($col); ?>? This will delete all cell values for this column.', 'Remove', 'Remove Column').then((confirmed) => { if (confirmed) this.submit(); });">
@@ -609,7 +612,7 @@ require_once __DIR__ . '/../templates/header.php';
                                             </th>
                                         <?php endforeach; ?>
                                         <?php if (!$isDatasetLocked): ?>
-                                            <th class="p-3 font-semibold w-16 text-center">Action</th>
+                                            <th class="p-3 font-semibold w-16 text-center bg-slate-950">Action</th>
                                         <?php endif; ?>
                                     </tr>
                                 </thead>
@@ -629,7 +632,7 @@ require_once __DIR__ . '/../templates/header.php';
                                     <?php else: ?>
                                         <?php foreach ($rows as $index => $row): ?>
                                             <tr class="border-b border-slate-800/60 hover:bg-slate-800/30 text-slate-300">
-                                                <td class="p-3 text-center text-slate-500 bg-slate-950/40 border-r border-slate-800/40 font-bold"><?php echo $index + 1; ?></td>
+                                                <td class="p-3 text-center text-slate-400 bg-slate-950 sticky left-0 z-10 border-r border-slate-800 font-bold shadow-[2px_0_5px_rgba(0,0,0,0.5)]"><?php echo $index + 1; ?></td>
                                                 <?php foreach ($inspectDataset->getColumnMap() as $col): ?>
                                                     <td class="p-1 border-r border-slate-800/40 last:border-r-0 transition-colors duration-200">
                                                         <input type="text" 
@@ -811,6 +814,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // ponytail: horizontal mouse wheel scrolling support for wide data grids
+    const tableContainer = document.getElementById('dataset-table-container');
+    if (tableContainer) {
+        tableContainer.addEventListener('wheel', (e) => {
+            if (e.shiftKey) {
+                e.preventDefault();
+                tableContainer.scrollLeft += (e.deltaY || e.deltaX);
+            }
+        }, { passive: false });
+    }
 });
 
 <?php if ($inspectDataset && !$isDatasetLocked): ?>
