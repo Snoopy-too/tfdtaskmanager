@@ -12,19 +12,26 @@
 
     function loadAssets() {
         const grid = document.getElementById('asset-picker-grid');
-        if (!grid) return;
 
         // Only load once unless requested
-        if (assetsLoaded) return;
+        if (assetsLoaded && cachedAssets.length > 0) {
+            return Promise.resolve(cachedAssets);
+        }
         
-        grid.innerHTML = '<div class="col-span-2 text-center text-xs text-slate-500 py-6">Loading assets...</div>';
+        if (grid) {
+            grid.innerHTML = '<div class="col-span-2 text-center text-xs text-slate-500 py-6">Loading assets...</div>';
+        }
 
-        fetch(`api.php?action=list_assets&project_id=${window.studioConfig.projectId}`)
+        const projectId = (window.studioConfig && window.studioConfig.projectId) ? window.studioConfig.projectId : 0;
+        return fetch(`api.php?action=list_assets&project_id=${projectId}`)
         .then(response => response.json())
         .then(assets => {
-            grid.innerHTML = '';
             assetsLoaded = true;
             cachedAssets = Array.isArray(assets) ? assets : [];
+
+            if (!grid) return cachedAssets;
+
+            grid.innerHTML = '';
 
             if (!Array.isArray(assets)) {
                 const errMsg = assets.error || 'Failed to load assets. Please log in again.';
@@ -368,7 +375,31 @@
      */
     function getAssetUrlByFilename(filename) {
         if (!filename) return null;
-        const match = cachedAssets.find(a => a.original_filename === filename);
+        const cleanName = String(filename).trim().toLowerCase();
+        
+        // 1. Exact match on original_filename
+        let match = cachedAssets.find(a => a.original_filename && a.original_filename.toLowerCase() === cleanName);
+        
+        // 2. Match without extension if extension is omitted in dataset
+        if (!match) {
+            match = cachedAssets.find(a => {
+                if (!a.original_filename) return false;
+                const lastDot = a.original_filename.lastIndexOf('.');
+                const origNoExt = lastDot > 0 ? a.original_filename.substring(0, lastDot).toLowerCase() : a.original_filename.toLowerCase();
+                return origNoExt === cleanName;
+            });
+        }
+
+        // 3. Match stored_filename
+        if (!match) {
+            match = cachedAssets.find(a => a.stored_filename && a.stored_filename.toLowerCase() === cleanName);
+        }
+
+        // 4. Match URL ending
+        if (!match) {
+            match = cachedAssets.find(a => a.url && a.url.toLowerCase().endsWith(cleanName));
+        }
+
         return match ? match.url : null;
     }
 
