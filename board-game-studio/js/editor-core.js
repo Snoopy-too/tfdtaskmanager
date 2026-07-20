@@ -781,10 +781,11 @@
             });
         }
 
-        // Fallback layout refresh once all page assets (stylesheets, frames) are fully loaded
         window.addEventListener('load', () => {
             refreshCanvasTextLayers();
         });
+
+        setupImportTemplateControls();
 
         if (!window.studioConfig.isViewMode) {
             // Heartbeat lock refresh
@@ -822,6 +823,174 @@
         }
     });
 
+    // Template Import Component Handler
+    function setupImportTemplateControls() {
+        const btnImport = document.getElementById('btn-import-template');
+        const modal = document.getElementById('modal-import-template');
+        const btnClose = document.getElementById('btn-close-import-modal');
+        const btnCancel = document.getElementById('btn-cancel-import');
+        const btnConfirm = document.getElementById('btn-confirm-import');
+        const select = document.getElementById('import-template-select');
+        const chkGroup = document.getElementById('import-as-group');
+
+        if (!btnImport || !modal) return;
+
+        function openModal() {
+            if (!select) return;
+            select.innerHTML = '<option value="">Loading templates...</option>';
+            modal.classList.remove('hidden');
+
+            const projectId = window.studioConfig.projectId;
+            const currentTemplateId = window.studioConfig.templateId;
+
+            fetch(`api.php?action=list_templates&project_id=${projectId}&exclude_id=${currentTemplateId}`)
+                .then(r => r.json())
+                .then(templates => {
+                    select.innerHTML = '';
+                    if (!templates || templates.length === 0) {
+                        select.innerHTML = '<option value="">No other templates found in this project</option>';
+                        btnConfirm.disabled = true;
+                        return;
+                    }
+                    btnConfirm.disabled = false;
+                    templates.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.textContent = `${t.name} (${t.width}x${t.height}px)`;
+                        select.appendChild(opt);
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to load project templates:', err);
+                    select.innerHTML = '<option value="">Error loading templates</option>';
+                    btnConfirm.disabled = true;
+                });
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        btnImport.addEventListener('click', openModal);
+        if (btnClose) btnClose.addEventListener('click', closeModal);
+        if (btnCancel) btnCancel.addEventListener('click', closeModal);
+
+        if (btnConfirm) {
+            btnConfirm.addEventListener('click', () => {
+                const sourceTemplateId = select ? select.value : null;
+                const asGroup = chkGroup ? chkGroup.checked : true;
+                const selectedOption = select ? select.options[select.selectedIndex] : null;
+                const templateName = selectedOption ? selectedOption.textContent.split(' (')[0] : 'Imported Component';
+
+                if (!sourceTemplateId) {
+                    alert('Please select a template to import.');
+                    return;
+                }
+
+                closeModal();
+                importTemplateToCanvas(parseInt(sourceTemplateId, 10), templateName, asGroup);
+            });
+        }
+    }
+
+    function importTemplateToCanvas(sourceTemplateId, templateName, groupAsSingleComponent) {
+        setSaveStatus('Importing template component...', 'pulse');
+
+        fetch(`api.php?action=load_canvas&template_id=${sourceTemplateId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data || !data.canvas_json) {
+                    alert('The selected template contains no canvas data.');
+                    setSaveStatus('Import failed', 'error');
+                    return;
+                }
+
+                let parsed;
+                try {
+                    parsed = JSON.parse(data.canvas_json);
+                } catch (e) {
+                    console.error('Failed to parse target template canvas JSON:', e);
+                    alert('Invalid canvas data format in selected template.');
+                    setSaveStatus('Import failed', 'error');
+                    return;
+                }
+
+                if (!parsed.objects || !Array.isArray(parsed.objects) || parsed.objects.length === 0) {
+                    alert('The selected template has no elements to import.');
+                    setSaveStatus('Selected template is empty', 'error');
+                    return;
+                }
+
+                // Filter out guide lines / overlays
+                const filteredObjects = parsed.objects.filter(o => o.id !== 'safe-zone-guide' && o.id !== 'bleed-zone-guide');
+
+                if (filteredObjects.length === 0) {
+                    alert('The selected template has no importable elements.');
+                    setSaveStatus('Selected template is empty', 'error');
+                    return;
+                }
+
+                fabric.util.enlivenObjects(filteredObjects, (enlivenedObjects) => {
+                    if (!enlivenedObjects || enlivenedObjects.length === 0) {
+                        alert('Failed to reconstruct objects from template.');
+                        setSaveStatus('Import failed', 'error');
+                        return;
+                    }
+
+                    canvas.discardActiveObject();
+
+                    if (groupAsSingleComponent && enlivenedObjects.length > 1) {
+                        const group = new fabric.Group(enlivenedObjects, {
+                            name: `Component: ${templateName}`,
+                            left: (canvas.width - 200) / 2,
+                            top: (canvas.height - 200) / 2
+                        });
+                        canvas.add(group);
+                        canvas.setActiveObject(group);
+                    } else if (groupAsSingleComponent && enlivenedObjects.length === 1) {
+                        const singleObj = enlivenedObjects[0];
+                        singleObj.set({
+                            name: singleObj.name ? `${singleObj.name} (${templateName})` : templateName,
+                            left: (canvas.width - (singleObj.width || 100)) / 2,
+                            top: (canvas.height - (singleObj.height || 100)) / 2
+                        });
+                        canvas.add(singleObj);
+                        canvas.setActiveObject(singleObj);
+                    } else {
+                        // Import as separate un-grouped objects
+                        const createdObjects = [];
+                        enlivenedObjects.forEach((obj, idx) => {
+                            obj.set({
+                                name: obj.name ? `${obj.name}` : `Layer ${idx + 1} (${templateName})`,
+                                left: (obj.left || 0) + 20,
+                                top: (obj.top || 0) + 20
+                            });
+                            canvas.add(obj);
+                            createdObjects.push(obj);
+                        });
+                        if (createdObjects.length > 0) {
+                            const sel = new fabric.ActiveSelection(createdObjects, { canvas: canvas });
+                            canvas.setActiveObject(sel);
+                        }
+                    }
+
+                    canvas.renderAll();
+                    triggerAutoSave();
+
+                    if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                        window.layerManager.renderLayersList();
+                    }
+
+                    setSaveStatus('Template component imported', 'saved');
+                });
+            })
+            .catch(err => {
+                console.error('Error importing template:', err);
+                alert('Failed to load target template data.');
+                setSaveStatus('Import failed', 'error');
+            });
+    }
+
     // Expose functions globally
     window.editorCore = {
         saveCanvas: saveCanvas,
@@ -833,6 +1002,7 @@
         pushState: pushState,
         duplicateObject: duplicateObject,
         refreshCanvasTextLayers: refreshCanvasTextLayers,
+        importTemplateToCanvas: importTemplateToCanvas,
         getZoomLevel: () => zoomLevel
     };
 })();

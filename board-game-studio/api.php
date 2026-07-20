@@ -266,6 +266,30 @@ try {
             echo json_encode($formatted);
             break;
 
+        case 'list_templates':
+            if ($method !== 'GET') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+            $excludeId = isset($_GET['exclude_id']) ? (int)$_GET['exclude_id'] : 0;
+            $templates = $templateService->getTemplatesByProject($projectId);
+            
+            $formatted = [];
+            foreach ($templates as $t) {
+                if ($t->getId() === $excludeId) {
+                    continue;
+                }
+                $formatted[] = [
+                    'id' => $t->getId(),
+                    'name' => $t->getName(),
+                    'width' => $t->getCanvasWidthPx(),
+                    'height' => $t->getCanvasHeightPx(),
+                    'component_type_id' => $t->getComponentTypeId()
+                ];
+            }
+            echo json_encode($formatted);
+            break;
+
         case 'get_dataset':
             if ($method !== 'GET') {
                 throw new \InvalidArgumentException('Method not allowed.');
