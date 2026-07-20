@@ -249,10 +249,17 @@ class BgAssetService
                     'error' => $files['error'][$i],
                     'size' => $files['size'][$i]
                 ];
-                try {
-                    $results[] = $this->uploadAsset($projectId, $file, null, $uploadedByUserId);
-                } catch (\Exception $e) {
-                    // Skip invalid files
+                
+                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                if ($ext === 'zip') {
+                    $zipResults = $this->uploadZipAsset($projectId, $file, $uploadedByUserId);
+                    $results = array_merge($results, $zipResults);
+                } else {
+                    try {
+                        $results[] = $this->uploadAsset($projectId, $file, null, $uploadedByUserId);
+                    } catch (\Exception $e) {
+                        // Skip invalid individual files
+                    }
                 }
             }
         }
@@ -262,10 +269,10 @@ class BgAssetService
     public function uploadZipAsset(?int $projectId, array $zipFile, int $uploadedByUserId): array
     {
         if (!class_exists('\ZipArchive')) {
-            throw new ValidationException("ZipArchive extension is not enabled on server.");
+            throw new ValidationException("ZipArchive PHP extension is not enabled on this server.");
         }
         if (!isset($zipFile['error']) || $zipFile['error'] !== UPLOAD_ERR_OK) {
-            throw new ValidationException("Failed to upload ZIP file.");
+            throw new ValidationException("Failed to upload ZIP file. Error code: " . ($zipFile['error'] ?? 'unknown'));
         }
 
         $zip = new \ZipArchive();
@@ -274,7 +281,10 @@ class BgAssetService
         }
 
         $extractDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bgs_zip_' . uniqid();
-        mkdir($extractDir, 0755, true);
+        if (!is_dir($extractDir)) {
+            mkdir($extractDir, 0755, true);
+        }
+
         $zip->extractTo($extractDir);
         $zip->close();
 
@@ -291,21 +301,22 @@ class BgAssetService
             $fileName = $fileInfo->getFilename();
             if (str_starts_with($fileName, '.')) continue;
 
-            // Resolve subfolder prefix to avoid filename collisions (e.g. heavyweight/boxer_1.png -> hw_boxer_1.png)
+            // Resolve subfolder prefix (e.g. heavyweight/boxer_1.png or fighter_images/heavyweight/boxer_1.png)
             $relativePath = str_replace('\\', '/', substr($fileInfo->getPathname(), strlen($extractDir) + 1));
             $parts = explode('/', $relativePath);
 
             $prefix = '';
-            if (count($parts) > 1) {
-                $subfolder = strtolower($parts[0]);
+            foreach ($parts as $part) {
+                $subfolder = strtolower($part);
                 if (str_contains($subfolder, 'heavy')) {
                     $prefix = 'hw_';
+                    break;
                 } elseif (str_contains($subfolder, 'welter') || str_contains($subfolder, 'middle')) {
                     $prefix = 'wm_';
+                    break;
                 } elseif (str_contains($subfolder, 'light') || str_contains($subfolder, 'bantam') || str_contains($subfolder, 'feather')) {
                     $prefix = 'lbf_';
-                } else {
-                    $prefix = $subfolder . '_';
+                    break;
                 }
             }
 
