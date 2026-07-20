@@ -32,6 +32,15 @@
                 return;
             }
 
+            // Register custom uploaded fonts
+            assets.filter(a => a.mime_type === 'font/ttf' || a.mime_type === 'font/otf' || a.original_filename.endsWith('.ttf') || a.original_filename.endsWith('.otf'))
+                .forEach(fontAsset => loadFontFace(fontAsset));
+
+            // Re-apply template engine image bindings now that assets are cached
+            if (window.templateEngine && typeof window.templateEngine.applyBindings === 'function') {
+                window.templateEngine.applyBindings();
+            }
+
             if (assets.length === 0) {
                 grid.innerHTML = '<div class="col-span-2 text-center text-xs text-slate-500 py-6">No assets uploaded.</div>';
                 return;
@@ -369,4 +378,11 @@
         getAssetUrlByFilename: getAssetUrlByFilename,
         getCachedAssets: () => cachedAssets
     };
+
+    // ponytail: auto-load project assets on page init so dataset image bindings resolve immediately on hard refresh
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadAssets);
+    } else {
+        loadAssets();
+    }
 })();
