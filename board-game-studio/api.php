@@ -40,8 +40,12 @@ try {
                 echo json_encode(['error' => 'Template not found.']);
                 exit;
             }
+            $canvasJson = $template->getCanvasJson();
+            if (is_string($canvasJson)) {
+                $canvasJson = str_replace('"alphabetical"', '"alphabetic"', $canvasJson);
+            }
             echo json_encode([
-                'canvas_json' => $template->getCanvasJson(),
+                'canvas_json' => $canvasJson,
                 'width' => $template->getCanvasWidthPx(),
                 'height' => $template->getCanvasHeightPx(),
                 'bleed_mm' => $template->getBleedMm(),
@@ -82,6 +86,9 @@ try {
             }
 
             $canvasJson = $_POST['canvas_json'] ?? '';
+            if (is_string($canvasJson)) {
+                $canvasJson = str_replace('"alphabetical"', '"alphabetic"', $canvasJson);
+            }
             $layersRaw = $_POST['layers'] ?? '[]';
             
             $layers = json_decode($layersRaw, true);

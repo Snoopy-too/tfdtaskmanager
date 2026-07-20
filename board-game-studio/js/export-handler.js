@@ -100,7 +100,13 @@
         fetch(`api.php?action=load_canvas&template_id=${window.studioConfig.templateId}`)
         .then(response => response.json())
         .then(data => {
-            templateJson = data.canvas_json;
+            let json = data.canvas_json;
+            if (typeof json === 'string') {
+                json = json.replaceAll('"alphabetical"', '"alphabetic"');
+            } else if (json && typeof json === 'object') {
+                json = JSON.parse(JSON.stringify(json).replaceAll('"alphabetical"', '"alphabetic"'));
+            }
+            templateJson = json;
             updateProgress('Loading dataset...', 15);
 
             // Fetch dataset if bound
