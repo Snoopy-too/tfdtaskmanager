@@ -590,8 +590,10 @@
         
         if (!bgPicker || !bgHex || !transparentCheck) return;
 
+        const canvas = window.editorCanvas;
+        if (!canvas) return;
+
         function updateCanvasBg(color, isTransparent) {
-            const canvas = window.editorCanvas;
             if (!canvas) return;
 
             if (isTransparent) {
@@ -609,9 +611,6 @@
         }
 
         function syncInputs() {
-            const canvas = window.editorCanvas;
-            if (!canvas) return;
-
             const currentBg = canvas.backgroundColor;
             if (!currentBg || currentBg === 'transparent') {
                 transparentCheck.checked = true;
