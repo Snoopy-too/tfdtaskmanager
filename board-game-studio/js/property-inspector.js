@@ -275,7 +275,7 @@
         if (!activeObj || isUpdatingForm) return;
 
         // ponytail: map textAlign to originX so the text anchor remains consistent for dynamic data bindings
-        if (property === 'textAlign' && (activeObj.type === 'i-text' || activeObj.type === 'text')) {
+        if (property === 'textAlign' && (activeObj.type === 'i-text' || activeObj.type === 'text' || activeObj.type === 'textbox')) {
             const oldOriginX = activeObj.originX || 'left';
             let newOriginX = value; // 'left', 'center', 'right', 'justify'
             if (newOriginX === 'justify') {
@@ -319,7 +319,7 @@
             }
         }
 
-        if (activeObj.type === 'i-text' || activeObj.type === 'text') {
+        if (activeObj.type === 'i-text' || activeObj.type === 'text' || activeObj.type === 'textbox') {
             if (typeof activeObj.initDimensions === 'function') {
                 activeObj.initDimensions();
             }
@@ -333,8 +333,14 @@
     function updateActiveScaleWidth(width) {
         if (!activeObj || isUpdatingForm) return;
 
-        const scaleX = width / activeObj.width;
-        activeObj.set('scaleX', scaleX);
+        if (activeObj.type === 'textbox') {
+            activeObj.set({ width: width, scaleX: 1 });
+        } else {
+            const scaleX = width / activeObj.width;
+            activeObj.set('scaleX', scaleX);
+        }
+        window.editorCanvas.renderAll();
+        window.editorCore.triggerAutoSave();
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
 
@@ -364,7 +370,7 @@
         isUpdatingForm = true;
 
         // ponytail: auto-correct text originX mismatch upon selecting/inspecting the layer to align anchor point
-        if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+        if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
             const alignVal = obj.textAlign || 'left';
             const expectedOriginX = alignVal === 'justify' ? 'left' : alignVal;
             if (obj.originX !== expectedOriginX) {
@@ -435,7 +441,7 @@
         imgSec.classList.add('hidden');
 
         // Render type-specific sections
-        if (obj.type === 'i-text' || obj.type === 'text') {
+        if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
             textSec.classList.remove('hidden');
             document.getElementById('prop-text-val').value = obj.text || '';
             

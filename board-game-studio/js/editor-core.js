@@ -156,7 +156,7 @@
             let layerType = 'shape';
             let properties = {};
 
-            if (obj.type === 'i-text' || obj.type === 'text') {
+            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
                 textVal = obj.text;
                 layerType = 'text';
                 properties = {
@@ -232,10 +232,29 @@
         });
     }
 
+    // ponytail: upgrade legacy i-text objects to fabric.Textbox for automatic word wrapping
+    function upgradeLegacyTextLayers() {
+        if (!canvas) return;
+        const legacyTextObjects = canvas.getObjects().filter(obj => obj.type === 'i-text' || obj.type === 'text');
+        if (legacyTextObjects.length === 0) return;
+
+        legacyTextObjects.forEach(obj => {
+            const textVal = obj.text || '';
+            const defaultWidth = (obj.width && obj.width > 50) ? obj.width : Math.round(canvas.width * 0.8);
+            const options = obj.toObject(['name', 'variable_binding', 'id', 'lockMovementX', 'lockMovementY', 'originX', 'originY']);
+            delete options.type;
+            options.width = defaultWidth;
+            const newTextbox = new fabric.Textbox(textVal, options);
+            const index = canvas.getObjects().indexOf(obj);
+            canvas.remove(obj);
+            canvas.insertAt(newTextbox, index, false);
+        });
+    }
+
 // Helper to refresh all text layers once their fonts are loaded
     function refreshCanvasTextLayers() {
         if (!canvas || !document.fonts) return;
-        const textObjects = canvas.getObjects().filter(obj => obj.type === 'i-text' || obj.type === 'text');
+        const textObjects = canvas.getObjects().filter(obj => obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox');
         
         // Clear FabricJS character width cache to force dynamic re-measurement
         if (typeof fabric !== 'undefined') {
@@ -262,6 +281,11 @@
 
     // Load Canvas state
     function loadCanvas() {
+        loadTemplateCanvas();
+    }
+
+    function loadTemplateCanvas() {
+        if (!canvas) return;
         setSaveStatus('Loading canvas...', 'pulse');
         
         fetch(`api.php?action=load_canvas&template_id=${window.studioConfig.templateId}`)
@@ -269,6 +293,8 @@
         .then(data => {
             if (data.canvas_json) {
                 canvas.loadFromJSON(data.canvas_json, () => {
+                    upgradeLegacyTextLayers();
+
                     // Re-render guides on top after load
                     if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                         window.guideRenderer.renderGuides();

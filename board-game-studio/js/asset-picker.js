@@ -329,11 +329,13 @@
                     } else {
                         // Create a new text object at the dropped position
                         const defaultFontSize = Math.max(28, Math.round(canvas.height * 0.05));
-                        const text = new fabric.IText('Text Layer', {
+                        const defaultWidth = Math.round(canvas.width * 0.8);
+                        const text = new fabric.Textbox('Text Layer', {
                             left: x,
                             top: y,
                             originX: 'center',
                             originY: 'center',
+                            width: defaultWidth,
                             fontFamily: fontName,
                             fontSize: defaultFontSize,
                             fill: '#1e293b',

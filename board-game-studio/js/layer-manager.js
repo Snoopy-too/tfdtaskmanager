@@ -43,15 +43,17 @@
         });
     }
 
-    // Add Text Layer
+    // Add Text Layer (ponytail: fabric.Textbox provides native word-wrapping within set width bounds)
     function addTextLayer() {
         const canvas = window.editorCanvas;
         const defaultFontSize = Math.max(28, Math.round(canvas.height * 0.05));
-        const text = new fabric.IText('Double click to edit', {
+        const defaultWidth = Math.round(canvas.width * 0.8);
+        const text = new fabric.Textbox('Double click to edit', {
             left: canvas.width / 2,
             top: canvas.height / 2,
             originX: 'center',
             originY: 'center',
+            width: defaultWidth,
             fontFamily: 'Plus Jakarta Sans',
             fontSize: defaultFontSize,
             fill: '#1e293b',
@@ -215,7 +217,7 @@
             // Small type indicator badge
             const typeBadge = document.createElement('span');
             typeBadge.className = 'px-1 rounded bg-slate-950 text-[9px] uppercase tracking-wider text-slate-500';
-            typeBadge.textContent = obj.type === 'i-text' ? 'TXT' : (obj.type === 'image' ? 'IMG' : (obj.type === 'line' ? 'LN' : 'SHP'));
+            typeBadge.textContent = (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') ? 'TXT' : (obj.type === 'image' ? 'IMG' : (obj.type === 'line' ? 'LN' : 'SHP'));
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'truncate pr-2';

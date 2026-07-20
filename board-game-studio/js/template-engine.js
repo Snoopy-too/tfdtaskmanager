@@ -81,7 +81,7 @@
         const imageSwapPromises = [];
 
         objects.forEach(obj => {
-            if (obj.type === 'i-text' || obj.type === 'text') {
+            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
                 // Initialize original template store
                 if (!textTemplates.has(obj)) {
                     textTemplates.set(obj, obj.text || '');

@@ -185,7 +185,7 @@
                             }
 
                             // Substitute variables in text layers
-                            if (obj.type === 'i-text' || obj.type === 'text') {
+                            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
                                 let rawText = obj.variable_binding || obj.text;
                                 let subText = rawText;
                                 
