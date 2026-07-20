@@ -172,53 +172,61 @@
                     const toRemove = [];
                     const imageSwapPromises = [];
 
-                    objects.forEach(obj => {
-                        if (obj.id === 'safe-zone-guide') {
-                            toRemove.push(obj);
-                        } else if (obj.id === 'bleed-zone-guide' && !drawBleedCheckbox) {
-                            toRemove.push(obj);
-                        }
-
-                        // Substitute variables in text layers
-                        if (obj.type === 'i-text' || obj.type === 'text') {
-                            let rawText = obj.variable_binding || obj.text;
-                            let subText = rawText;
-                            
-                            const matches = rawText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g);
-                            if (matches) {
-                                matches.forEach(placeholder => {
-                                    const colName = placeholder.replace(/\{\{|\}\}/g, '');
-                                    const replacement = row[colName] !== undefined ? row[colName] : placeholder;
-                                    subText = subText.replaceAll(placeholder, replacement);
-                                });
-                            } else if (obj.variable_binding) {
-                                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                                if (row[colName] !== undefined) {
-                                    subText = row[colName];
-                                }
+                    function processExportObjects(objectsList) {
+                        objectsList.forEach(obj => {
+                            if (obj.id === 'safe-zone-guide') {
+                                toRemove.push(obj);
+                            } else if (obj.id === 'bleed-zone-guide' && !drawBleedCheckbox) {
+                                toRemove.push(obj);
                             }
-                            obj.set('text', subText);
-                        }
 
-                        // Substitute image source for bound image layers
-                        if (obj.type === 'image' && obj.variable_binding) {
-                            const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                            const filename = row[colName];
+                            if (obj.type === 'group' && typeof obj.getObjects === 'function') {
+                                processExportObjects(obj.getObjects());
+                            }
 
-                            if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
-                                const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
-                                if (assetUrl) {
-                                    const swapPromise = new Promise((imgResolve) => {
-                                        obj.setSrc(assetUrl, () => {
-                                            obj.setCoords();
-                                            imgResolve();
-                                        }, { crossOrigin: 'anonymous' });
+                            // Substitute variables in text layers
+                            if (obj.type === 'i-text' || obj.type === 'text') {
+                                let rawText = obj.variable_binding || obj.text;
+                                let subText = rawText;
+                                
+                                const matches = rawText ? rawText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g) : null;
+                                if (matches) {
+                                    matches.forEach(placeholder => {
+                                        const colName = placeholder.replace(/\{\{|\}\}/g, '');
+                                        const replacement = row[colName] !== undefined ? row[colName] : placeholder;
+                                        subText = subText.replaceAll(placeholder, replacement);
                                     });
-                                    imageSwapPromises.push(swapPromise);
+                                } else if (obj.variable_binding) {
+                                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                                    if (row[colName] !== undefined) {
+                                        subText = row[colName];
+                                    }
+                                }
+                                obj.set('text', subText);
+                            }
+
+                            // Substitute image source for bound image layers
+                            if (obj.type === 'image' && obj.variable_binding) {
+                                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                                const filename = row[colName];
+
+                                if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                                    const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
+                                    if (assetUrl) {
+                                        const swapPromise = new Promise((imgResolve) => {
+                                            obj.setSrc(assetUrl, () => {
+                                                obj.setCoords();
+                                                imgResolve();
+                                            }, { crossOrigin: 'anonymous' });
+                                        });
+                                        imageSwapPromises.push(swapPromise);
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
+
+                    processExportObjects(objects);
 
                     // Perform removals
                     toRemove.forEach(o => canvas.remove(o));

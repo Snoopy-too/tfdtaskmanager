@@ -23,8 +23,13 @@
         if (!canvasJson || !row) return canvasJson;
         const data = typeof canvasJson === 'string' ? JSON.parse(canvasJson) : canvasJson;
         
-        if (data.objects) {
-            data.objects.forEach(obj => {
+        function processObjects(objectsList) {
+            if (!objectsList || !Array.isArray(objectsList)) return;
+            objectsList.forEach(obj => {
+                if (obj.type === 'group' && Array.isArray(obj.objects)) {
+                    processObjects(obj.objects);
+                }
+                
                 // Text substitution
                 if ((obj.type === 'text' || obj.type === 'i-text') && (obj.text || obj.variable_binding)) {
                     let templateText = obj.variable_binding || obj.text || '';
@@ -66,6 +71,10 @@
                     }
                 }
             });
+        }
+
+        if (data.objects) {
+            processObjects(data.objects);
         }
         
         return data;
@@ -877,6 +886,7 @@
     }
 
     // Load templates cached in memory headlessly using FabricJS
+    // Load templates cached in memory headlessly using FabricJS
     window.renderTemplateToImage = function(templateId, rowIndex, callback) {
         // Callback shifting for optional parameter compatibility
         if (typeof rowIndex === 'function') {
@@ -899,40 +909,79 @@
                 .then(dataset => {
                     const row = dataset && dataset.rowData ? dataset.rowData[rowIndex] : null;
                     const substitutedData = substituteCanvasJson(data.canvas_json, row);
-                    
-                    const canvasEl = document.createElement('canvas');
-                    canvasEl.width = data.width || 300;
-                    canvasEl.height = data.height || 400;
+                    renderCanvasData(substitutedData, data.width, data.height);
+                })
+                .catch(err => {
+                    console.error('Failed to substitute dataset values:', err);
+                    renderCanvasData(data.canvas_json, data.width, data.height);
+                });
+            } else {
+                renderCanvasData(data.canvas_json, data.width, data.height);
+            }
 
-                    const fCanvas = new fabric.Canvas(canvasEl, { enableRetinaScaling: false });
-                    fCanvas.loadFromJSON(substitutedData, () => {
+            function renderCanvasData(canvasData, width, height) {
+                const canvasEl = document.createElement('canvas');
+                canvasEl.width = width || 300;
+                canvasEl.height = height || 400;
+
+                const fCanvas = new fabric.Canvas(canvasEl, { enableRetinaScaling: false });
+                fCanvas.loadFromJSON(canvasData, () => {
+                    // Collect all required fonts from top-level and nested group objects
+                    const fontPromises = [];
+                    function collectFonts(objects) {
+                        if (!objects || !Array.isArray(objects)) return;
+                        objects.forEach(obj => {
+                            if (obj.type === 'group' && typeof obj.getObjects === 'function') {
+                                collectFonts(obj.getObjects());
+                            }
+                            if ((obj.type === 'i-text' || obj.type === 'text') && obj.fontFamily && document.fonts) {
+                                fontPromises.push(
+                                    document.fonts.load(`1em "${obj.fontFamily}"`).catch(() => {})
+                                );
+                            }
+                        });
+                    }
+                    collectFonts(fCanvas.getObjects());
+
+                    const fontCheck = document.fonts ? document.fonts.ready.catch(() => {}) : Promise.resolve();
+
+                    Promise.all([fontCheck, ...fontPromises]).then(() => {
+                        // Clear character width cache
+                        if (typeof fabric !== 'undefined') {
+                            fabric.charWidthsCache = {};
+                            if (fabric.util) fabric.util.charWidthsCache = {};
+                        }
+
+                        // Recursively refresh text dimensions and update group bounds
+                        function refreshObjects(objects) {
+                            if (!objects || !Array.isArray(objects)) return;
+                            objects.forEach(obj => {
+                                if (obj.type === 'group' && typeof obj.getObjects === 'function') {
+                                    refreshObjects(obj.getObjects());
+                                    if (typeof obj.addWithUpdate === 'function') {
+                                        obj.addWithUpdate();
+                                    } else if (typeof obj._calcBounds === 'function') {
+                                        obj._calcBounds();
+                                    }
+                                    obj.setCoords();
+                                } else if (obj.type === 'i-text' || obj.type === 'text') {
+                                    obj.dirty = true;
+                                    if (typeof obj.initDimensions === 'function') {
+                                        obj.initDimensions();
+                                    }
+                                    obj.setCoords();
+                                }
+                            });
+                        }
+
+                        refreshObjects(fCanvas.getObjects());
                         fCanvas.renderAll();
+
                         const dataUrl = fCanvas.toDataURL({ format: 'png' });
                         renderedTemplateCache[cacheKey] = dataUrl;
                         fCanvas.dispose();
                         callback(dataUrl);
                     });
-                })
-                .catch(err => {
-                    console.error('Failed to substitute dataset values:', err);
-                    renderDefault(data);
-                });
-            } else {
-                renderDefault(data);
-            }
-
-            function renderDefault(details) {
-                const canvasEl = document.createElement('canvas');
-                canvasEl.width = details.width || 300;
-                canvasEl.height = details.height || 400;
-
-                const fCanvas = new fabric.Canvas(canvasEl, { enableRetinaScaling: false });
-                fCanvas.loadFromJSON(details.canvas_json, () => {
-                    fCanvas.renderAll();
-                    const dataUrl = fCanvas.toDataURL({ format: 'png' });
-                    renderedTemplateCache[cacheKey] = dataUrl;
-                    fCanvas.dispose();
-                    callback(dataUrl);
                 });
             }
         })
