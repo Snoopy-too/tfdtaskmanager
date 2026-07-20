@@ -66,6 +66,10 @@ class TaskService
 
     public function checkoutTask(int $taskId, int $userId, int $expectedVersion): Task
     {
+        if ($userId <= 0) {
+            throw new ValidationException("Invalid session or user. Please log in again.");
+        }
+
         $task = $this->taskRepository->findById($taskId);
         if (!$task) {
             throw new ValidationException("Task not found.");

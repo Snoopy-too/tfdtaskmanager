@@ -343,6 +343,13 @@ try {
         echo "- Added locking columns and constraint to 'bg_datasets' table via migration.\n";
     }
 
+    // Migration: Check if version column exists on tasks table for existing DBs
+    $taskVersionCols = $pdo->query("SHOW COLUMNS FROM `tasks` LIKE 'version'")->fetchAll();
+    if (empty($taskVersionCols)) {
+        $pdo->exec("ALTER TABLE `tasks` ADD COLUMN `version` INT NOT NULL DEFAULT 1 AFTER `is_bug`");
+        echo "- Added 'version' column to 'tasks' table via migration.\n";
+    }
+
     echo "Database setup completed successfully!\n";
 
 } catch (PDOException $e) {

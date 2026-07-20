@@ -62,22 +62,44 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 UPDATE tasks
                 SET project_id = :project_id, title = :title, details = :details, status = :status,
                     deadline = :deadline, created_by = :created_by, assigned_to = :assigned_to,
-                    checked_out_at = :checked_out_at, is_bug = :is_bug, version = version + 1
-                WHERE id = :id AND version = :expected_version
+                    checked_out_at = :checked_out_at, is_bug = :is_bug, version = COALESCE(version, 1) + 1
+                WHERE id = :id AND (version = :expected_version OR version IS NULL)
             ");
-            $stmt->execute([
-                'project_id' => $task->getProjectId(),
-                'title' => $task->getTitle(),
-                'details' => $task->getDetails(),
-                'status' => $task->getStatus(),
-                'deadline' => $task->getDeadline(),
-                'created_by' => $task->getCreatedBy(),
-                'assigned_to' => $task->getAssignedTo(),
-                'checked_out_at' => $task->getCheckedOutAt(),
-                'is_bug' => $task->isBug() ? 1 : 0,
-                'id' => $task->getId(),
-                'expected_version' => $task->getVersion()
-            ]);
+            
+            try {
+                $stmt->execute([
+                    'project_id' => $task->getProjectId(),
+                    'title' => $task->getTitle(),
+                    'details' => $task->getDetails(),
+                    'status' => $task->getStatus(),
+                    'deadline' => $task->getDeadline(),
+                    'created_by' => $task->getCreatedBy(),
+                    'assigned_to' => $task->getAssignedTo(),
+                    'checked_out_at' => $task->getCheckedOutAt(),
+                    'is_bug' => $task->isBug() ? 1 : 0,
+                    'id' => $task->getId(),
+                    'expected_version' => $task->getVersion()
+                ]);
+            } catch (\PDOException $e) {
+                if (str_contains($e->getMessage(), 'version')) {
+                    $this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `version` INT NOT NULL DEFAULT 1 AFTER `is_bug`");
+                    $stmt->execute([
+                        'project_id' => $task->getProjectId(),
+                        'title' => $task->getTitle(),
+                        'details' => $task->getDetails(),
+                        'status' => $task->getStatus(),
+                        'deadline' => $task->getDeadline(),
+                        'created_by' => $task->getCreatedBy(),
+                        'assigned_to' => $task->getAssignedTo(),
+                        'checked_out_at' => $task->getCheckedOutAt(),
+                        'is_bug' => $task->isBug() ? 1 : 0,
+                        'id' => $task->getId(),
+                        'expected_version' => $task->getVersion()
+                    ]);
+                } else {
+                    throw $e;
+                }
+            }
 
             if ($stmt->rowCount() === 0) {
                 throw new \App\Application\Exceptions\ValidationException("This task was updated or checked out by another team member. Please refresh the page.");

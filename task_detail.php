@@ -76,6 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $task = $taskService->getTaskById($taskId);
         } catch (ValidationException $e) {
             $error = $e->getMessage();
+        } catch (\Throwable $e) {
+            $error = "An error occurred while processing action: " . $e->getMessage();
         }
     }
 }
