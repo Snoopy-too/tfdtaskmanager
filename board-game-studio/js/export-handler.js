@@ -202,8 +202,16 @@
                 const percent = Math.round(25 + ((index / rows.length) * 50));
                 updateProgress(`Rendering layer templates: Card ${index + 1} of ${rows.length}...`, percent);
 
-                // Load base canvas JSON
-                canvas.loadFromJSON(templateJson, () => {
+                // Ensure document fonts are loaded before rendering text on offscreen canvas
+                if (document.fonts && typeof document.fonts.ready !== 'undefined') {
+                    document.fonts.ready.then(() => doRenderCanvas());
+                } else {
+                    doRenderCanvas();
+                }
+
+                function doRenderCanvas() {
+                    // Load base canvas JSON
+                    canvas.loadFromJSON(templateJson, () => {
                     // Substitute values
                     const row = rows[index];
                     const objects = canvas.getObjects();
@@ -432,7 +440,7 @@
 
                     // Draw Crop Marks
                     if (drawCropMarks) {
-                        drawPageCropMarks(pdf, x, y, drawW, drawH);
+                        drawPageCropMarks(pdf, x, y, drawW, drawH, col, row, cols, rows, gap);
                     }
                 } else {
                     const sourceW = window.studioConfig.canvasWidth;
@@ -621,29 +629,77 @@
         });
     }
 
-    // Helper to draw crop marks
-    function drawPageCropMarks(pdf, x, y, w, h) {
-        pdf.setDrawColor(180, 180, 180);
-        pdf.setLineWidth(0.1);
+    // Helper to draw crop marks without overlapping neighboring cards
+    function drawPageCropMarks(pdf, x, y, w, h, col = 0, row = 0, totalCols = 1, totalRows = 1, gap = 2) {
+        pdf.setDrawColor(160, 160, 160);
+        pdf.setLineWidth(0.15);
 
-        const markLen = 5; // Length of crop marks
-        const offset = 2;  // Offset distance from card border
+        const markLen = 4;   // Length of crop marks into margin
+        const offset = 1.5;  // Offset distance from card border for outer marks
 
-        // Top-Left corner
-        pdf.line(x, y - offset, x, y - offset - markLen); // vertical
-        pdf.line(x - offset, y, x - offset - markLen, y); // horizontal
+        const isLeftEdge = (col === 0);
+        const isRightEdge = (col === totalCols - 1);
+        const isTopEdge = (row === 0);
+        const isBottomEdge = (row === totalRows - 1);
 
-        // Top-Right corner
-        pdf.line(x + w, y - offset, x + w, y - offset - markLen); // vertical
-        pdf.line(x + w + offset, y, x + w + offset + markLen, y); // horizontal
+        // Fill distance for internal gaps (never cross into neighbor card)
+        const gapFill = Math.min(markLen, Math.max(0.5, gap / 2));
 
-        // Bottom-Left corner
-        pdf.line(x, y + h + offset, x, y + h + offset + markLen); // vertical
-        pdf.line(x - offset, y + h, x - offset - markLen, y + h); // horizontal
+        // --- TOP-LEFT CORNER ---
+        // Vertical line (pointing UP)
+        if (isTopEdge) {
+            pdf.line(x, y - offset, x, y - offset - markLen);
+        } else {
+            pdf.line(x, y, x, y - gapFill);
+        }
+        // Horizontal line (pointing LEFT)
+        if (isLeftEdge) {
+            pdf.line(x - offset, y, x - offset - markLen, y);
+        } else {
+            pdf.line(x, y, x - gapFill, y);
+        }
 
-        // Bottom-Right corner
-        pdf.line(x + w, y + h + offset, x + w, y + h + offset + markLen); // vertical
-        pdf.line(x + w + offset, y + h, x + w + offset + markLen, y + h); // horizontal
+        // --- TOP-RIGHT CORNER ---
+        // Vertical line (pointing UP)
+        if (isTopEdge) {
+            pdf.line(x + w, y - offset, x + w, y - offset - markLen);
+        } else {
+            pdf.line(x + w, y, x + w, y - gapFill);
+        }
+        // Horizontal line (pointing RIGHT)
+        if (isRightEdge) {
+            pdf.line(x + w + offset, y, x + w + offset + markLen, y);
+        } else {
+            pdf.line(x + w, y, x + w + gapFill, y);
+        }
+
+        // --- BOTTOM-LEFT CORNER ---
+        // Vertical line (pointing DOWN)
+        if (isBottomEdge) {
+            pdf.line(x, y + h + offset, x, y + h + offset + markLen);
+        } else {
+            pdf.line(x, y + h, x, y + h + gapFill);
+        }
+        // Horizontal line (pointing LEFT)
+        if (isLeftEdge) {
+            pdf.line(x - offset, y + h, x - offset - markLen, y + h);
+        } else {
+            pdf.line(x, y + h, x - gapFill, y + h);
+        }
+
+        // --- BOTTOM-RIGHT CORNER ---
+        // Vertical line (pointing DOWN)
+        if (isBottomEdge) {
+            pdf.line(x + w, y + h + offset, x + w, y + h + offset + markLen);
+        } else {
+            pdf.line(x + w, y + h, x + w, y + h + gapFill);
+        }
+        // Horizontal line (pointing RIGHT)
+        if (isRightEdge) {
+            pdf.line(x + w + offset, y + h, x + w + offset + markLen, y + h);
+        } else {
+            pdf.line(x + w, y + h, x + w + gapFill, y + h);
+        }
     }
 
     // Helper to draw alignment borders
