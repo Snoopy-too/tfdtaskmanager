@@ -58,6 +58,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 $task->isBug()
             );
         } else {
+            $this->ensureTaskVersionColumn();
+
             $stmt = $this->pdo->prepare("
                 UPDATE tasks
                 SET project_id = :project_id, title = :title, details = :details, status = :status,
@@ -66,40 +68,19 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 WHERE id = :id AND (version = :expected_version OR version IS NULL)
             ");
             
-            try {
-                $stmt->execute([
-                    'project_id' => $task->getProjectId(),
-                    'title' => $task->getTitle(),
-                    'details' => $task->getDetails(),
-                    'status' => $task->getStatus(),
-                    'deadline' => $task->getDeadline(),
-                    'created_by' => $task->getCreatedBy(),
-                    'assigned_to' => $task->getAssignedTo(),
-                    'checked_out_at' => $task->getCheckedOutAt(),
-                    'is_bug' => $task->isBug() ? 1 : 0,
-                    'id' => $task->getId(),
-                    'expected_version' => $task->getVersion()
-                ]);
-            } catch (\PDOException $e) {
-                if (str_contains($e->getMessage(), 'version')) {
-                    $this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `version` INT NOT NULL DEFAULT 1 AFTER `is_bug`");
-                    $stmt->execute([
-                        'project_id' => $task->getProjectId(),
-                        'title' => $task->getTitle(),
-                        'details' => $task->getDetails(),
-                        'status' => $task->getStatus(),
-                        'deadline' => $task->getDeadline(),
-                        'created_by' => $task->getCreatedBy(),
-                        'assigned_to' => $task->getAssignedTo(),
-                        'checked_out_at' => $task->getCheckedOutAt(),
-                        'is_bug' => $task->isBug() ? 1 : 0,
-                        'id' => $task->getId(),
-                        'expected_version' => $task->getVersion()
-                    ]);
-                } else {
-                    throw $e;
-                }
-            }
+            $stmt->execute([
+                'project_id' => $task->getProjectId(),
+                'title' => $task->getTitle(),
+                'details' => $task->getDetails(),
+                'status' => $task->getStatus(),
+                'deadline' => $task->getDeadline(),
+                'created_by' => $task->getCreatedBy(),
+                'assigned_to' => $task->getAssignedTo(),
+                'checked_out_at' => $task->getCheckedOutAt(),
+                'is_bug' => $task->isBug() ? 1 : 0,
+                'id' => $task->getId(),
+                'expected_version' => $task->getVersion()
+            ]);
 
             if ($stmt->rowCount() === 0) {
                 throw new \App\Application\Exceptions\ValidationException("This task was updated or checked out by another team member. Please refresh the page.");
@@ -194,5 +175,20 @@ class PDOTaskRepository implements TaskRepositoryInterface
             (bool)($row['is_bug'] ?? false),
             (int)($row['version'] ?? 1)
         );
+    }
+
+    private function ensureTaskVersionColumn(): void
+    {
+        static $checked = false;
+        if ($checked) return;
+        try {
+            $cols = $this->pdo->query("SHOW COLUMNS FROM `tasks` LIKE 'version'")->fetchAll();
+            if (empty($cols)) {
+                $this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `version` INT NOT NULL DEFAULT 1 AFTER `is_bug`");
+            }
+        } catch (\Throwable $e) {
+            // Ignore if already exists or permission denied
+        }
+        $checked = true;
     }
 }
