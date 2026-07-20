@@ -143,7 +143,8 @@ class DIContainer
             return new BgTemplateService(
                 $this->get(PDOBgTemplateRepository::class),
                 $this->get(PDOBgTemplateLayerRepository::class),
-                $this->get(PDOBgComponentTypeRepository::class)
+                $this->get(PDOBgComponentTypeRepository::class),
+                $this->get(PDOBgRulebookRepository::class)
             );
         };
 

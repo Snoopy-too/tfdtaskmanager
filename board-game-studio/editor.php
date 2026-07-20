@@ -177,7 +177,12 @@ require_once __DIR__ . '/../templates/header.php';
             </a>
             <div>
                 <h1 class="text-xl font-bold text-white flex items-center space-x-2">
-                    <span><?php echo SecurityHelper::escape($template->getName()); ?></span>
+                    <span id="template-title-display"><?php echo SecurityHelper::escape($template->getName()); ?></span>
+                    <?php if (!$isViewMode): ?>
+                        <button onclick="promptRenameTemplate(<?php echo $template->getId(); ?>, '<?php echo SecurityHelper::escape(addslashes($template->getName())); ?>')" class="text-slate-400 hover:text-amber-400 transition p-1" title="Rename Template">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        </button>
+                    <?php endif; ?>
                     <span class="text-xs uppercase font-extrabold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                         <?php echo $compType ? SecurityHelper::escape($compType->getName()) : 'Component'; ?>
                     </span>
@@ -703,6 +708,52 @@ require_once __DIR__ . '/../templates/header.php';
 <script src="js/template-engine.js"></script>
 
 <script>
+    function promptRenameTemplate(templateId, currentName) {
+        const handleName = (newName) => {
+            if (newName && newName.trim() !== "" && newName.trim() !== currentName) {
+                performRenameTemplate(templateId, newName.trim());
+            }
+        };
+
+        if (typeof window.studioPrompt === 'function') {
+            window.studioPrompt("Enter a new name for the design template:", currentName, "Rename Template").then(handleName);
+        } else {
+            const newName = prompt("Enter a new name for the design template:", currentName);
+            handleName(newName);
+        }
+    }
+
+    function performRenameTemplate(templateId, newName) {
+        const formData = new FormData();
+        formData.append('action', 'rename_template');
+        formData.append('template_id', templateId);
+        formData.append('name', newName);
+        formData.append('csrf_token', '<?php echo SecurityHelper::escape($csrfToken); ?>');
+
+        fetch('api.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.studioConfig.templateName = data.name;
+                const titleEl = document.getElementById('template-title-display');
+                if (titleEl) titleEl.innerText = data.name;
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert("Template renamed successfully.", "Success");
+                }
+            } else {
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert(data.error || "Failed to rename template.", "Error");
+                } else {
+                    alert(data.error || "Failed to rename template.");
+                }
+            }
+        })
+        .catch(err => console.error('[BoardGameStudio] Rename error:', err));
+    }
+
     function makeCopy() {
         const originalName = window.studioConfig.templateName;
         window.studioPrompt("Enter a name for the duplicated template:", originalName + " (Copy)", "Duplicate Template")

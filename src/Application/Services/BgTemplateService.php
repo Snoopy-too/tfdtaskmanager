@@ -9,6 +9,8 @@ use App\Domain\Entities\BgTemplateLayer;
 use App\Domain\Repositories\BgTemplateRepositoryInterface;
 use App\Domain\Repositories\BgTemplateLayerRepositoryInterface;
 use App\Domain\Repositories\BgComponentTypeRepositoryInterface;
+use App\Domain\Repositories\BgRulebookRepositoryInterface;
+use App\Domain\Entities\BgRulebook;
 use App\Application\Exceptions\ValidationException;
 
 class BgTemplateService
@@ -16,15 +18,18 @@ class BgTemplateService
     private BgTemplateRepositoryInterface $templateRepository;
     private BgTemplateLayerRepositoryInterface $layerRepository;
     private BgComponentTypeRepositoryInterface $componentTypeRepository;
+    private ?BgRulebookRepositoryInterface $rulebookRepository;
 
     public function __construct(
         BgTemplateRepositoryInterface $templateRepository,
         BgTemplateLayerRepositoryInterface $layerRepository,
-        BgComponentTypeRepositoryInterface $componentTypeRepository
+        BgComponentTypeRepositoryInterface $componentTypeRepository,
+        ?BgRulebookRepositoryInterface $rulebookRepository = null
     ) {
         $this->templateRepository = $templateRepository;
         $this->layerRepository = $layerRepository;
         $this->componentTypeRepository = $componentTypeRepository;
+        $this->rulebookRepository = $rulebookRepository;
     }
 
     public function getTemplatesByProject(int $projectId): array
@@ -116,6 +121,8 @@ class BgTemplateService
             throw new ValidationException("Template not found.");
         }
 
+        $oldName = $template->getName();
+
         $updated = new BgTemplate(
             $id,
             $template->getProjectId(),
@@ -129,8 +136,36 @@ class BgTemplateService
             $template->getCreatedBy(),
             $template->getCreatedAt()
         );
+        if ($template->getCanvasJson() !== null) {
+            $updated->setCanvasJson($template->getCanvasJson());
+        }
 
         $this->templateRepository->update($updated);
+
+        // Sync rulebooks if the template name has changed
+        if ($oldName !== $name && $this->rulebookRepository !== null) {
+            $rulebooks = $this->rulebookRepository->findByProjectId($template->getProjectId());
+            foreach ($rulebooks as $rulebook) {
+                $contentJson = json_encode($rulebook->getContent(), JSON_UNESCAPED_UNICODE);
+                if (str_contains($contentJson, $oldName)) {
+                    $newContentJson = str_replace($oldName, $name, $contentJson);
+                    $newContent = json_decode($newContentJson, true) ?: [];
+                    $updatedRulebook = new BgRulebook(
+                        $rulebook->getId(),
+                        $rulebook->getProjectId(),
+                        $rulebook->getName(),
+                        $newContent,
+                        $rulebook->getCreatedBy(),
+                        $rulebook->getCreatedAt(),
+                        date('Y-m-d H:i:s'),
+                        $rulebook->getLockedByUserId(),
+                        $rulebook->getLockedAt()
+                    );
+                    $this->rulebookRepository->save($updatedRulebook);
+                }
+            }
+        }
+
         return $updated;
     }
 

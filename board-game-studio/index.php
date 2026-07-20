@@ -142,6 +142,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Template Renaming
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'rename_template') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+        $newName = trim($_POST['name'] ?? '');
+        try {
+            $template = $templateService->getTemplateById($templateId);
+            if ($template) {
+                $templateService->updateTemplate(
+                    $templateId,
+                    $newName,
+                    $template->getBleedMm(),
+                    $template->getSafeMarginMm(),
+                    $template->getDatasetId()
+                );
+                $success = 'Template renamed successfully.';
+            }
+        } catch (ValidationException $e) {
+            $error = $e->getMessage();
+        } catch (\Exception $e) {
+            $error = 'Failed to rename template: ' . $e->getMessage();
+        }
+    }
+}
+
 // Handle Template Dataset Binding Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_template_dataset') {
     $submittedToken = $_POST['csrf_token'] ?? '';
@@ -442,6 +470,18 @@ require_once __DIR__ . '/../templates/header.php';
                                     <?php endif; ?>
                                     
                                     <div class="flex items-center space-x-2">
+                                        <?php if (!$isLocked): ?>
+                                            <form action="" method="POST" class="m-0" onsubmit="return renameTemplate(<?php echo $tmpl->getId(); ?>, '<?php echo SecurityHelper::escape(addslashes($tmpl->getName())); ?>', this);">
+                                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                                <input type="hidden" name="action" value="rename_template">
+                                                <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">
+                                                <input type="hidden" name="name" id="rename_name_<?php echo $tmpl->getId(); ?>" value="">
+                                                <button type="submit" class="text-xs text-amber-400 hover:text-amber-300 transition p-1 rounded hover:bg-amber-500/10 border border-transparent hover:border-amber-500/10" title="Rename Template">
+                                                    Rename
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+
                                         <form action="" method="POST" class="m-0" onsubmit="return duplicateTemplate(<?php echo $tmpl->getId(); ?>, '<?php echo SecurityHelper::escape(addslashes($tmpl->getName())); ?>', this);">
                                             <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                             <input type="hidden" name="action" value="duplicate_template">
@@ -512,6 +552,38 @@ require_once __DIR__ . '/../templates/header.php';
                         }
                         // Trigger on load in case Custom is default
                         document.addEventListener('DOMContentLoaded', () => toggleCustomDimensions(document.getElementById('component_type_id')));
+
+                        function renameTemplate(templateId, originalName, form) {
+                            if (form.dataset.renaming === "true") {
+                                return true;
+                            }
+
+                            const handleName = (newName) => {
+                                if (newName === null) return false;
+                                const trimmed = newName.trim();
+                                if (trimmed === "") {
+                                    if (typeof window.studioAlert === 'function') {
+                                        window.studioAlert("Template name cannot be empty.", "Validation Error");
+                                    } else {
+                                        alert("Template name cannot be empty.");
+                                    }
+                                    return false;
+                                }
+                                if (trimmed === originalName) return false;
+                                document.getElementById("rename_name_" + templateId).value = trimmed;
+                                form.dataset.renaming = "true";
+                                form.submit();
+                                return true;
+                            };
+
+                            if (typeof window.studioPrompt === 'function') {
+                                window.studioPrompt("Enter a new name for the template:", originalName, "Rename Template").then(handleName);
+                                return false;
+                            }
+
+                            const newName = prompt("Enter a new name for the template:", originalName);
+                            return handleName(newName);
+                        }
 
                         function duplicateTemplate(templateId, originalName, form) {
                             if (form.dataset.duplicating === "true") {
