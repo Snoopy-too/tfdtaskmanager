@@ -44,6 +44,8 @@ if (!$activeProject) {
     exit;
 }
 
+$allTemplates = $templateService->getTemplatesByProject($activeProjectId);
+
 // Global dataset locking check for modifications
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dataset_id'])) {
     $dsId = (int)$_POST['dataset_id'];
@@ -551,6 +553,28 @@ require_once __DIR__ . '/../templates/header.php';
                                     {{<?php echo SecurityHelper::escape($col); ?>}}
                                 </span>
                             <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <!-- Bound Templates Section -->
+                    <div>
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Bound Design Templates</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <?php 
+                            $boundTemplates = array_filter($allTemplates, function($t) use ($inspectDataset) {
+                                return $t->getDatasetId() === $inspectDataset->getId();
+                            });
+                            ?>
+                            <?php if (empty($boundTemplates)): ?>
+                                <span class="text-xs text-slate-500 italic">No templates currently bound to this dataset.</span>
+                            <?php else: ?>
+                                <?php foreach ($boundTemplates as $bTmpl): ?>
+                                    <a href="editor.php?id=<?php echo $bTmpl->getId(); ?>" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition flex items-center space-x-1">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                        <span><?php echo SecurityHelper::escape($bTmpl->getName()); ?></span>
+                                    </a>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
 

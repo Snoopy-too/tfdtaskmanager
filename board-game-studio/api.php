@@ -285,6 +285,63 @@ try {
             ]);
             break;
 
+        case 'bind_template_dataset':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $datasetId = (isset($_POST['dataset_id']) && $_POST['dataset_id'] !== '' && $_POST['dataset_id'] !== 'null' && $_POST['dataset_id'] !== '0') ? (int)$_POST['dataset_id'] : null;
+
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
+                http_response_code(423);
+                echo json_encode(['error' => 'Template is currently locked by another user.']);
+                exit;
+            }
+
+            $updatedTemplate = $templateService->updateTemplate(
+                $templateId,
+                $template->getName(),
+                $template->getBleedMm(),
+                $template->getSafeMarginMm(),
+                $datasetId
+            );
+
+            $datasetData = null;
+            if ($datasetId) {
+                $datasetObj = $datasetService->getDatasetById($datasetId);
+                if ($datasetObj) {
+                    $datasetData = [
+                        'id' => $datasetObj->getId(),
+                        'name' => $datasetObj->getName(),
+                        'columnMap' => $datasetObj->getColumnMap(),
+                        'rowData' => $datasetObj->getRowData()
+                    ];
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'dataset_id' => $updatedTemplate->getDatasetId(),
+                'dataset' => $datasetData
+            ]);
+            break;
+
         case 'update_dataset_cell':
             if ($method !== 'POST') {
                 throw new \InvalidArgumentException('Method not allowed.');

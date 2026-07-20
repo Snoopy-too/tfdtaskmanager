@@ -142,6 +142,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Template Dataset Binding Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_template_dataset') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+        $datasetId = (isset($_POST['dataset_id']) && $_POST['dataset_id'] !== '' && $_POST['dataset_id'] !== 'null' && $_POST['dataset_id'] !== '0') ? (int)$_POST['dataset_id'] : null;
+        try {
+            $template = $templateService->getTemplateById($templateId);
+            if ($template) {
+                $templateService->updateTemplate(
+                    $templateId,
+                    $template->getName(),
+                    $template->getBleedMm(),
+                    $template->getSafeMarginMm(),
+                    $datasetId
+                );
+                $success = 'Dataset binding updated successfully.';
+            }
+        } catch (\Exception $e) {
+            $error = 'Failed to update dataset binding: ' . $e->getMessage();
+        }
+    }
+}
+
 // Fetch list of templates, assets, datasets, component types for active project
 $templates = [];
 $assetsCount = 0;
@@ -382,12 +408,25 @@ require_once __DIR__ . '/../templates/header.php';
                                     <p class="text-xs text-slate-400">
                                         Dimensions: <?php echo round(\App\Domain\Entities\BgTemplate::pxToMm($tmpl->getCanvasWidthPx(), 300), 1); ?>x<?php echo round(\App\Domain\Entities\BgTemplate::pxToMm($tmpl->getCanvasHeightPx(), 300), 1); ?>mm (<?php echo $tmpl->getCanvasWidthPx(); ?>x<?php echo $tmpl->getCanvasHeightPx(); ?>px)
                                     </p>
-                                    <?php if ($tmpl->getDatasetId()): ?>
-                                        <div class="flex items-center space-x-1.5 mt-2">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                                            <span class="text-[11px] text-violet-400 font-medium">Bound to Dataset</span>
-                                        </div>
-                                    <?php endif; ?>
+                                    <form action="" method="POST" class="mt-3 text-xs">
+                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                         <input type="hidden" name="action" value="update_template_dataset">
+                                         <input type="hidden" name="template_id" value="<?php echo $tmpl->getId(); ?>">
+                                         <label class="block text-[11px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+                                             <span>Dataset Binding</span>
+                                             <?php if ($tmpl->getDatasetId()): ?>
+                                                 <span class="text-[10px] text-violet-400 font-medium">Bound</span>
+                                             <?php endif; ?>
+                                         </label>
+                                         <select name="dataset_id" onchange="this.form.submit()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                             <option value="">No Dataset Bound</option>
+                                             <?php foreach ($datasets as $data): ?>
+                                                 <option value="<?php echo $data->getId(); ?>" <?php echo ($tmpl->getDatasetId() === $data->getId()) ? 'selected' : ''; ?>>
+                                                     <?php echo SecurityHelper::escape($data->getName()); ?> (<?php echo count($data->getRowData()); ?> rows)
+                                                 </option>
+                                             <?php endforeach; ?>
+                                         </select>
+                                    </form>
                                 </div>
                                 <div class="flex items-center justify-between mt-6 pt-3 border-t border-slate-800/60 gap-2">
                                     <?php if ($isLocked): ?>

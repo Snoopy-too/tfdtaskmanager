@@ -165,6 +165,72 @@
         applyBindings();
     }
 
+    function switchDataset(newDatasetId) {
+        const templateId = window.studioConfig ? window.studioConfig.templateId : null;
+        const csrfToken = window.studioConfig ? window.studioConfig.csrfToken : '';
+
+        if (!templateId) return;
+
+        const formData = new FormData();
+        formData.append('template_id', templateId);
+        formData.append('dataset_id', newDatasetId || '');
+        if (csrfToken) formData.append('csrf_token', csrfToken);
+
+        fetch('api.php?action=bind_template_dataset', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.error) {
+                alert(res.error);
+                return;
+            }
+
+            window.studioConfig.datasetId = res.dataset_id ? parseInt(res.dataset_id) : null;
+
+            const navControls = document.getElementById('dataset-nav-controls');
+            const totalContainer = document.getElementById('dataset-total-container');
+            const statusDot = document.getElementById('dataset-status-dot');
+
+            if (res.dataset && res.dataset.rowData && res.dataset.rowData.length > 0) {
+                dataset = res.dataset;
+                currentRowIndex = 0;
+
+                if (navControls) navControls.classList.remove('hidden');
+                if (totalContainer) totalContainer.classList.remove('hidden');
+                if (statusDot) {
+                    statusDot.classList.remove('bg-slate-600');
+                    statusDot.classList.add('bg-violet-400');
+                }
+
+                const rowTotal = document.getElementById('row-total');
+                if (rowTotal) rowTotal.textContent = dataset.rowData.length.toString();
+
+                setupNavControls();
+            } else {
+                dataset = null;
+                currentRowIndex = 0;
+
+                if (navControls) navControls.classList.add('hidden');
+                if (totalContainer) totalContainer.classList.add('hidden');
+                if (statusDot) {
+                    statusDot.classList.remove('bg-violet-400');
+                    statusDot.classList.add('bg-slate-600');
+                }
+            }
+
+            if (window.propertyInspector && typeof window.propertyInspector.updateDatasetColumns === 'function') {
+                window.propertyInspector.updateDatasetColumns(dataset ? dataset.columnMap : []);
+            }
+
+            applyBindings();
+        })
+        .catch(err => {
+            console.error('Error switching dataset:', err);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         initTemplateEngine();
     });
@@ -172,6 +238,7 @@
     window.templateEngine = {
         applyBindings: applyBindings,
         updateTextTemplate: updateTextTemplate,
+        switchDataset: switchDataset,
         getCurrentRowData: () => dataset ? dataset.rowData[currentRowIndex] : null,
         getDataset: () => dataset,
         setRowIndex: (idx) => {

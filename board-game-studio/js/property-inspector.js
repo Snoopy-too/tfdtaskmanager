@@ -868,9 +868,37 @@
         if (e.key === 'Escape') { e.preventDefault(); cancelImageCrop(); }
     });
 
+    function updateDatasetColumns(columnMap) {
+        const textSelect = document.getElementById('prop-text-bind');
+        const imageSelect = document.getElementById('prop-image-bind');
+
+        [textSelect, imageSelect].forEach(select => {
+            if (!select) return;
+            const currentVal = select.value;
+            select.innerHTML = '';
+
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = select.id === 'prop-text-bind' ? 'No Binding (Static Text)' : 'No Binding (Static Image)';
+            select.appendChild(defaultOpt);
+
+            if (Array.isArray(columnMap)) {
+                columnMap.forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = `{{${col}}}`;
+                    opt.textContent = `{{${col}}}`;
+                    select.appendChild(opt);
+                });
+            }
+
+            select.value = currentVal;
+        });
+    }
+
     window.propertyInspector = {
         inspect: inspect,
         clearInspect: clearInspect,
+        updateDatasetColumns: updateDatasetColumns,
         syncCanvasBgInputs: null // populated by initCanvasInspector
     };
 })();

@@ -71,6 +71,9 @@ foreach ($compTypes as $ct) {
     }
 }
 
+// Fetch project datasets
+$projectDatasets = $datasetService->getDatasetsByProject($template->getProjectId());
+
 // Check if dataset is bound
 $dataset = null;
 if ($template->getDatasetId()) {
@@ -306,31 +309,39 @@ require_once __DIR__ . '/../templates/header.php';
                 </div>
             </div>
 
-            <!-- Bottom Row Data navigation if dataset is bound -->
-            <?php if ($dataset): ?>
-                <div class="bg-slate-900 border-t border-slate-800 p-4 flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-violet-400"></span>
-                        <span class="text-xs font-semibold text-slate-300">
-                            Bound: <?php echo SecurityHelper::escape($dataset->getName()); ?>
-                        </span>
-                    </div>
-
-                    <div class="flex items-center space-x-3">
-                        <button id="btn-row-prev" class="p-1 bg-slate-950 border border-slate-800 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                        </button>
-                        <span id="row-indicator" class="text-xs text-slate-300 font-bold min-w-[70px] text-center">Row 1 of 1</span>
-                        <button id="btn-row-next" class="p-1 bg-slate-950 border border-slate-800 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </button>
-                    </div>
-
-                    <div class="text-xs text-slate-400">
-                        Total Rows: <span id="row-total" class="font-bold text-slate-200">0</span>
-                    </div>
+            <!-- Bottom Row Data navigation & Dataset Switcher -->
+            <div class="bg-slate-900 border-t border-slate-800 p-3 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center space-x-2 shrink-0">
+                    <span class="w-2.5 h-2.5 rounded-full <?php echo $dataset ? 'bg-violet-400' : 'bg-slate-600'; ?>" id="dataset-status-dot"></span>
+                    <label for="editor-dataset-select" class="text-xs font-semibold text-slate-300">
+                        Dataset:
+                    </label>
+                    <select id="editor-dataset-select" onchange="if(window.templateEngine && typeof window.templateEngine.switchDataset === 'function') window.templateEngine.switchDataset(this.value);" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-1.5 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">No Dataset Bound</option>
+                        <?php foreach ($projectDatasets as $ds): ?>
+                            <option value="<?php echo $ds->getId(); ?>" <?php echo ($template->getDatasetId() === $ds->getId()) ? 'selected' : ''; ?>>
+                                <?php echo SecurityHelper::escape($ds->getName()); ?> (<?php echo count($ds->getRowData()); ?> rows)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-            <?php endif; ?>
+
+                <div id="dataset-nav-controls" class="flex items-center space-x-3 <?php echo $dataset ? '' : 'hidden'; ?>">
+                    <button id="btn-row-prev" class="p-1 bg-slate-950 border border-slate-800 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <span id="row-indicator" class="text-xs text-slate-300 font-bold min-w-[70px] text-center">
+                        Row 1 of <?php echo $dataset ? count($dataset->getRowData()) : 1; ?>
+                    </span>
+                    <button id="btn-row-next" class="p-1 bg-slate-950 border border-slate-800 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+
+                <div id="dataset-total-container" class="text-xs text-slate-400 shrink-0 <?php echo $dataset ? '' : 'hidden'; ?>">
+                    Total Rows: <span id="row-total" class="font-bold text-slate-200"><?php echo $dataset ? count($dataset->getRowData()) : 0; ?></span>
+                </div>
+            </div>
         </div>
 
         <!-- Right Panel: Properties Inspector -->
@@ -438,19 +449,19 @@ require_once __DIR__ . '/../templates/header.php';
                             <textarea id="prop-text-val" rows="2" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2"></textarea>
                         </div>
 
-                        <?php if ($dataset): ?>
-                            <div>
-                                <label for="prop-text-bind" class="block text-xs font-semibold text-slate-400 mb-1">Dataset Variable Binding</label>
-                                <select id="prop-text-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
-                                    <option value="">No Binding (Static Text)</option>
+                        <div>
+                            <label for="prop-text-bind" class="block text-xs font-semibold text-slate-400 mb-1">Dataset Variable Binding</label>
+                            <select id="prop-text-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                                <option value="">No Binding (Static Text)</option>
+                                <?php if ($dataset): ?>
                                     <?php foreach ($dataset->getColumnMap() as $colName): ?>
                                         <option value="{{<?php echo SecurityHelper::escape($colName); ?>}}">
                                             {{<?php echo SecurityHelper::escape($colName); ?>}}
                                         </option>
                                     <?php endforeach; ?>
-                                </select>
-                            </div>
-                        <?php endif; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -582,20 +593,20 @@ require_once __DIR__ . '/../templates/header.php';
                             <button type="button" id="btn-inspector-change-image" class="px-2 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">Change</button>
                         </div>
 
-                        <?php if ($dataset): ?>
-                            <div>
-                                <label for="prop-image-bind" class="block text-xs font-semibold text-slate-400 mb-1">Image Source Binding</label>
-                                <select id="prop-image-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
-                                    <option value="">No Binding (Static Image)</option>
+                        <div>
+                            <label for="prop-image-bind" class="block text-xs font-semibold text-slate-400 mb-1">Image Source Binding</label>
+                            <select id="prop-image-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                                <option value="">No Binding (Static Image)</option>
+                                <?php if ($dataset): ?>
                                     <?php foreach ($dataset->getColumnMap() as $colName): ?>
                                         <option value="{{<?php echo SecurityHelper::escape($colName); ?>}}">
                                             {{<?php echo SecurityHelper::escape($colName); ?>}}
                                         </option>
                                     <?php endforeach; ?>
-                                </select>
-                                <p class="text-[10px] text-slate-550 mt-1">Column values should match asset filenames (e.g. fighter01.png)</p>
-                            </div>
-                        <?php endif; ?>
+                                <?php endif; ?>
+                            </select>
+                            <p class="text-[10px] text-slate-550 mt-1">Column values should match asset filenames (e.g. fighter01.png)</p>
+                        </div>
 
                         <div>
                             <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-550 mb-1.5">Canvas Fitting</span>

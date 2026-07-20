@@ -55,6 +55,30 @@ if ($activeTemplateId) {
     $activeTemplate = $templateService->getTemplateById($activeTemplateId);
 }
 
+// Handle Export Dataset Binding Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_export_dataset') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $tmplId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+        $dsId = (isset($_POST['dataset_id']) && $_POST['dataset_id'] !== '' && $_POST['dataset_id'] !== 'null' && $_POST['dataset_id'] !== '0') ? (int)$_POST['dataset_id'] : null;
+        $tmpl = $templateService->getTemplateById($tmplId);
+        if ($tmpl) {
+            $templateService->updateTemplate(
+                $tmplId,
+                $tmpl->getName(),
+                $tmpl->getBleedMm(),
+                $tmpl->getSafeMarginMm(),
+                $dsId
+            );
+            header("Location: export.php?project_id=" . $tmpl->getProjectId() . "&template_id=" . $tmplId);
+            exit;
+        }
+    }
+}
+
+// Fetch all project datasets for switcher
+$projectDatasets = $datasetService->getDatasetsByProject($activeProjectId);
+
 // Fetch dataset if bound
 $dataset = null;
 $compType = null;
@@ -252,10 +276,20 @@ require_once __DIR__ . '/../templates/header.php';
                                 </span>
                             </div>
                             <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-xl">
-                                <span class="text-slate-500 block font-semibold uppercase tracking-wider text-[10px]">Dataset Binding</span>
-                                <span class="font-bold text-slate-200 text-sm mt-1 block truncate">
-                                    <?php echo $dataset ? SecurityHelper::escape($dataset->getName()) : 'None (Single Component Export)'; ?>
-                                </span>
+                                <label for="export-dataset-select" class="text-slate-500 block font-semibold uppercase tracking-wider text-[10px] mb-1">Dataset Binding</label>
+                                <form action="" method="POST" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                    <input type="hidden" name="action" value="update_export_dataset">
+                                    <input type="hidden" name="template_id" value="<?php echo $activeTemplate->getId(); ?>">
+                                    <select id="export-dataset-select" name="dataset_id" onchange="this.form.submit()" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg p-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="">No Dataset Bound</option>
+                                        <?php foreach ($projectDatasets as $ds): ?>
+                                            <option value="<?php echo $ds->getId(); ?>" <?php echo ($dataset && $dataset->getId() === $ds->getId()) ? 'selected' : ''; ?>>
+                                                <?php echo SecurityHelper::escape($ds->getName()); ?> (<?php echo count($ds->getRowData()); ?> rows)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </form>
                             </div>
                         </div>
 
