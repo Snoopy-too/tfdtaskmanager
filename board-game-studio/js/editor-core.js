@@ -53,6 +53,7 @@
                     }
                     ctx.font = this._getFontDeclaration(charStyle, forMeasuring);
                 };
+            }
             if (fabric.Textbox) {
                 // ponytail: fix FabricJS 5.3.1 Textbox space-stripping bug that causes ghost trailing characters (" e r") at end of wrapped lines
                 const origSplit = fabric.Textbox.prototype._splitTextIntoLines;
