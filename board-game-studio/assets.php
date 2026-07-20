@@ -204,7 +204,7 @@ require_once __DIR__ . '/../templates/header.php';
             <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                 <h2 class="text-xl font-bold text-slate-200 mb-4">Upload Asset</h2>
                 
-                <form action="" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <form action="" method="POST" enctype="multipart/form-data" class="space-y-4" id="asset-upload-form" onsubmit="return handleAssetUploadSubmit(this)">
                     <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                     <input type="hidden" name="action" value="upload_asset">
                     
@@ -238,7 +238,7 @@ require_once __DIR__ . '/../templates/header.php';
                         </div>
                     <?php endif; ?>
 
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl shadow-lg hover:shadow-indigo-500/20 py-2.5 px-4 transition duration-200">
+                    <button type="submit" id="btn-upload-submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl shadow-lg hover:shadow-indigo-500/20 py-2.5 px-4 transition duration-200">
                         Upload Asset
                     </button>
                 </form>
@@ -366,6 +366,27 @@ require_once __DIR__ . '/../templates/header.php';
     </div>
 </div>
 
+<!-- Upload Processing Overlay Modal -->
+<div id="upload-processing-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-5">
+        <!-- Animated Spinner -->
+        <div class="relative w-16 h-16 mx-auto">
+            <div class="w-16 h-16 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
+            <svg class="w-7 h-7 text-indigo-400 absolute inset-0 m-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+        </div>
+        <div class="space-y-1.5">
+            <h3 class="text-lg font-bold text-slate-100">Processing Upload & Unpacking Assets...</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Please wait while your files or ZIP archive are being uploaded, extracted, and registered. Do not refresh or navigate away from this page.</p>
+        </div>
+        <div class="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-[11px] font-semibold text-indigo-400">
+            <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+            <span id="upload-status-text">Import in progress...</span>
+        </div>
+    </div>
+</div>
+
 <script>
     // Show selected file name inside upload box
     const fileInput = document.getElementById('asset_file');
@@ -373,12 +394,41 @@ require_once __DIR__ . '/../templates/header.php';
     if (fileInput) {
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                fileNameDiv.textContent = `Selected: ${e.target.files[0].name}`;
+                if (e.target.files.length === 1) {
+                    fileNameDiv.textContent = `Selected: ${e.target.files[0].name}`;
+                } else {
+                    fileNameDiv.textContent = `Selected: ${e.target.files.length} files`;
+                }
                 fileNameDiv.classList.remove('hidden');
             } else {
                 fileNameDiv.classList.add('hidden');
             }
         });
+    }
+
+    function handleAssetUploadSubmit(form) {
+        const input = document.getElementById('asset_file');
+        if (input && input.files.length > 0) {
+            const modal = document.getElementById('upload-processing-modal');
+            const statusText = document.getElementById('upload-status-text');
+            const submitBtn = document.getElementById('btn-upload-submit');
+
+            if (input.files.length > 1) {
+                statusText.textContent = `Uploading & registering ${input.files.length} files...`;
+            } else if (input.files[0].name.endsWith('.zip')) {
+                statusText.textContent = `Extracting & importing ZIP archive...`;
+            } else {
+                statusText.textContent = `Uploading ${input.files[0].name}...`;
+            }
+
+            if (modal) modal.classList.remove('hidden');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                submitBtn.textContent = 'Processing Upload...';
+            }
+        }
+        return true;
     }
 </script>
 
