@@ -82,9 +82,54 @@ $projectDatasets = $datasetService->getDatasetsByProject($activeProjectId);
 // Fetch dataset if bound
 $dataset = null;
 $compType = null;
+$filteredRowData = [];
+
+function parseExportRowFilter(?string $filterStr, int $totalRows): array {
+    if ($totalRows <= 0) return [];
+    if (!$filterStr || trim($filterStr) === '') {
+        return range(0, $totalRows - 1);
+    }
+    $indices = [];
+    $parts = explode(',', $filterStr);
+    foreach ($parts as $part) {
+        $trimmed = trim($part);
+        if (str_contains($trimmed, '-')) {
+            $range = explode('-', $trimmed);
+            if (count($range) === 2 && is_numeric($range[0]) && is_numeric($range[1])) {
+                $start = (int)$range[0];
+                $end = (int)$range[1];
+                $min = min($start, $end);
+                $max = max($start, $end);
+                for ($r = $min; $r <= $max; $r++) {
+                    if ($r >= 1 && $r <= $totalRows) {
+                        $indices[$r - 1] = true;
+                    }
+                }
+            }
+        } elseif (is_numeric($trimmed)) {
+            $single = (int)$trimmed;
+            if ($single >= 1 && $single <= $totalRows) {
+                $indices[$single - 1] = true;
+            }
+        }
+    }
+    $keys = array_keys($indices);
+    sort($keys);
+    return !empty($keys) ? $keys : range(0, $totalRows - 1);
+}
+
 if ($activeTemplate) {
     if ($activeTemplate->getDatasetId()) {
         $dataset = $datasetService->getDatasetById($activeTemplate->getDatasetId());
+        if ($dataset) {
+            $allRows = $dataset->getRowData();
+            $filterIndices = parseExportRowFilter($activeTemplate->getRowFilter(), count($allRows));
+            foreach ($filterIndices as $idx) {
+                if (isset($allRows[$idx])) {
+                    $filteredRowData[$idx] = $allRows[$idx];
+                }
+            }
+        }
     }
     
     $compTypes = $templateService->getComponentTypes();
@@ -295,7 +340,9 @@ require_once __DIR__ . '/../templates/header.php';
 
                         <?php if ($dataset): ?>
                             <div>
-                                <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Dataset Rows (<?php echo count($dataset->getRowData()); ?> items to render)</h4>
+                                <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                                    Dataset Rows (<?php echo count($filteredRowData); ?> items to render<?php echo (!empty($activeTemplate->getRowFilter())) ? ' &bull; Filter: ' . SecurityHelper::escape($activeTemplate->getRowFilter()) : ''; ?>)
+                                </h4>
                                 <div class="max-h-[220px] overflow-y-auto border border-slate-800 rounded-xl">
                                     <table class="w-full text-left border-collapse text-xs">
                                         <thead>
@@ -305,7 +352,7 @@ require_once __DIR__ . '/../templates/header.php';
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php foreach ($dataset->getRowData() as $idx => $row): ?>
+                                            <?php foreach ($filteredRowData as $idx => $row): ?>
                                                 <tr class="border-b border-slate-800/40 hover:bg-slate-800/20 text-slate-300">
                                                     <td class="p-2 text-center text-slate-500 font-bold bg-slate-950/20"><?php echo $idx + 1; ?></td>
                                                     <td class="p-2 truncate max-w-[300px]">
@@ -351,7 +398,8 @@ require_once __DIR__ . '/../templates/header.php';
             safeMarginMm: <?php echo $activeTemplate->getSafeMarginMm(); ?>,
             widthMm: <?php echo $compType ? $compType->getWidthMm() : 0; ?>,
             heightMm: <?php echo $compType ? $compType->getHeightMm() : 0; ?>,
-            templateName: "<?php echo SecurityHelper::escape($activeTemplate->getName()); ?>"
+            templateName: "<?php echo SecurityHelper::escape($activeTemplate->getName()); ?>",
+            rowFilter: <?php echo json_encode($activeTemplate->getRowFilter() ?? ''); ?>
         };
     </script>
     <script src="js/export-handler.js"></script>
