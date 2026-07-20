@@ -232,6 +232,7 @@
                                     obj.set('opacity', 0);
                                     obj.set('visible', false);
                                 } else {
+                                    obj.set('opacity', 1);
                                     obj.set('visible', true);
                                 }
                             }

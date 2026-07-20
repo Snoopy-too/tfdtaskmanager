@@ -79,6 +79,7 @@
                         obj.opacity = 0;
                         obj.visible = false;
                     } else {
+                        obj.opacity = 1;
                         obj.visible = true;
                     }
                 }
