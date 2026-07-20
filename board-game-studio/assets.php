@@ -52,16 +52,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } else {
         $tag = isset($_POST['tag']) && trim($_POST['tag']) !== '' ? $_POST['tag'] : null;
         $file = $_FILES['asset_file'] ?? null;
+        $zipFile = $_FILES['zip_file'] ?? null;
         $currentUserId = (int)($_SESSION['user_id'] ?? 0);
 
         try {
-            if (!$file || $file['error'] === UPLOAD_ERR_NO_FILE) {
-                throw new ValidationException("Please select a file to upload.");
-            }
             $isGlobal = isset($_POST['is_global']) && $_POST['is_global'] === '1';
             $uploadProjectId = ($activeProjectId === null || $isGlobal) ? null : $activeProjectId;
-            $assetService->uploadAsset($uploadProjectId, $file, $tag, $currentUserId);
-            $success = "Asset uploaded successfully.";
+
+            if ($zipFile && isset($zipFile['tmp_name']) && !empty($zipFile['tmp_name'])) {
+                $uploaded = $assetService->uploadZipAsset($uploadProjectId, $zipFile, $currentUserId);
+                $success = count($uploaded) . " assets extracted and imported from ZIP archive.";
+            } elseif ($file && isset($file['name']) && is_array($file['name'])) {
+                $uploaded = $assetService->uploadMultipleAssets($uploadProjectId, $file, $currentUserId);
+                $success = count($uploaded) . " assets uploaded successfully.";
+            } elseif ($file && isset($file['error']) && $file['error'] === UPLOAD_ERR_OK) {
+                $assetService->uploadAsset($uploadProjectId, $file, $tag, $currentUserId);
+                $success = "Asset uploaded successfully.";
+            } else {
+                throw new ValidationException("Please select one or more files (or a ZIP archive) to upload.");
+            }
         } catch (ValidationException $e) {
             $error = $e->getMessage();
         } catch (\Exception $e) {
@@ -200,17 +209,17 @@ require_once __DIR__ . '/../templates/header.php';
                     <input type="hidden" name="action" value="upload_asset">
                     
                     <div>
-                        <label for="asset_file" class="block text-sm font-medium text-slate-300 mb-1">Select File</label>
+                        <label for="asset_file" class="block text-sm font-medium text-slate-300 mb-1">Select File(s) or ZIP Archive</label>
                         <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-800 border-dashed rounded-xl hover:border-indigo-500/50 transition cursor-pointer relative group">
-                            <input type="file" id="asset_file" name="asset_file" accept=".png,.jpg,.jpeg,.svg,.ttf,.otf" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <input type="file" id="asset_file" name="asset_file[]" accept=".png,.jpg,.jpeg,.svg,.ttf,.otf,.zip" multiple required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                             <div class="space-y-1 text-center pointer-events-none">
                                 <svg class="mx-auto h-10 w-10 text-slate-500 group-hover:text-indigo-400 transition" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4-4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
                                 <div class="text-xs text-slate-300">
-                                    <span class="font-medium text-indigo-400 group-hover:text-indigo-300 transition">Click to upload</span> or drag and drop
+                                    <span class="font-medium text-indigo-400 group-hover:text-indigo-300 transition">Click to upload files or ZIP</span> or drag and drop
                                 </div>
-                                <p class="text-[10px] text-slate-500">PNG, JPG, SVG, TTF, OTF up to 10MB</p>
+                                <p class="text-[10px] text-slate-500">PNG, JPG, SVG, TTF, OTF or ZIP up to 10MB each</p>
                             </div>
                         </div>
                         <div id="file_selected_name" class="text-xs text-indigo-400 mt-2 font-medium hidden"></div>

@@ -232,4 +232,92 @@ class BgAssetService
 
         return $this->assetRepository->save($updatedAsset);
     }
+
+    public function uploadMultipleAssets(?int $projectId, array $files, int $uploadedByUserId): array
+    {
+        $results = [];
+        if (isset($files['name']) && is_array($files['name'])) {
+            $count = count($files['name']);
+            for ($i = 0; $i < $count; $i++) {
+                if (!isset($files['error'][$i]) || $files['error'][$i] !== UPLOAD_ERR_OK) {
+                    continue;
+                }
+                $file = [
+                    'name' => $files['name'][$i],
+                    'type' => $files['type'][$i],
+                    'tmp_name' => $files['tmp_name'][$i],
+                    'error' => $files['error'][$i],
+                    'size' => $files['size'][$i]
+                ];
+                try {
+                    $results[] = $this->uploadAsset($projectId, $file, null, $uploadedByUserId);
+                } catch (\Exception $e) {
+                    // Skip invalid files
+                }
+            }
+        }
+        return $results;
+    }
+
+    public function uploadZipAsset(?int $projectId, array $zipFile, int $uploadedByUserId): array
+    {
+        if (!class_exists('\ZipArchive')) {
+            throw new ValidationException("ZipArchive extension is not enabled on server.");
+        }
+        if (!isset($zipFile['error']) || $zipFile['error'] !== UPLOAD_ERR_OK) {
+            throw new ValidationException("Failed to upload ZIP file.");
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFile['tmp_name']) !== true) {
+            throw new ValidationException("Invalid or corrupt ZIP archive.");
+        }
+
+        $extractDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bgs_zip_' . uniqid();
+        mkdir($extractDir, 0755, true);
+        $zip->extractTo($extractDir);
+        $zip->close();
+
+        $results = [];
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($extractDir));
+
+        $allowedMimes = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'svg' => 'image/svg+xml'];
+
+        foreach ($iterator as $fileInfo) {
+            if ($fileInfo->isDir()) continue;
+            $ext = strtolower($fileInfo->getExtension());
+            if (!isset($allowedMimes[$ext])) continue;
+
+            $fileName = $fileInfo->getFilename();
+            if (str_starts_with($fileName, '.')) continue;
+
+            $mime = $allowedMimes[$ext];
+            $storedFilename = bin2hex(random_bytes(16)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
+            $folderName = ($projectId === null) ? 'global' : (string)$projectId;
+            $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $folderName;
+            if (!is_dir($projectUploadDir)) {
+                mkdir($projectUploadDir, 0755, true);
+            }
+
+            $targetPath = $projectUploadDir . DIRECTORY_SEPARATOR . $storedFilename;
+            if (copy($fileInfo->getPathname(), $targetPath)) {
+                $asset = new BgAsset(
+                    null,
+                    $projectId,
+                    $fileName,
+                    $storedFilename,
+                    $mime,
+                    $fileInfo->getSize(),
+                    null,
+                    $uploadedByUserId
+                );
+                $results[] = $this->assetRepository->save($asset);
+            }
+
+            @unlink($fileInfo->getPathname());
+        }
+
+        @rmdir($extractDir);
+        return $results;
+    }
 }
