@@ -121,6 +121,17 @@
             }
         })
         .then(() => {
+            updateProgress('Pre-loading fonts & typography...', 20);
+            if (document.fonts && typeof document.fonts.load === 'function' && typeof templateJson === 'string') {
+                const fontMatches = templateJson.match(/"fontFamily"\s*:\s*"([^"]+)"/g);
+                if (fontMatches) {
+                    const fontNames = [...new Set(fontMatches.map(m => m.split(':')[1].replace(/"/g, '').trim()))];
+                    const fontPromises = fontNames.map(f => document.fonts.load(`16px "${f}"`).catch(() => {}));
+                    return Promise.all(fontPromises);
+                }
+            }
+        })
+        .then(() => {
             updateProgress('Starting batch render...', 25);
             return renderCards();
         })
@@ -253,7 +264,13 @@
                                         subText = row[colName];
                                     }
                                 }
+                                obj.set('styles', {});
                                 obj.set('text', subText);
+                                if (typeof obj.initDimensions === 'function') {
+                                    obj.initDimensions();
+                                }
+                                obj.setCoords();
+                                obj.set('dirty', true);
                             }
 
                             // Substitute image source for bound image layers
