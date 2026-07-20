@@ -20,7 +20,19 @@ $task = $taskService->getTaskById($taskId);
 
 if (!$task) {
     http_response_code(404);
-    echo "Task not found.";
+    require_once __DIR__ . '/templates/header.php';
+    ?>
+    <div class="max-w-xl mx-auto my-16 p-8 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-4">
+        <h1 class="text-3xl font-extrabold text-white">404 - Task Not Found</h1>
+        <p class="text-slate-400 text-sm">The task you are looking for (ID: <?php echo SecurityHelper::escape((string)$taskId); ?>) does not exist or has been removed.</p>
+        <div class="pt-4">
+            <a href="index.php" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition duration-200 inline-block">
+                &larr; Back to Task Board
+            </a>
+        </div>
+    </div>
+    <?php
+    require_once __DIR__ . '/templates/footer.php';
     exit();
 }
 
@@ -153,7 +165,9 @@ require_once __DIR__ . '/templates/header.php';
                 <?php elseif ($task->getStatus() === 'In Progress'): ?>
                     <span class="text-slate-400">
                         Currently checked out by <strong class="text-slate-200"><?php echo $assignee ? SecurityHelper::escape($assignee->getName()) : 'Unknown'; ?></strong>
-                        since <?php echo date('M d, g:i a', strtotime($task->getCheckedOutAt() ?? '')); ?>
+                        <?php if ($task->getCheckedOutAt()): ?>
+                            since <?php echo date('M d, g:i a', strtotime($task->getCheckedOutAt())); ?>
+                        <?php endif; ?>
                     </span>
                 <?php elseif ($task->getStatus() === 'Done'): ?>
                     <span class="text-slate-400">This task has been completed. No actions are required.</span>
