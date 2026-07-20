@@ -475,6 +475,31 @@ require_once __DIR__ . '/../templates/header.php';
                         document.addEventListener('DOMContentLoaded', () => toggleCustomDimensions(document.getElementById('component_type_id')));
 
                         function duplicateTemplate(templateId, originalName, form) {
+                            if (form.dataset.duplicating === "true") {
+                                return true;
+                            }
+
+                            if (typeof window.studioPrompt === 'function') {
+                                window.studioPrompt("Enter a name for the duplicated template:", originalName + " (Copy)", "Duplicate Template").then(newName => {
+                                    if (newName === null) {
+                                        return;
+                                    }
+                                    const trimmed = newName.trim();
+                                    if (trimmed === "") {
+                                        if (typeof window.studioAlert === 'function') {
+                                            window.studioAlert("Template name cannot be empty.", "Validation Error");
+                                        } else {
+                                            alert("Template name cannot be empty.");
+                                        }
+                                        return;
+                                    }
+                                    document.getElementById("dup_name_" + templateId).value = trimmed;
+                                    form.dataset.duplicating = "true";
+                                    form.submit();
+                                });
+                                return false;
+                            }
+
                             const newName = prompt("Enter a name for the duplicated template:", originalName + " (Copy)");
                             if (newName === null) {
                                 return false;

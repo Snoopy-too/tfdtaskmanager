@@ -1701,8 +1701,13 @@
         }
     }
 
-    window.saveThemePreset = function() {
-        const name = prompt("Enter a name for this theme preset:");
+    window.saveThemePreset = async function() {
+        let name = null;
+        if (typeof window.studioPrompt === 'function') {
+            name = await window.studioPrompt("Enter a name for this theme preset:", "", "Save Theme Preset");
+        } else {
+            name = prompt("Enter a name for this theme preset:");
+        }
         if (!name) return;
         const trimmedName = name.trim();
         if (!trimmedName) return;
@@ -1730,19 +1735,34 @@
         localStorage.setItem('bg_theme_presets', JSON.stringify(presets));
         initPresetsDropdown();
         document.getElementById('theme-presets-select').value = trimmedName;
-        alert(`Preset "${trimmedName}" saved successfully!`);
+        if (typeof window.studioAlert === 'function') {
+            window.studioAlert(`Preset "${trimmedName}" saved successfully!`, "Preset Saved");
+        } else {
+            alert(`Preset "${trimmedName}" saved successfully!`);
+        }
     };
 
-    window.deleteThemePreset = function() {
+    window.deleteThemePreset = async function() {
         const select = document.getElementById('theme-presets-select');
         if (!select) return;
         const name = select.value;
         if (!name) {
-            alert("Please select a saved preset to delete.");
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert("Please select a saved preset to delete.", "Selection Required");
+            } else {
+                alert("Please select a saved preset to delete.");
+            }
             return;
         }
         
-        if (confirm(`Are you sure you want to delete the preset "${name}"?`)) {
+        let confirmed = false;
+        if (typeof window.studioConfirm === 'function') {
+            confirmed = await window.studioConfirm(`Are you sure you want to delete the preset "${name}"?`, "Delete", "Delete Preset");
+        } else {
+            confirmed = confirm(`Are you sure you want to delete the preset "${name}"?`);
+        }
+
+        if (confirmed) {
             let presets = {};
             try {
                 presets = JSON.parse(localStorage.getItem('bg_theme_presets')) || {};
@@ -1753,7 +1773,11 @@
             delete presets[name];
             localStorage.setItem('bg_theme_presets', JSON.stringify(presets));
             initPresetsDropdown();
-            alert(`Preset "${name}" deleted.`);
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert(`Preset "${name}" deleted.`, "Preset Deleted");
+            } else {
+                alert(`Preset "${name}" deleted.`);
+            }
         }
     };
 
