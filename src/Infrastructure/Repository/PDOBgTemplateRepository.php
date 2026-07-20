@@ -14,6 +14,15 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        // ponytail: auto-migrate row_filter column if not present
+        try {
+            $cols = $this->pdo->query("SHOW COLUMNS FROM bg_templates LIKE 'row_filter'")->fetchAll();
+            if (empty($cols)) {
+                $this->pdo->exec("ALTER TABLE bg_templates ADD COLUMN row_filter VARCHAR(255) DEFAULT NULL AFTER dataset_id");
+            }
+        } catch (\Throwable $e) {
+            // Ignore if already created or read-only
+        }
     }
 
     public function findByProjectId(int $projectId): array
@@ -40,8 +49,8 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
     public function save(BgTemplate $template): BgTemplate
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO bg_templates (project_id, component_type_id, name, canvas_width_px, canvas_height_px, bleed_mm, safe_margin_mm, dataset_id, created_by)
-            VALUES (:project_id, :component_type_id, :name, :canvas_width_px, :canvas_height_px, :bleed_mm, :safe_margin_mm, :dataset_id, :created_by)
+            INSERT INTO bg_templates (project_id, component_type_id, name, canvas_width_px, canvas_height_px, bleed_mm, safe_margin_mm, dataset_id, row_filter, created_by)
+            VALUES (:project_id, :component_type_id, :name, :canvas_width_px, :canvas_height_px, :bleed_mm, :safe_margin_mm, :dataset_id, :row_filter, :created_by)
         ");
         $stmt->execute([
             'project_id' => $template->getProjectId(),
@@ -52,6 +61,7 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
             'bleed_mm' => $template->getBleedMm(),
             'safe_margin_mm' => $template->getSafeMarginMm(),
             'dataset_id' => $template->getDatasetId(),
+            'row_filter' => $template->getRowFilter(),
             'created_by' => $template->getCreatedBy()
         ]);
         $id = (int)$this->pdo->lastInsertId();
@@ -70,6 +80,7 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
             date('Y-m-d H:i:s'),
             date('Y-m-d H:i:s')
         );
+        $saved->setRowFilter($template->getRowFilter());
         if ($template->getCanvasJson() !== null) {
             $this->updateCanvasJson($id, $template->getCanvasJson());
             $saved->setCanvasJson($template->getCanvasJson());
@@ -81,15 +92,29 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
     {
         $stmt = $this->pdo->prepare("
             UPDATE bg_templates
-            SET name = :name, dataset_id = :dataset_id, bleed_mm = :bleed_mm, safe_margin_mm = :safe_margin_mm
+            SET name = :name, dataset_id = :dataset_id, row_filter = :row_filter, bleed_mm = :bleed_mm, safe_margin_mm = :safe_margin_mm
             WHERE id = :id
         ");
         $stmt->execute([
             'name' => $template->getName(),
             'dataset_id' => $template->getDatasetId(),
+            'row_filter' => $template->getRowFilter(),
             'bleed_mm' => $template->getBleedMm(),
             'safe_margin_mm' => $template->getSafeMarginMm(),
             'id' => $template->getId()
+        ]);
+    }
+
+    public function updateRowFilter(int $id, ?string $rowFilter): void
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE bg_templates
+            SET row_filter = :row_filter
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'row_filter' => $rowFilter,
+            'id' => $id
         ]);
     }
 
@@ -142,6 +167,9 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
             $row['created_at'],
             $row['updated_at']
         );
+        if (isset($row['row_filter'])) {
+            $template->setRowFilter($row['row_filter']);
+        }
         if ($row['canvas_json'] !== null) {
             $template->setCanvasJson($row['canvas_json']);
         }

@@ -366,6 +366,32 @@ try {
             ]);
             break;
 
+        case 'update_template_row_filter':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $rowFilter = trim($_POST['row_filter'] ?? '');
+            if ($rowFilter === '') {
+                $rowFilter = null;
+            }
+
+            $templateService->updateTemplateRowFilter($templateId, $rowFilter);
+
+            echo json_encode([
+                'success' => true,
+                'row_filter' => $rowFilter
+            ]);
+            break;
+
         case 'rename_template':
             if ($method !== 'POST') {
                 throw new \InvalidArgumentException('Method not allowed.');

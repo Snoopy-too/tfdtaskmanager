@@ -337,6 +337,15 @@ require_once __DIR__ . '/../templates/header.php';
                     </select>
                 </div>
 
+                <div id="dataset-filter-container" class="flex items-center space-x-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 <?php echo $dataset ? '' : 'hidden'; ?>">
+                    <label for="template-row-filter" class="text-xs font-semibold text-slate-400">Rows Filter:</label>
+                    <input type="text" id="template-row-filter" 
+                           value="<?php echo SecurityHelper::escape($template->getRowFilter() ?? ''); ?>" 
+                           placeholder="All (e.g. 1-42)" 
+                           title="Specify active rows e.g. 1-42 or 43-82" 
+                           class="w-28 bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded px-2 py-0.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-center">
+                </div>
+
                 <div id="dataset-nav-controls" class="flex items-center space-x-3 <?php echo $dataset ? '' : 'hidden'; ?>">
                     <button id="btn-row-prev" class="p-1 bg-slate-950 border border-slate-800 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -695,6 +704,7 @@ require_once __DIR__ . '/../templates/header.php';
         canvasHeight: <?php echo $template->getCanvasHeightPx(); ?>,
         bleedMm: <?php echo $template->getBleedMm(); ?>,
         safeMarginMm: <?php echo $template->getSafeMarginMm(); ?>,
+        rowFilter: "<?php echo SecurityHelper::escape(addslashes($template->getRowFilter() ?? '')); ?>",
         componentTypeName: "<?php echo $compType ? SecurityHelper::escape($compType->getName()) : ''; ?>"
     };
 </script>

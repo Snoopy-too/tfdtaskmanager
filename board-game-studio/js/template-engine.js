@@ -7,6 +7,7 @@
 
     let dataset = null;
     let currentRowIndex = 0;
+    let activeRowIndices = [];
     
     // Original template strings stored to prevent loss on row changes
     const textTemplates = new Map();
@@ -14,7 +15,43 @@
     // Original image sources stored to restore when binding is removed
     const imageOriginalSrcs = new Map();
 
+    // ponytail: parse user row filter expression (e.g. "1-42", "43-82", "1-10, 15, 20-30") into valid 0-based indices
+    function parseRowFilter(filterStr, totalRows) {
+        if (!totalRows || totalRows <= 0) return [];
+        if (!filterStr || !filterStr.trim()) {
+            return Array.from({ length: totalRows }, (_, i) => i);
+        }
+        const indices = new Set();
+        const parts = filterStr.split(',');
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            if (trimmed.includes('-')) {
+                const range = trimmed.split('-');
+                const start = parseInt(range[0], 10);
+                const end = parseInt(range[1], 10);
+                if (!isNaN(start) && !isNaN(end)) {
+                    const min = Math.min(start, end);
+                    const max = Math.max(start, end);
+                    for (let r = min; r <= max; r++) {
+                        if (r >= 1 && r <= totalRows) {
+                            indices.add(r - 1);
+                        }
+                    }
+                }
+            } else {
+                const single = parseInt(trimmed, 10);
+                if (!isNaN(single) && single >= 1 && single <= totalRows) {
+                    indices.add(single - 1);
+                }
+            }
+        });
+        const sorted = Array.from(indices).sort((a, b) => a - b);
+        return sorted.length > 0 ? sorted : Array.from({ length: totalRows }, (_, i) => i);
+    }
+
     function initTemplateEngine() {
+        setupFilterInputListener();
+
         if (!window.studioConfig.datasetId) {
             return;
         }
@@ -25,9 +62,10 @@
         .then(data => {
             if (data.rowData && data.rowData.length > 0) {
                 dataset = data;
+                activeRowIndices = parseRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
                 currentRowIndex = 0;
                 
-                document.getElementById('row-total').textContent = data.rowData.length.toString();
+                document.getElementById('row-total').textContent = activeRowIndices.length.toString() + (activeRowIndices.length < dataset.rowData.length ? ` (Filtered from ${dataset.rowData.length})` : '');
                 
                 setupNavControls();
                 
@@ -45,6 +83,42 @@
         });
     }
 
+    function setupFilterInputListener() {
+        const filterInput = document.getElementById('template-row-filter');
+        if (!filterInput || filterInput.dataset.bound) return;
+        filterInput.dataset.bound = 'true';
+
+        filterInput.addEventListener('change', (e) => {
+            const val = e.target.value.trim();
+            window.studioConfig.rowFilter = val;
+
+            const formData = new FormData();
+            formData.append('template_id', window.studioConfig.templateId);
+            formData.append('row_filter', val);
+            if (window.studioConfig.csrfToken) {
+                formData.append('csrf_token', window.studioConfig.csrfToken);
+            }
+
+            fetch('api.php?action=update_template_row_filter', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success && dataset && dataset.rowData) {
+                    activeRowIndices = parseRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
+                    currentRowIndex = 0;
+                    const totalEl = document.getElementById('row-total');
+                    if (totalEl) {
+                        totalEl.textContent = activeRowIndices.length.toString() + (activeRowIndices.length < dataset.rowData.length ? ` (Filtered from ${dataset.rowData.length})` : '');
+                    }
+                    applyBindings();
+                }
+            })
+            .catch(err => console.error('Failed to update template row filter:', err));
+        });
+    }
+
     function setupNavControls() {
         const btnPrev = document.getElementById('btn-row-prev');
         const btnNext = document.getElementById('btn-row-next');
@@ -59,7 +133,7 @@
         });
 
         btnNext.addEventListener('click', () => {
-            if (currentRowIndex < dataset.rowData.length - 1) {
+            if (currentRowIndex < activeRowIndices.length - 1) {
                 currentRowIndex++;
                 applyBindings();
             }
@@ -69,11 +143,22 @@
     // Replace bindings in text layers dynamically
     function applyBindings() {
         const canvas = window.editorCanvas;
-        if (!canvas) return;
+        if (!canvas || !dataset) return;
+
+        if (!activeRowIndices || activeRowIndices.length === 0) {
+            activeRowIndices = parseRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
+        }
+
+        if (currentRowIndex >= activeRowIndices.length) {
+            currentRowIndex = Math.max(0, activeRowIndices.length - 1);
+        }
+
+        const actualRowIndex = activeRowIndices[currentRowIndex] !== undefined ? activeRowIndices[currentRowIndex] : currentRowIndex;
+        const row = dataset.rowData[actualRowIndex];
 
         const rowIndicator = document.getElementById('row-indicator');
-        if (rowIndicator && dataset) {
-            rowIndicator.textContent = `Row ${currentRowIndex + 1} of ${dataset.rowData.length}`;
+        if (rowIndicator) {
+            rowIndicator.textContent = `Row ${actualRowIndex + 1} (${currentRowIndex + 1} of ${activeRowIndices.length})`;
         }
 
         const objects = canvas.getObjects();
@@ -90,9 +175,7 @@
                 let templateText = obj.variable_binding || textTemplates.get(obj);
                 
                 // Replace any double brackets syntax {{ColumnName}}
-                if (dataset && dataset.rowData[currentRowIndex]) {
-                    const row = dataset.rowData[currentRowIndex];
-                    
+                if (row) {
                     // Match and replace all placeholders
                     let substitutedText = templateText;
                     const matches = templateText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g);
@@ -124,8 +207,7 @@
                     imageOriginalSrcs.set(obj, obj.getSrc ? obj.getSrc() : (obj._element ? obj._element.src : ''));
                 }
 
-                if (dataset && dataset.rowData[currentRowIndex]) {
-                    const row = dataset.rowData[currentRowIndex];
+                if (row) {
                     const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
                     const filename = row[colName];
 
@@ -148,8 +230,7 @@
                 }
             } else if (obj.variable_binding) {
                 // Shape / Object visibility and dataset binding
-                if (dataset && dataset.rowData[currentRowIndex]) {
-                    const row = dataset.rowData[currentRowIndex];
+                if (row) {
                     const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
                     const val = row[colName] !== undefined ? String(row[colName]).trim() : '';
 

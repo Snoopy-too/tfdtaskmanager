@@ -256,6 +256,7 @@ class BgTemplateService
             $template->getDatasetId(),
             $currentUserId
         );
+        $cloned->setRowFilter($template->getRowFilter());
 
         if ($template->getCanvasJson() !== null) {
             $cloned->setCanvasJson($template->getCanvasJson());
@@ -324,5 +325,10 @@ class BgTemplateService
         if ($template && $template->getLockedByUserId() === $userId) {
             $this->templateRepository->updateLock($templateId, null, null);
         }
+    }
+
+    public function updateTemplateRowFilter(int $templateId, ?string $rowFilter): void
+    {
+        $this->templateRepository->updateRowFilter($templateId, $rowFilter);
     }
 }

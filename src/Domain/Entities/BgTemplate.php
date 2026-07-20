@@ -133,6 +133,7 @@ class BgTemplate
 
     private ?int $lockedByUserId = null;
     private ?string $lockedAt = null;
+    private ?string $rowFilter = null;
 
     public function getLockedByUserId(): ?int
     {
@@ -152,5 +153,15 @@ class BgTemplate
     public function setLockedAt(?string $lockedAt): void
     {
         $this->lockedAt = $lockedAt;
+    }
+
+    public function getRowFilter(): ?string
+    {
+        return $this->rowFilter;
+    }
+
+    public function setRowFilter(?string $rowFilter): void
+    {
+        $this->rowFilter = $rowFilter;
     }
 }

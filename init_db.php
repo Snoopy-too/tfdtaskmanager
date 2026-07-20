@@ -325,6 +325,13 @@ try {
         echo "- Added locking columns and constraint to 'bg_templates' table via migration.\n";
     }
 
+    // Migration: Check if row_filter column exists on bg_templates
+    $rfCols = $pdo->query("SHOW COLUMNS FROM `bg_templates` LIKE 'row_filter'")->fetchAll();
+    if (empty($rfCols)) {
+        $pdo->exec("ALTER TABLE `bg_templates` ADD COLUMN `row_filter` VARCHAR(255) DEFAULT NULL AFTER `dataset_id`");
+        echo "- Added row_filter column to 'bg_templates' table via migration.\n";
+    }
+
     // Migration: Check if locks columns exist on bg_rulebooks for existing DBs
     $rulebookCols = $pdo->query("SHOW COLUMNS FROM `bg_rulebooks` LIKE 'locked_by_user_id'")->fetchAll();
     if (empty($rulebookCols)) {

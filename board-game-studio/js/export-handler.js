@@ -143,11 +143,47 @@
         });
     }
 
+    function parseExportRowFilter(filterStr, totalRows) {
+        if (!totalRows || totalRows <= 0) return [];
+        if (!filterStr || !filterStr.trim()) {
+            return Array.from({ length: totalRows }, (_, i) => i);
+        }
+        const indices = new Set();
+        const parts = filterStr.split(',');
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            if (trimmed.includes('-')) {
+                const range = trimmed.split('-');
+                const start = parseInt(range[0], 10);
+                const end = parseInt(range[1], 10);
+                if (!isNaN(start) && !isNaN(end)) {
+                    const min = Math.min(start, end);
+                    const max = Math.max(start, end);
+                    for (let r = min; r <= max; r++) {
+                        if (r >= 1 && r <= totalRows) {
+                            indices.add(r - 1);
+                        }
+                    }
+                }
+            } else {
+                const single = parseInt(trimmed, 10);
+                if (!isNaN(single) && single >= 1 && single <= totalRows) {
+                    indices.add(single - 1);
+                }
+            }
+        });
+        const sorted = Array.from(indices).sort((a, b) => a - b);
+        return sorted.length > 0 ? sorted : Array.from({ length: totalRows }, (_, i) => i);
+    }
+
     // Dynamic offscreen rendering loop
     function renderCards() {
         return new Promise((resolve, reject) => {
-            const images = [];
-            const rows = dataset ? dataset.rowData : [{}]; // If no dataset, render once
+            let rows = dataset ? dataset.rowData : [{}]; // If no dataset, render once
+            if (dataset && dataset.rowData && window.studioConfig && window.studioConfig.rowFilter) {
+                const filterIndices = parseExportRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
+                rows = filterIndices.map(i => dataset.rowData[i]);
+            }
             let index = 0;
 
             function renderNext() {
