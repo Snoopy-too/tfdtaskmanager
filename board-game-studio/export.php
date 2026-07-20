@@ -402,7 +402,7 @@ require_once __DIR__ . '/../templates/header.php';
             rowFilter: <?php echo json_encode($activeTemplate->getRowFilter() ?? ''); ?>
         };
     </script>
-    <script src="js/export-handler.js"></script>
+    <script src="js/export-handler.js?v=<?php echo filemtime(__DIR__ . '/js/export-handler.js'); ?>"></script>
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>
