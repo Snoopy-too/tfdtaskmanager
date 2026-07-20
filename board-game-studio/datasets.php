@@ -6,12 +6,14 @@ $container = require_once __DIR__ . '/../src/bootstrap.php';
 use App\Infrastructure\Security\SecurityHelper;
 use App\Application\Services\ProjectService;
 use App\Application\Services\BgDatasetService;
+use App\Application\Services\BgTemplateService;
 use App\Application\Exceptions\ValidationException;
 
 SecurityHelper::requireLogin();
 
 $projectService = $container->get(ProjectService::class);
 $datasetService = $container->get(BgDatasetService::class);
+$templateService = $container->get(BgTemplateService::class);
 
 $error = '';
 $success = '';
