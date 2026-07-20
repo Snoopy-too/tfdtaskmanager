@@ -320,10 +320,11 @@
                     });
                 });
             }
+        }
 
-            renderNext();
-        });
-    }
+        renderNext();
+    });
+}
 
     // Export PDF Tiled Generation
     function generatePdf(cardImages) {
