@@ -179,6 +179,7 @@
     // Dynamic offscreen rendering loop
     function renderCards() {
         return new Promise((resolve, reject) => {
+            const images = [];
             let rows = dataset ? dataset.rowData : [{}]; // If no dataset, render once
             if (dataset && dataset.rowData && window.studioConfig && window.studioConfig.rowFilter) {
                 const filterIndices = parseExportRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
