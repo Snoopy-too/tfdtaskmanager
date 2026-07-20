@@ -223,6 +223,18 @@
                                     }
                                 }
                             }
+
+                            // Shape / Generic object dataset visibility binding
+                            if (obj.variable_binding && obj.type !== 'text' && obj.type !== 'i-text' && obj.type !== 'image') {
+                                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                                const val = row[colName] !== undefined ? String(row[colName]).trim() : '';
+                                if (val === 'transparent.png' || val === '0' || val === 'false' || val === 'none' || val === '' || val === 'hidden') {
+                                    obj.set('opacity', 0);
+                                    obj.set('visible', false);
+                                } else {
+                                    obj.set('visible', true);
+                                }
+                            }
                         });
                     }
 

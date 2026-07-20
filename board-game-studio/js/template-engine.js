@@ -146,6 +146,27 @@
                         }
                     }
                 }
+            } else if (obj.variable_binding) {
+                // Shape / Object visibility and dataset binding
+                if (dataset && dataset.rowData[currentRowIndex]) {
+                    const row = dataset.rowData[currentRowIndex];
+                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                    const val = row[colName] !== undefined ? String(row[colName]).trim() : '';
+
+                    if (obj._originalOpacity === undefined) {
+                        obj._originalOpacity = obj.opacity !== undefined ? obj.opacity : 1;
+                    }
+
+                    if (val === 'transparent.png' || val === '0' || val === 'false' || val === 'none' || val === '' || val === 'hidden') {
+                        obj.set('opacity', 0);
+                        obj.set('visible', false);
+                    } else {
+                        obj.set('opacity', obj._originalOpacity || 1);
+                        obj.set('visible', true);
+                    }
+                    obj.setCoords();
+                    needsRender = true;
+                }
             }
         });
 

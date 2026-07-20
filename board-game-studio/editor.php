@@ -590,6 +590,20 @@ require_once __DIR__ . '/../templates/header.php';
                                 <input type="number" id="prop-stroke-width" min="0" max="50" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                             </div>
                         </div>
+
+                        <div class="pt-2 border-t border-slate-800/60">
+                            <label for="prop-shape-bind" class="block text-xs font-semibold text-slate-400 mb-1">Dataset Visibility / Source Binding</label>
+                            <select id="prop-shape-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                                <option value="">No Binding (Always Visible)</option>
+                                <?php if ($dataset): ?>
+                                    <?php foreach ($dataset->getColumnMap() as $colName): ?>
+                                        <option value="{{<?php echo SecurityHelper::escape($colName); ?>}}">
+                                            {{<?php echo SecurityHelper::escape($colName); ?>}}
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Image-Specific Properties -->

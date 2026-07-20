@@ -193,6 +193,17 @@
             });
         }
 
+        // Shape dataset binding dropdown
+        const shapeBindSelect = document.getElementById('prop-shape-bind');
+        if (shapeBindSelect) {
+            shapeBindSelect.addEventListener('change', (e) => {
+                updateActiveProp('variable_binding', e.target.value || null);
+                if (window.templateEngine && typeof window.templateEngine.applyBindings === 'function') {
+                    window.templateEngine.applyBindings();
+                }
+            });
+        }
+
         // Image crop controls
         const btnCropImage = document.getElementById('btn-crop-image');
         if (btnCropImage) {
@@ -502,6 +513,11 @@
                 document.getElementById('prop-stroke-color').value = strokeVal;
             }
             document.getElementById('prop-stroke-width').value = strokeWidthVal || 0;
+
+            const shapeBindSelect = document.getElementById('prop-shape-bind');
+            if (shapeBindSelect) {
+                shapeBindSelect.value = obj.variable_binding || '';
+            }
 
         } else if (obj.type === 'image') {
             imgSec.classList.remove('hidden');
