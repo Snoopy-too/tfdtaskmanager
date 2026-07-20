@@ -119,6 +119,7 @@
             } else {
                 dataset = null; // Single card export
             }
+        })
         .then(() => {
             updateProgress('Loading project asset mappings...', 18);
             if (window.assetPicker && typeof window.assetPicker.loadAssets === 'function') {
