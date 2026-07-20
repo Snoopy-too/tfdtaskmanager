@@ -291,6 +291,26 @@ class BgAssetService
             $fileName = $fileInfo->getFilename();
             if (str_starts_with($fileName, '.')) continue;
 
+            // Resolve subfolder prefix to avoid filename collisions (e.g. heavyweight/boxer_1.png -> hw_boxer_1.png)
+            $relativePath = str_replace('\\', '/', substr($fileInfo->getPathname(), strlen($extractDir) + 1));
+            $parts = explode('/', $relativePath);
+
+            $prefix = '';
+            if (count($parts) > 1) {
+                $subfolder = strtolower($parts[0]);
+                if (str_contains($subfolder, 'heavy')) {
+                    $prefix = 'hw_';
+                } elseif (str_contains($subfolder, 'welter') || str_contains($subfolder, 'middle')) {
+                    $prefix = 'wm_';
+                } elseif (str_contains($subfolder, 'light') || str_contains($subfolder, 'bantam') || str_contains($subfolder, 'feather')) {
+                    $prefix = 'lbf_';
+                } else {
+                    $prefix = $subfolder . '_';
+                }
+            }
+
+            $originalFilename = ($prefix !== '' && !str_starts_with($fileName, $prefix)) ? ($prefix . $fileName) : $fileName;
+
             $mime = $allowedMimes[$ext];
             $storedFilename = bin2hex(random_bytes(16)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
             $folderName = ($projectId === null) ? 'global' : (string)$projectId;
@@ -304,7 +324,7 @@ class BgAssetService
                 $asset = new BgAsset(
                     null,
                     $projectId,
-                    $fileName,
+                    $originalFilename,
                     $storedFilename,
                     $mime,
                     $fileInfo->getSize(),
