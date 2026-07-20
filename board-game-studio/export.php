@@ -402,6 +402,7 @@ require_once __DIR__ . '/../templates/header.php';
             rowFilter: <?php echo json_encode($activeTemplate->getRowFilter() ?? ''); ?>
         };
     </script>
+    <script src="js/asset-picker.js?v=<?php echo filemtime(__DIR__ . '/js/asset-picker.js'); ?>"></script>
     <script src="js/export-handler.js?v=<?php echo filemtime(__DIR__ . '/js/export-handler.js'); ?>"></script>
 <?php endif; ?>
 
