@@ -504,11 +504,14 @@
             const cardsPerPage = cols * rows;
 
             // Calculate starting offsets to center grid on page
-            const tilingMode = document.getElementById('pdf_tiling') ? document.getElementById('pdf_tiling').value : 'fit';
+            const tilingContainer = document.getElementById('pdf-tiling-container');
+            const isTilingVisible = tilingContainer && !tilingContainer.classList.contains('hidden');
+            const tilingMode = (isTilingVisible && document.getElementById('pdf_tiling')) ? document.getElementById('pdf_tiling').value : 'fit';
+
             const gridW = (cols * drawW) + ((cols - 1) * gap);
             const gridH = (rows * drawH) + ((rows - 1) * gap);
-            const startX = (tilingMode === 'actual_1page') ? (pageW - drawW) / 2 : margin + ((availW - gridW) / 2);
-            const startY = (tilingMode === 'actual_1page') ? (pageH - drawH) / 2 : margin + ((availH - gridH) / 2);
+            const startX = (isTilingVisible && tilingMode === 'actual_1page') ? (pageW - drawW) / 2 : margin + ((availW - gridW) / 2);
+            const startY = (isTilingVisible && tilingMode === 'actual_1page') ? (pageH - drawH) / 2 : margin + ((availH - gridH) / 2);
 
             let pageIndex = 0;
             for (let index = 0; index < cardImages.length; index++) {
