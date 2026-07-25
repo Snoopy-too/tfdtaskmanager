@@ -247,6 +247,16 @@
                     const toRemove = [];
                     const imageSwapPromises = [];
 
+                    function getRowValue(r, rawBinding) {
+                        if (!r || !rawBinding) return undefined;
+                        const colName = String(rawBinding).replace(/\{\{|\}\}/g, '').trim();
+                        if (!colName) return undefined;
+                        if (r[colName] !== undefined) return r[colName];
+                        const lowerCol = colName.toLowerCase();
+                        const matchKey = Object.keys(r).find(k => k.toLowerCase().trim() === lowerCol);
+                        return matchKey !== undefined ? r[matchKey] : undefined;
+                    }
+
                     function processExportObjects(objectsList) {
                         objectsList.forEach(obj => {
                             if (obj.id === 'safe-zone-guide') {
@@ -264,32 +274,30 @@
                                 let rawText = obj.variable_binding || obj.text;
                                 let subText = rawText;
                                 
-                                const matches = rawText ? rawText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g) : null;
+                                const matches = rawText ? String(rawText).match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g) : null;
                                 if (matches) {
                                     matches.forEach(placeholder => {
-                                        const colName = placeholder.replace(/\{\{|\}\}/g, '');
-                                        const replacement = row[colName] !== undefined ? row[colName] : placeholder;
-                                        subText = subText.replaceAll(placeholder, replacement);
+                                        const colName = placeholder.replace(/\{\{|\}\}/g, '').trim();
+                                        const val = getRowValue(row, colName);
+                                        const replacement = val !== undefined ? val : placeholder;
+                                        subText = String(subText).replaceAll(placeholder, String(replacement));
                                     });
                                 } else if (obj.variable_binding) {
-                                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                                    if (row[colName] !== undefined) {
-                                        subText = row[colName];
+                                    const val = getRowValue(row, obj.variable_binding);
+                                    if (val !== undefined) {
+                                        subText = String(val);
                                     }
                                 }
                                 obj.set('styles', {});
-                                obj.set('text', subText);
+                                obj.set('text', String(subText !== undefined && subText !== null ? subText : ''));
                                 if (typeof obj.initDimensions === 'function') {
                                     obj.initDimensions();
                                 }
                                 obj.setCoords();
                                 obj.set('dirty', true);
-                            }
-
-                            // Substitute image source for bound image layers
-                            if (obj.type === 'image' && obj.variable_binding) {
-                                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                                const filename = row[colName];
+                            } else if (obj.type === 'image' && obj.variable_binding) {
+                                // Substitute image source for bound image layers
+                                const filename = getRowValue(row, obj.variable_binding);
 
                                 if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
                                     const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
@@ -303,18 +311,19 @@
                                         imageSwapPromises.push(swapPromise);
                                     }
                                 }
-                            }
-
-                            // Shape / Generic object dataset visibility binding
-                            if (obj.variable_binding && obj.type !== 'text' && obj.type !== 'i-text' && obj.type !== 'image') {
-                                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                                const val = row[colName] !== undefined ? String(row[colName]).trim() : '';
-                                if (val === 'transparent.png' || val === '0' || val === 'false' || val === 'none' || val === '' || val === 'hidden') {
-                                    obj.set('opacity', 0);
-                                    obj.set('visible', false);
-                                } else {
-                                    obj.set('opacity', 1);
-                                    obj.set('visible', true);
+                            } else if (obj.variable_binding) {
+                                // Shape / Generic object dataset visibility binding
+                                const rawVal = getRowValue(row, obj.variable_binding);
+                                if (rawVal !== undefined && rawVal !== null) {
+                                    const val = String(rawVal).trim().toLowerCase();
+                                    const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide'];
+                                    if (hideValues.includes(val)) {
+                                        obj.set('opacity', 0);
+                                        obj.set('visible', false);
+                                    } else {
+                                        obj.set('opacity', 1);
+                                        obj.set('visible', true);
+                                    }
                                 }
                             }
                         });
