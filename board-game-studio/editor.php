@@ -229,6 +229,18 @@ require_once __DIR__ . '/../templates/header.php';
                 <button id="btn-zoom-fit" class="p-1 hover:bg-slate-800 text-slate-500 hover:text-white rounded text-[10px] font-bold px-1.5" title="Fit to View">FIT</button>
             </div>
 
+            <!-- Sidebar Toggle Controls -->
+            <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+                <button id="btn-toggle-left-sidebar" onclick="toggleSidebar('left-layers-panel')" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs px-2 flex items-center space-x-1" title="Toggle Left Layers Panel">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                    <span>Layers</span>
+                </button>
+                <button id="btn-toggle-right-sidebar" onclick="toggleSidebar('right-inspector-panel')" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs px-2 flex items-center space-x-1" title="Toggle Right Inspector Panel">
+                    <span>Inspector</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+                </button>
+            </div>
+
             <!-- Preview -->
             <button type="button" onclick="showFullscreenPreview()" class="px-4 py-1.5 bg-slate-900 border border-slate-800 text-slate-350 hover:text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5" title="Full Screen Preview">
                 <svg class="h-3.5 w-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -245,22 +257,22 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
     </div>
 
-    <!-- Main Workspace Grid -->
-    <div class="editor-container grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <!-- Main Workspace Grid (12-column layout giving maximum width to canvas) -->
+    <div class="editor-container grid grid-cols-12 gap-3 flex-grow min-h-0">
         
         <!-- Left Panel: Layers and Assets -->
-        <div id="left-layers-panel" class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
+        <div id="left-layers-panel" class="col-span-12 lg:col-span-3 xl:col-span-2 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
             <!-- Tabs -->
-            <div class="flex border-b border-slate-800">
-                <button id="tab-layers-btn" class="flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-400">Layers</button>
-                <button id="tab-assets-btn" class="flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200">Assets</button>
+            <div class="flex border-b border-slate-800 items-center">
+                <button id="tab-layers-btn" class="flex-1 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-400">Layers</button>
+                <button id="tab-assets-btn" class="flex-1 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200">Assets</button>
             </div>
 
             <!-- Content Area -->
-            <div class="flex-grow overflow-y-auto p-4 space-y-4">
+            <div class="flex-grow overflow-y-auto p-3 space-y-3">
                 
                 <!-- Layers Tab View -->
-                <div id="tab-layers-view" class="space-y-4">
+                <div id="tab-layers-view" class="space-y-3">
                     <!-- Layer Addition Controls -->
                     <div class="grid grid-cols-2 gap-2">
                         <button id="btn-add-text" class="py-2 bg-slate-950 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 rounded-xl transition flex items-center justify-center space-x-1">
@@ -296,7 +308,7 @@ require_once __DIR__ . '/../templates/header.php';
                 </div>
 
                 <!-- Assets Tab View (Hidden initially) -->
-                <div id="tab-assets-view" class="space-y-4 hidden">
+                <div id="tab-assets-view" class="space-y-3 hidden">
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center">
                         <span>Project Assets</span>
                         <a href="assets.php?project_id=<?php echo $template->getProjectId(); ?>" target="_blank" class="text-[10px] text-indigo-400 hover:underline">Upload Files</a>
@@ -308,9 +320,9 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
         </div>
 
-        <!-- Central Panel: Canvas Area -->
-        <div class="lg:col-span-2 min-w-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative">
-            <div class="canvas-viewport flex-grow overflow-auto flex p-8 relative">
+        <!-- Central Panel: Canvas Area (Expanded 8-col width on desktop) -->
+        <div id="center-canvas-panel" class="col-span-12 lg:col-span-6 xl:col-span-8 min-w-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative transition-all duration-200">
+            <div class="canvas-viewport flex-grow overflow-auto flex p-3 md:p-4 relative">
                 <!-- Outer scaled container to handle flex-scroll centering -->
                 <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0;">
                     <!-- Wrapper for absolute alignment and sizing -->
@@ -321,7 +333,7 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
 
             <!-- Bottom Row Data navigation & Dataset Switcher -->
-            <div class="bg-slate-900 border-t border-slate-800 p-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="bg-slate-900 border-t border-slate-800 p-2.5 flex flex-wrap items-center justify-between gap-2.5">
                 <div class="flex items-center space-x-2 shrink-0">
                     <span class="w-2.5 h-2.5 rounded-full <?php echo $dataset ? 'bg-violet-400' : 'bg-slate-600'; ?>" id="dataset-status-dot"></span>
                     <label for="editor-dataset-select" class="text-xs font-semibold text-slate-300">
@@ -365,7 +377,7 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
 
         <!-- Right Panel: Properties Inspector -->
-        <div id="right-inspector-panel" class="min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden">
+        <div id="right-inspector-panel" class="col-span-12 lg:col-span-3 xl:col-span-2 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
             <div class="p-4 border-b border-slate-800">
                 <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Properties Inspector</h2>
             </div>
@@ -944,6 +956,33 @@ require_once __DIR__ . '/../templates/header.php';
             </button>
         </div>
     </div>
-</div>
+<script>
+// ponytail: lightweight toggle function to expand canvas workspace and hide/show sidebars
+function toggleSidebar(panelId) {
+    const panel = document.getElementById(panelId);
+    const center = document.getElementById('center-canvas-panel');
+    if (!panel || !center) return;
+    
+    panel.classList.toggle('hidden');
+    
+    const leftVisible = !document.getElementById('left-layers-panel').classList.contains('hidden');
+    const rightVisible = !document.getElementById('right-inspector-panel').classList.contains('hidden');
+    
+    // Update center canvas column span dynamically
+    if (leftVisible && rightVisible) {
+        center.className = center.className.replace(/lg:col-span-\d+ xl:col-span-\d+/g, 'lg:col-span-6 xl:col-span-8');
+    } else if (leftVisible || rightVisible) {
+        center.className = center.className.replace(/lg:col-span-\d+ xl:col-span-\d+/g, 'lg:col-span-9 xl:col-span-10');
+    } else {
+        center.className = center.className.replace(/lg:col-span-\d+ xl:col-span-\d+/g, 'lg:col-span-12 xl:col-span-12');
+    }
+
+    // Trigger zoom fit to fill newly expanded workspace
+    setTimeout(() => {
+        const fitBtn = document.getElementById('btn-zoom-fit');
+        if (fitBtn) fitBtn.click();
+    }, 150);
+}
+</script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>
