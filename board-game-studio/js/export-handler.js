@@ -516,7 +516,7 @@
 
                 if (!isTiled) {
                     if (index > 0 && index % cardsPerPage === 0) {
-                        pdf.addPage();
+                        pdf.addPage(pageSize, orientation);
                     }
 
                     const pageCardIndex = index % cardsPerPage;
@@ -535,7 +535,7 @@
                     }
                 } else {
                     const sourceW = window.studioConfig.canvasWidth;
-                    const sourceH = window.studioConfig.canvasHeight;
+                    const sourceH = window.studioConfig.heightMm;
                     const chunkSourceW = sourceW / splitCols;
                     const chunkSourceH = sourceH / splitRows;
 
@@ -544,7 +544,7 @@
                     for (let r = 0; r < splitRows; r++) {
                         for (let c = 0; c < splitCols; c++) {
                             if (pageIndex > 0) {
-                                pdf.addPage();
+                                pdf.addPage(pageSize, orientation);
                             }
                             pageIndex++;
 
