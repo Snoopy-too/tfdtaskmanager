@@ -99,12 +99,14 @@ require_once __DIR__ . '/../templates/header.php';
         overflow: hidden !important;
         height: 100% !important;
     }
-    /* Override standard main layout for the full-screen editor */
+    /* ponytail: maximize editor canvas space by hiding outer site header/footer & removing container max-width */
+    header.sticky, footer {
+        display: none !important;
+    }
     body > main {
         max-width: 100% !important;
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-        height: calc(100vh - 64px) !important;
+        padding: 0.5rem 0.75rem !important;
+        height: 100vh !important;
         display: flex !important;
         flex-direction: column !important;
         overflow: hidden !important;
@@ -257,11 +259,11 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
     </div>
 
-    <!-- Main Workspace Grid (12-column layout giving maximum width to canvas) -->
-    <div class="editor-container grid grid-cols-12 gap-3 flex-grow min-h-0">
+    <!-- Main Workspace Flex Container (Fixed 280px sidebars + flex-1 expanded canvas) -->
+    <div class="editor-container flex gap-3 flex-grow min-h-0 w-full overflow-hidden">
         
         <!-- Left Panel: Layers and Assets -->
-        <div id="left-layers-panel" class="col-span-12 lg:col-span-3 xl:col-span-2 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
+        <div id="left-layers-panel" class="w-[280px] shrink-0 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
             <!-- Tabs -->
             <div class="flex border-b border-slate-800 items-center">
                 <button id="tab-layers-btn" class="flex-1 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-400">Layers</button>
@@ -320,9 +322,9 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
         </div>
 
-        <!-- Central Panel: Canvas Area (Expanded 8-col width on desktop) -->
-        <div id="center-canvas-panel" class="col-span-12 lg:col-span-6 xl:col-span-8 min-w-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative transition-all duration-200">
-            <div class="canvas-viewport flex-grow overflow-auto flex p-3 md:p-4 relative">
+        <!-- Central Panel: Canvas Area (Expands dynamically to fill remaining workspace) -->
+        <div id="center-canvas-panel" class="flex-1 min-w-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative transition-all duration-200">
+            <div class="canvas-viewport flex-grow overflow-auto flex p-2 md:p-3 relative">
                 <!-- Outer scaled container to handle flex-scroll centering -->
                 <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0;">
                     <!-- Wrapper for absolute alignment and sizing -->
@@ -377,7 +379,7 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
 
         <!-- Right Panel: Properties Inspector -->
-        <div id="right-inspector-panel" class="col-span-12 lg:col-span-3 xl:col-span-2 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
+        <div id="right-inspector-panel" class="w-[280px] shrink-0 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
             <div class="p-4 border-b border-slate-800">
                 <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Properties Inspector</h2>
             </div>
@@ -960,24 +962,8 @@ require_once __DIR__ . '/../templates/header.php';
 // ponytail: lightweight toggle function to expand canvas workspace and hide/show sidebars
 function toggleSidebar(panelId) {
     const panel = document.getElementById(panelId);
-    const center = document.getElementById('center-canvas-panel');
-    if (!panel || !center) return;
-    
+    if (!panel) return;
     panel.classList.toggle('hidden');
-    
-    const leftVisible = !document.getElementById('left-layers-panel').classList.contains('hidden');
-    const rightVisible = !document.getElementById('right-inspector-panel').classList.contains('hidden');
-    
-    // Update center canvas column span dynamically
-    if (leftVisible && rightVisible) {
-        center.className = center.className.replace(/lg:col-span-\d+ xl:col-span-\d+/g, 'lg:col-span-6 xl:col-span-8');
-    } else if (leftVisible || rightVisible) {
-        center.className = center.className.replace(/lg:col-span-\d+ xl:col-span-\d+/g, 'lg:col-span-9 xl:col-span-10');
-    } else {
-        center.className = center.className.replace(/lg:col-span-\d+ xl:col-span-\d+/g, 'lg:col-span-12 xl:col-span-12');
-    }
-
-    // Trigger zoom fit to fill newly expanded workspace
     setTimeout(() => {
         const fitBtn = document.getElementById('btn-zoom-fit');
         if (fitBtn) fitBtn.click();
