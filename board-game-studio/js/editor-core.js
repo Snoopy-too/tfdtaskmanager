@@ -1126,9 +1126,13 @@
                     const sourceH = data.height || parsed.height || 200;
 
                     // Determine background fill color from source canvas
-                    let bgFill = '#ffffff';
-                    if (typeof parsed.backgroundColor === 'string' && parsed.backgroundColor && parsed.backgroundColor !== 'transparent') {
+                    let bgFill = 'transparent';
+                    if (typeof parsed.backgroundColor === 'string' && parsed.backgroundColor) {
                         bgFill = parsed.backgroundColor;
+                    } else if (parsed.backgroundColor && typeof parsed.backgroundColor === 'object' && parsed.backgroundColor.color) {
+                        bgFill = parsed.backgroundColor.color;
+                    } else if (typeof parsed.background === 'string' && parsed.background) {
+                        bgFill = parsed.background;
                     }
 
                     // Check if an existing object already covers the full card background
