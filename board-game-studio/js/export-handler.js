@@ -428,11 +428,11 @@
             const cardW = window.studioConfig.widthMm;
             const cardH = window.studioConfig.heightMm;
 
-            // Initialize PDF
+            // Initialize PDF with explicit page dimensions array
             const pdf = new jsPDF({
-                orientation: orientation,
+                orientation: orientation === 'landscape' ? 'l' : 'p',
                 unit: 'mm',
-                format: pageSize
+                format: [pageW, pageH]
             });
 
             // Calculate grid layout
@@ -516,7 +516,7 @@
 
                 if (!isTiled) {
                     if (index > 0 && index % cardsPerPage === 0) {
-                        pdf.addPage(pageSize, orientation);
+                        pdf.addPage([pageW, pageH], orientation === 'landscape' ? 'l' : 'p');
                     }
 
                     const pageCardIndex = index % cardsPerPage;
@@ -544,7 +544,7 @@
                     for (let r = 0; r < splitRows; r++) {
                         for (let c = 0; c < splitCols; c++) {
                             if (pageIndex > 0) {
-                                pdf.addPage(pageSize, orientation);
+                                pdf.addPage([pageW, pageH], orientation === 'landscape' ? 'l' : 'p');
                             }
                             pageIndex++;
 
