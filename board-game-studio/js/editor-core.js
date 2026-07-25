@@ -1016,6 +1016,18 @@
     function applyRowDataToCanvasObjects(objectsList, rowData) {
         if (!objectsList || !Array.isArray(objectsList) || !rowData) return;
 
+        // Case-insensitive & trimmed dataset column lookup helper
+        function getRowValue(row, rawBinding) {
+            if (!row || !rawBinding) return undefined;
+            const colName = String(rawBinding).replace(/\{\{|\}\}/g, '').trim();
+            if (!colName) return undefined;
+            if (row[colName] !== undefined) return row[colName];
+            
+            const lowerCol = colName.toLowerCase();
+            const matchKey = Object.keys(row).find(k => k.toLowerCase().trim() === lowerCol);
+            return matchKey !== undefined ? row[matchKey] : undefined;
+        }
+
         objectsList.forEach(obj => {
             if (obj.type === 'group' && Array.isArray(obj.objects)) {
                 applyRowDataToCanvasObjects(obj.objects, rowData);
@@ -1028,14 +1040,15 @@
                 const matches = templateText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g);
                 if (matches) {
                     matches.forEach(placeholder => {
-                        const colName = placeholder.replace(/\{\{|\}\}/g, '');
-                        const replacement = rowData[colName] !== undefined ? rowData[colName] : placeholder;
+                        const colName = placeholder.replace(/\{\{|\}\}/g, '').trim();
+                        const val = getRowValue(rowData, colName);
+                        const replacement = val !== undefined ? val : placeholder;
                         substitutedText = substitutedText.replaceAll(placeholder, replacement);
                     });
                 } else if (obj.variable_binding) {
-                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                    if (rowData[colName] !== undefined) {
-                        substitutedText = rowData[colName];
+                    const val = getRowValue(rowData, obj.variable_binding);
+                    if (val !== undefined) {
+                        substitutedText = val;
                     }
                 }
                 obj.text = substitutedText;
@@ -1043,8 +1056,7 @@
 
             // Image substitution
             if (obj.type === 'image' && obj.variable_binding) {
-                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                const filename = rowData[colName];
+                const filename = getRowValue(rowData, obj.variable_binding);
                 if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
                     const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
                     if (assetUrl) {
@@ -1055,11 +1067,17 @@
 
             // Shape / Generic object visibility binding
             if (obj.variable_binding && obj.type !== 'text' && obj.type !== 'i-text' && obj.type !== 'textbox' && obj.type !== 'image') {
-                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
-                const val = rowData[colName] !== undefined ? String(rowData[colName]).trim() : '';
-                if (val === 'transparent.png' || val === '0' || val === 'false' || val === 'none' || val === '' || val === 'hidden') {
-                    obj.opacity = 0;
-                    obj.visible = false;
+                const rawVal = getRowValue(rowData, obj.variable_binding);
+                if (rawVal !== undefined && rawVal !== null) {
+                    const val = String(rawVal).trim().toLowerCase();
+                    const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide'];
+                    if (hideValues.includes(val)) {
+                        obj.opacity = 0;
+                        obj.visible = false;
+                    } else {
+                        obj.visible = true;
+                        if (obj.opacity === 0) obj.opacity = 1;
+                    }
                 }
             }
         });
