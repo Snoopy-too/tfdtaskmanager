@@ -915,6 +915,18 @@ require_once __DIR__ . '/../templates/header.php';
                 </select>
             </div>
 
+            <!-- Dataset Row Selector (visible when selected template has a bound dataset) -->
+            <div id="import-dataset-row-container" class="space-y-1 hidden pt-1">
+                <label for="import-dataset-row-select" class="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Dataset Card / Row (<span id="import-dataset-name" class="text-indigo-400 font-bold"></span>)</span>
+                    <span id="import-dataset-row-count" class="text-[10px] text-slate-400 font-normal"></span>
+                </label>
+                <select id="import-dataset-row-select" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
+                    <option value="raw">Template Default (Unsubstituted {{Placeholders}})</option>
+                </select>
+                <p class="text-[11px] text-slate-500 pt-0.5">Select a specific row (e.g. 16th fighter) to populate data onto this component.</p>
+            </div>
+
             <div class="flex items-center space-x-2 pt-1">
                 <input type="checkbox" id="import-as-group" checked class="rounded border-slate-800 bg-slate-950 text-indigo-600 focus:ring-indigo-500">
                 <label for="import-as-group" class="text-xs text-slate-300">

@@ -873,12 +873,78 @@
         const select = document.getElementById('import-template-select');
         const chkGroup = document.getElementById('import-as-group');
 
+        const rowContainer = document.getElementById('import-dataset-row-container');
+        const rowSelect = document.getElementById('import-dataset-row-select');
+        const dsNameEl = document.getElementById('import-dataset-name');
+        const dsCountEl = document.getElementById('import-dataset-row-count');
+
+        let currentImportDataset = null;
+
         if (!btnImport || !modal) return;
+
+        function onTemplateChange() {
+            if (!select) return;
+            const templateId = select.value;
+            currentImportDataset = null;
+            if (rowContainer) rowContainer.classList.add('hidden');
+            if (rowSelect) rowSelect.innerHTML = '<option value="raw">Template Default (Unsubstituted {{Placeholders}})</option>';
+
+            if (!templateId) return;
+
+            fetch(`api.php?action=load_canvas&template_id=${templateId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.dataset_id) {
+                        return fetch(`api.php?action=get_dataset&dataset_id=${data.dataset_id}`);
+                    }
+                    return null;
+                })
+                .then(r => r ? r.json() : null)
+                .then(dataset => {
+                    if (dataset && dataset.rowData && dataset.rowData.length > 0) {
+                        currentImportDataset = dataset;
+                        if (dsNameEl) dsNameEl.textContent = dataset.name || 'Bound Dataset';
+                        if (dsCountEl) dsCountEl.textContent = `${dataset.rowData.length} items`;
+
+                        if (rowSelect) {
+                            rowSelect.innerHTML = '<option value="raw">Template Default (Unsubstituted {{Placeholders}})</option>';
+                            dataset.rowData.forEach((row, idx) => {
+                                let label = '';
+                                const priorityKeys = ['name', 'title', 'fighter', 'card_name', 'card name', 'character', 'header'];
+                                for (const pk of priorityKeys) {
+                                    const matchKey = Object.keys(row).find(k => k.toLowerCase().trim() === pk);
+                                    if (matchKey && row[matchKey] && String(row[matchKey]).trim() !== '') {
+                                        label = String(row[matchKey]).trim();
+                                        break;
+                                    }
+                                }
+                                if (!label) {
+                                    const firstVal = Object.values(row).find(v => v !== null && v !== undefined && String(v).trim() !== '');
+                                    if (firstVal) label = String(firstVal).trim();
+                                }
+
+                                const opt = document.createElement('option');
+                                opt.value = idx.toString();
+                                opt.textContent = `Row ${idx + 1}` + (label ? `: ${label}` : '');
+                                rowSelect.appendChild(opt);
+                            });
+                        }
+                        if (rowContainer) rowContainer.classList.remove('hidden');
+                    }
+                })
+                .catch(err => console.error('Failed to load dataset for import template:', err));
+        }
+
+        if (select) {
+            select.addEventListener('change', onTemplateChange);
+        }
 
         function openModal() {
             if (!select) return;
             select.innerHTML = '<option value="">Loading templates...</option>';
             modal.classList.remove('hidden');
+            currentImportDataset = null;
+            if (rowContainer) rowContainer.classList.add('hidden');
 
             const projectId = window.studioConfig.projectId;
             const currentTemplateId = window.studioConfig.templateId;
@@ -899,6 +965,7 @@
                         opt.textContent = `${t.name} (${t.width}x${t.height}px)`;
                         select.appendChild(opt);
                     });
+                    onTemplateChange();
                 })
                 .catch(err => {
                     console.error('Failed to load project templates:', err);
@@ -920,7 +987,20 @@
                 const sourceTemplateId = select ? select.value : null;
                 const asGroup = chkGroup ? chkGroup.checked : true;
                 const selectedOption = select ? select.options[select.selectedIndex] : null;
-                const templateName = selectedOption ? selectedOption.textContent.split(' (')[0] : 'Imported Component';
+                let templateName = selectedOption ? selectedOption.textContent.split(' (')[0] : 'Imported Component';
+
+                const selectedRowVal = rowSelect ? rowSelect.value : 'raw';
+                let selectedRowData = null;
+
+                if (selectedRowVal !== 'raw' && currentImportDataset && currentImportDataset.rowData) {
+                    const idx = parseInt(selectedRowVal, 10);
+                    if (!isNaN(idx) && currentImportDataset.rowData[idx]) {
+                        selectedRowData = currentImportDataset.rowData[idx];
+                        const rowOpt = rowSelect.options[rowSelect.selectedIndex];
+                        const rowLabel = rowOpt ? rowOpt.textContent : `Row ${idx + 1}`;
+                        templateName = `${templateName} (${rowLabel})`;
+                    }
+                }
 
                 if (!sourceTemplateId) {
                     alert('Please select a template to import.');
@@ -928,12 +1008,64 @@
                 }
 
                 closeModal();
-                importTemplateToCanvas(parseInt(sourceTemplateId, 10), templateName, asGroup);
+                importTemplateToCanvas(parseInt(sourceTemplateId, 10), templateName, asGroup, selectedRowData);
             });
         }
     }
 
-    function importTemplateToCanvas(sourceTemplateId, templateName, groupAsSingleComponent) {
+    function applyRowDataToCanvasObjects(objectsList, rowData) {
+        if (!objectsList || !Array.isArray(objectsList) || !rowData) return;
+
+        objectsList.forEach(obj => {
+            if (obj.type === 'group' && Array.isArray(obj.objects)) {
+                applyRowDataToCanvasObjects(obj.objects, rowData);
+            }
+
+            // Text substitution
+            if ((obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') && (obj.text || obj.variable_binding)) {
+                let templateText = obj.variable_binding || obj.text || '';
+                let substitutedText = templateText;
+                const matches = templateText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g);
+                if (matches) {
+                    matches.forEach(placeholder => {
+                        const colName = placeholder.replace(/\{\{|\}\}/g, '');
+                        const replacement = rowData[colName] !== undefined ? rowData[colName] : placeholder;
+                        substitutedText = substitutedText.replaceAll(placeholder, replacement);
+                    });
+                } else if (obj.variable_binding) {
+                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                    if (rowData[colName] !== undefined) {
+                        substitutedText = rowData[colName];
+                    }
+                }
+                obj.text = substitutedText;
+            }
+
+            // Image substitution
+            if (obj.type === 'image' && obj.variable_binding) {
+                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                const filename = rowData[colName];
+                if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                    const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
+                    if (assetUrl) {
+                        obj.src = assetUrl;
+                    }
+                }
+            }
+
+            // Shape / Generic object visibility binding
+            if (obj.variable_binding && obj.type !== 'text' && obj.type !== 'i-text' && obj.type !== 'textbox' && obj.type !== 'image') {
+                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                const val = rowData[colName] !== undefined ? String(rowData[colName]).trim() : '';
+                if (val === 'transparent.png' || val === '0' || val === 'false' || val === 'none' || val === '' || val === 'hidden') {
+                    obj.opacity = 0;
+                    obj.visible = false;
+                }
+            }
+        });
+    }
+
+    function importTemplateToCanvas(sourceTemplateId, templateName, groupAsSingleComponent, selectedRowData = null) {
         setSaveStatus('Importing template component...', 'pulse');
 
         fetch(`api.php?action=load_canvas&template_id=${sourceTemplateId}`)
@@ -959,6 +1091,11 @@
                     alert('The selected template has no elements to import.');
                     setSaveStatus('Selected template is empty', 'error');
                     return;
+                }
+
+                // Apply dataset row substitution if a specific row was selected
+                if (selectedRowData) {
+                    applyRowDataToCanvasObjects(parsed.objects, selectedRowData);
                 }
 
                 // Filter out guide lines / overlays
