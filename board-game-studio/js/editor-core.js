@@ -962,19 +962,44 @@
                 }
 
                 // Filter out guide lines / overlays
-                const filteredObjects = parsed.objects.filter(o => o.id !== 'safe-zone-guide' && o.id !== 'bleed-zone-guide');
-
-                if (filteredObjects.length === 0) {
-                    alert('The selected template has no importable elements.');
-                    setSaveStatus('Selected template is empty', 'error');
-                    return;
-                }
+                const filteredObjects = (parsed.objects || []).filter(o => o.id !== 'safe-zone-guide' && o.id !== 'bleed-zone-guide');
 
                 fabric.util.enlivenObjects(filteredObjects, (enlivenedObjects) => {
-                    if (!enlivenedObjects || enlivenedObjects.length === 0) {
-                        alert('Failed to reconstruct objects from template.');
-                        setSaveStatus('Import failed', 'error');
-                        return;
+                    if (!enlivenedObjects) enlivenedObjects = [];
+
+                    const sourceW = data.width || parsed.width || 200;
+                    const sourceH = data.height || parsed.height || 200;
+
+                    // Determine background fill color from source canvas
+                    let bgFill = '#ffffff';
+                    if (typeof parsed.backgroundColor === 'string' && parsed.backgroundColor && parsed.backgroundColor !== 'transparent') {
+                        bgFill = parsed.backgroundColor;
+                    }
+
+                    // Check if an existing object already covers the full card background
+                    const hasExistingFullBg = enlivenedObjects.some(obj => 
+                        (obj.type === 'rect' || obj.type === 'image') &&
+                        Math.abs(obj.left || 0) < 5 &&
+                        Math.abs(obj.top || 0) < 5 &&
+                        Math.abs((obj.width * (obj.scaleX || 1)) - sourceW) < 10 &&
+                        Math.abs((obj.height * (obj.scaleY || 1)) - sourceH) < 10
+                    );
+
+                    if (!hasExistingFullBg) {
+                        const bgRect = new fabric.Rect({
+                            id: `card-bg-${Date.now()}`,
+                            name: `Card Background (${templateName})`,
+                            left: 0,
+                            top: 0,
+                            width: sourceW,
+                            height: sourceH,
+                            fill: bgFill,
+                            stroke: '#64748b',
+                            strokeWidth: 1,
+                            strokeUniform: true,
+                            selectable: true
+                        });
+                        enlivenedObjects.unshift(bgRect);
                     }
 
                     canvas.discardActiveObject();
@@ -982,8 +1007,8 @@
                     if (groupAsSingleComponent && enlivenedObjects.length > 1) {
                         const group = new fabric.Group(enlivenedObjects, {
                             name: `Component: ${templateName}`,
-                            left: (canvas.width - 200) / 2,
-                            top: (canvas.height - 200) / 2
+                            left: (canvas.width - sourceW) / 2,
+                            top: (canvas.height - sourceH) / 2
                         });
                         canvas.add(group);
                         canvas.setActiveObject(group);
@@ -991,8 +1016,8 @@
                         const singleObj = enlivenedObjects[0];
                         singleObj.set({
                             name: singleObj.name ? `${singleObj.name} (${templateName})` : templateName,
-                            left: (canvas.width - (singleObj.width || 100)) / 2,
-                            top: (canvas.height - (singleObj.height || 100)) / 2
+                            left: (canvas.width - sourceW) / 2,
+                            top: (canvas.height - sourceH) / 2
                         });
                         canvas.add(singleObj);
                         canvas.setActiveObject(singleObj);
