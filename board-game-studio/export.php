@@ -258,8 +258,9 @@ require_once __DIR__ . '/../templates/header.php';
                             <div id="pdf-tiling-container" class="space-y-2 hidden">
                                 <label for="pdf_tiling" class="block text-sm font-medium text-slate-300">Print Scale & Component Layout</label>
                                 <select id="pdf_tiling" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <option value="split_2" selected>100% Actual Size — Split into 2 Parts (2 Pages) [Recommended for A4]</option>
-                                    <option value="fit">Scale to Fit (1 Page) — ⚠️ Shrinks Component (~90% Scale)</option>
+                                    <option value="actual_1page" selected>100% Actual Size — 1 Page (Full-Bleed 1:1 Scale)</option>
+                                    <option value="split_2">100% Actual Size — Split into 2 Parts (2 Pages with Margins)</option>
+                                    <option value="fit">Scale to Fit (1 Page) — ⚠️ Shrinks Component (~90% Scale for 10mm Margins)</option>
                                     <option value="split_3">100% Actual Size — Split into 3 Parts (3 Pages)</option>
                                     <option value="split_4">100% Actual Size — Split into 4 Parts (2x2 Grid - 4 Pages)</option>
                                 </select>

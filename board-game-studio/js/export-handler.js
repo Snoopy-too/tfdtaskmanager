@@ -101,22 +101,30 @@
                 tilingContainer.classList.remove('hidden');
 
                 if (warningBox) {
-                    if (selectedOption === 'fit') {
+                    if (selectedOption === 'actual_1page') {
+                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <span>✅ 100% Actual 1:1 Physical Scale (1 Sheet)</span>
+                            </div>
+                            <p>Exports at <strong>100% 1:1 physical size</strong> on 1 single sheet of paper (full-bleed). When printing your PDF, select <strong>"Actual Size / 100%"</strong> in your printer dialog (or Borderless printing). Cut-out cards will match perfectly!</p>
+                        `;
+                    } else if (selectedOption === 'fit') {
                         warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
                         warningBox.innerHTML = `
                             <div class="font-bold flex items-center gap-1.5 text-amber-400">
                                 <span>⚠️ Scaling Warning (${fitScalePercent}% Scale)</span>
                             </div>
-                            <p>Scale to Fit will shrink your <strong>${cardW}x${cardH}mm</strong> component down to <strong>${fitScalePercent}%</strong> size to squeeze it onto 1 page. Printed cut-out cards will be <strong>larger</strong> than board rectangles!</p>
-                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 physical card size, select <strong>"Split into 2 Parts"</strong> (or export onto A3 paper).</p>
+                            <p>Scale to Fit will shrink your <strong>${cardW}x${cardH}mm</strong> component down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins. Printed cut-out cards will be <strong>larger</strong> than board rectangles!</p>
+                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 card size on 1 sheet, select <strong>"100% Actual Size — 1 Page (Full-Bleed)"</strong>.</p>
                         `;
                     } else {
                         warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
                         warningBox.innerHTML = `
                             <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                <span>✅ 100% Actual 1:1 Physical Scale</span>
+                                <span>✅ 100% Actual 1:1 Physical Scale (Multi-Page Split)</span>
                             </div>
-                            <p>Component will export at <strong>100% 1:1 physical size</strong> split across multiple pages. Cut-out cards will line up with board rectangles perfectly.</p>
+                            <p>Exports at <strong>100% 1:1 physical size</strong> split across multiple pages with 10mm printer margins. Cut-out cards will line up with board rectangles perfectly.</p>
                         `;
                     }
                 }
@@ -447,8 +455,15 @@
             let isTiled = false;
 
             if (cols === 0 || rows === 0) {
-                const tiling = document.getElementById('pdf_tiling').value;
-                if (tiling !== 'fit') {
+                const tiling = document.getElementById('pdf_tiling') ? document.getElementById('pdf_tiling').value : 'fit';
+                if (tiling === 'actual_1page') {
+                    isTiled = false;
+                    scaleFactor = 1.0;
+                    drawW = cardW;
+                    drawH = cardH;
+                    cols = 1;
+                    rows = 1;
+                } else if (tiling !== 'fit') {
                     isTiled = true;
                     if (tiling === 'split_2') {
                         if (cardW >= cardH) {
@@ -470,26 +485,30 @@
                         splitCols = 2;
                         splitRows = 2;
                     }
+                    const pieceW = cardW / splitCols;
+                    const pieceH = cardH / splitRows;
+                    scaleFactor = Math.min(availW / pieceW, availH / pieceH);
+                    drawW = pieceW * scaleFactor;
+                    drawH = pieceH * scaleFactor;
+                    cols = 1;
+                    rows = 1;
+                } else {
+                    scaleFactor = Math.min(availW / cardW, availH / cardH);
+                    drawW = cardW * scaleFactor;
+                    drawH = cardH * scaleFactor;
+                    cols = 1;
+                    rows = 1;
                 }
-
-                // Slices dimensions
-                const pieceW = cardW / splitCols;
-                const pieceH = cardH / splitRows;
-
-                scaleFactor = Math.min(availW / pieceW, availH / pieceH);
-                drawW = pieceW * scaleFactor;
-                drawH = pieceH * scaleFactor;
-                cols = 1;
-                rows = 1;
             }
 
             const cardsPerPage = cols * rows;
 
             // Calculate starting offsets to center grid on page
+            const tilingMode = document.getElementById('pdf_tiling') ? document.getElementById('pdf_tiling').value : 'fit';
             const gridW = (cols * drawW) + ((cols - 1) * gap);
             const gridH = (rows * drawH) + ((rows - 1) * gap);
-            const startX = margin + ((availW - gridW) / 2);
-            const startY = margin + ((availH - gridH) / 2);
+            const startX = (tilingMode === 'actual_1page') ? (pageW - drawW) / 2 : margin + ((availW - gridW) / 2);
+            const startY = (tilingMode === 'actual_1page') ? (pageH - drawH) / 2 : margin + ((availH - gridH) / 2);
 
             let pageIndex = 0;
             for (let index = 0; index < cardImages.length; index++) {
