@@ -232,11 +232,16 @@ require_once __DIR__ . '/../templates/header.php';
                                 </select>
                             </div>
 
+                            <?php
+                            $tmplWidth = $compType ? $compType->getWidthMm() : ($activeTemplate ? (float)$activeTemplate->getCanvasWidthPx() : 0.0);
+                            $tmplHeight = $compType ? $compType->getHeightMm() : ($activeTemplate ? (float)$activeTemplate->getCanvasHeightPx() : 0.0);
+                            $autoOrientation = ($tmplWidth > $tmplHeight) ? 'landscape' : 'portrait';
+                            ?>
                             <div>
                                 <label for="pdf_orientation" class="block text-sm font-medium text-slate-300 mb-1">Orientation</label>
                                 <select id="pdf_orientation" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <option value="portrait">Portrait</option>
-                                    <option value="landscape">Landscape</option>
+                                    <option value="portrait" <?php echo $autoOrientation === 'portrait' ? 'selected' : ''; ?>>Portrait</option>
+                                    <option value="landscape" <?php echo $autoOrientation === 'landscape' ? 'selected' : ''; ?>>Landscape</option>
                                 </select>
                             </div>
 

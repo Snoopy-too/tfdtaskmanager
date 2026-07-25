@@ -35,6 +35,13 @@
 
         const pageSizeSelect = document.getElementById('pdf_page_size');
         const orientationSelect = document.getElementById('pdf_orientation');
+        if (orientationSelect && window.studioConfig) {
+            const w = window.studioConfig.widthMm || window.studioConfig.canvasWidth || 0;
+            const h = window.studioConfig.heightMm || window.studioConfig.canvasHeight || 0;
+            if (w > 0 && h > 0) {
+                orientationSelect.value = (w > h) ? 'landscape' : 'portrait';
+            }
+        }
         if (pageSizeSelect) pageSizeSelect.addEventListener('change', checkTilingVisibility);
         if (orientationSelect) orientationSelect.addEventListener('change', checkTilingVisibility);
 
