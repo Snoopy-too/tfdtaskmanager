@@ -255,15 +255,17 @@ require_once __DIR__ . '/../templates/header.php';
                                 <label for="pdf_draw_bleed" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Include Physical Bleed Margins</label>
                             </div>
 
-                            <div id="pdf-tiling-container" class="space-y-1 hidden">
-                                <label for="pdf_tiling" class="block text-sm font-medium text-slate-300 mb-1">Large Component Layout</label>
+                            <div id="pdf-tiling-container" class="space-y-2 hidden">
+                                <label for="pdf_tiling" class="block text-sm font-medium text-slate-300">Print Scale & Component Layout</label>
                                 <select id="pdf_tiling" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <option value="fit">Scale to Fit (1 Page)</option>
-                                    <option value="split_2">Split into 2 Parts (2 Pages)</option>
-                                    <option value="split_3">Split into 3 Parts (3 Pages)</option>
-                                    <option value="split_4">Split into 4 Parts (2x2 Grid - 4 Pages)</option>
+                                    <option value="split_2" selected>100% Actual Size — Split into 2 Parts (2 Pages) [Recommended for A4]</option>
+                                    <option value="fit">Scale to Fit (1 Page) — ⚠️ Shrinks Component (~90% Scale)</option>
+                                    <option value="split_3">100% Actual Size — Split into 3 Parts (3 Pages)</option>
+                                    <option value="split_4">100% Actual Size — Split into 4 Parts (2x2 Grid - 4 Pages)</option>
                                 </select>
-                                <p class="text-[10px] text-slate-500">Choose how components too large for the page margins should be exported.</p>
+                                <div id="pdf-tiling-warning" class="p-3 rounded-xl text-xs space-y-1">
+                                    <!-- Populated dynamically by JS -->
+                                </div>
                             </div>
                         </div>
 

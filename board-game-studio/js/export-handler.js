@@ -42,8 +42,10 @@
                 orientationSelect.value = (w > h) ? 'landscape' : 'portrait';
             }
         }
+        const tilingSelect = document.getElementById('pdf_tiling');
         if (pageSizeSelect) pageSizeSelect.addEventListener('change', checkTilingVisibility);
         if (orientationSelect) orientationSelect.addEventListener('change', checkTilingVisibility);
+        if (tilingSelect) tilingSelect.addEventListener('change', checkTilingVisibility);
 
         const runBtn = document.getElementById('btn-run-export');
         if (runBtn) {
@@ -67,13 +69,16 @@
 
         const pageSize = document.getElementById('pdf_page_size').value;
         const orientation = document.getElementById('pdf_orientation').value;
+        const tilingSelect = document.getElementById('pdf_tiling');
+        const selectedOption = tilingSelect ? tilingSelect.value : 'split_2';
 
         const pageDims = {
             a4: { w: 210, h: 297 },
-            letter: { w: 215.9, h: 279.4 }
+            letter: { w: 215.9, h: 279.4 },
+            a3: { w: 297, h: 420 }
         };
 
-        const selectedDims = pageDims[pageSize];
+        const selectedDims = pageDims[pageSize] || pageDims.a4;
         const pageW = orientation === 'portrait' ? selectedDims.w : selectedDims.h;
         const pageH = orientation === 'portrait' ? selectedDims.h : selectedDims.w;
 
@@ -81,13 +86,40 @@
         const availW = pageW - (margin * 2);
         const availH = pageH - (margin * 2);
 
-        const cardW = window.studioConfig.widthMm;
-        const cardH = window.studioConfig.heightMm;
+        const cardW = window.studioConfig.widthMm || 297;
+        const cardH = window.studioConfig.heightMm || 210;
+
+        const scaleW = availW / cardW;
+        const scaleH = availH / cardH;
+        const fitScalePercent = Math.round(Math.min(scaleW, scaleH, 1) * 1000) / 10;
 
         const tilingContainer = document.getElementById('pdf-tiling-container');
+        const warningBox = document.getElementById('pdf-tiling-warning');
+
         if (tilingContainer) {
             if (cardW > availW || cardH > availH) {
                 tilingContainer.classList.remove('hidden');
+
+                if (warningBox) {
+                    if (selectedOption === 'fit') {
+                        warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-amber-400">
+                                <span>⚠️ Scaling Warning (${fitScalePercent}% Scale)</span>
+                            </div>
+                            <p>Scale to Fit will shrink your <strong>${cardW}x${cardH}mm</strong> component down to <strong>${fitScalePercent}%</strong> size to squeeze it onto 1 page. Printed cut-out cards will be <strong>larger</strong> than board rectangles!</p>
+                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 physical card size, select <strong>"Split into 2 Parts"</strong> (or export onto A3 paper).</p>
+                        `;
+                    } else {
+                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <span>✅ 100% Actual 1:1 Physical Scale</span>
+                            </div>
+                            <p>Component will export at <strong>100% 1:1 physical size</strong> split across multiple pages. Cut-out cards will line up with board rectangles perfectly.</p>
+                        `;
+                    }
+                }
             } else {
                 tilingContainer.classList.add('hidden');
             }
