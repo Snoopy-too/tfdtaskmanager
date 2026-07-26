@@ -16,6 +16,7 @@ class Task
     private ?string $checkedOutAt;
     private string $createdAt;
     private bool $isBug;
+    private bool $isArchived;
     private int $version;
 
     public function __construct(
@@ -30,6 +31,7 @@ class Task
         ?string $checkedOutAt = null,
         string $createdAt = '',
         bool $isBug = false,
+        bool $isArchived = false,
         int $version = 1
     ) {
         $this->id = $id;
@@ -43,6 +45,7 @@ class Task
         $this->checkedOutAt = $checkedOutAt;
         $this->createdAt = $createdAt;
         $this->isBug = $isBug;
+        $this->isArchived = $isArchived;
         $this->version = $version;
     }
 
@@ -101,6 +104,11 @@ class Task
         return $this->isBug;
     }
 
+    public function isArchived(): bool
+    {
+        return $this->isArchived;
+    }
+
     public function getVersion(): int
     {
         return $this->version;
@@ -132,5 +140,19 @@ class Task
         $this->status = 'Done';
         $this->assignedTo = null;
         $this->checkedOutAt = null;
+    }
+
+    public function archive(): void
+    {
+        // ponytail: simple boolean flag for task archiving
+        if ($this->status !== 'Done') {
+            throw new \LogicException("Only tasks marked as 'Done' can be archived.");
+        }
+        $this->isArchived = true;
+    }
+
+    public function unarchive(): void
+    {
+        $this->isArchived = false;
     }
 }

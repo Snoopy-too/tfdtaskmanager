@@ -63,6 +63,7 @@ function isActive(string $page, string $current_page, bool $in_studio, bool $che
                     <nav class="hidden md:flex space-x-8">
                         <a href="<?php echo $base_url; ?>index.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('index.php', $current_page, $in_studio, false); ?>">Dashboard</a>
                         <a href="<?php echo $base_url; ?>projects.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('projects.php', $current_page, $in_studio, false); ?>">Projects</a>
+                        <a href="<?php echo $base_url; ?>archive.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('archive.php', $current_page, $in_studio, false); ?>">Archive</a>
                         <a href="<?php echo $base_url; ?>board-game-studio/index.php" class="px-1 py-2 text-sm font-medium <?php echo isActive('', $current_page, $in_studio, true); ?>">Board Game Studio</a>
                         <a href="<?php echo $base_url; ?>meetings.php" class="px-1 py-2 text-sm font-medium <?php echo (!$in_studio && ($current_page === 'meetings.php' || $current_page === 'meeting_detail.php')) ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-300 hover:text-white transition duration-200'; ?>">Div/Dev</a>
                         <?php if (SecurityHelper::getCurrentUserRole() === 'super_admin'): ?>

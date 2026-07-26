@@ -32,9 +32,9 @@ class TaskService
         return $this->taskRepository->findById($id);
     }
 
-    public function getTasksFiltered(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null): array
+    public function getTasksFiltered(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null, ?bool $isArchived = false): array
     {
-        return $this->taskRepository->findByFilters($projectId, $status, $onlyBugs, $sortBy);
+        return $this->taskRepository->findByFilters($projectId, $status, $onlyBugs, $sortBy, $isArchived);
     }
 
     public function createTask(int $projectId, string $title, string $details, ?string $deadline, int $creatorId, bool $isBug = false): Task
@@ -317,5 +317,75 @@ class TaskService
     public function getTaskHistory(int $taskId): array
     {
         return $this->historyRepository->findByTaskId($taskId);
+    }
+
+    public function archiveTask(int $taskId, int $userId, int $expectedVersion = 0): Task
+    {
+        $task = $this->taskRepository->findById($taskId);
+        if (!$task) {
+            throw new ValidationException("Task not found.");
+        }
+
+        try {
+            $updatedTask = new Task(
+                $task->getId(),
+                $task->getProjectId(),
+                $task->getTitle(),
+                $task->getDetails(),
+                $task->getStatus(),
+                $task->getDeadline(),
+                $task->getCreatedBy(),
+                $task->getAssignedTo(),
+                $task->getCheckedOutAt(),
+                $task->getCreatedAt(),
+                $task->isBug(),
+                $task->isArchived(),
+                $expectedVersion > 0 ? $expectedVersion : $task->getVersion()
+            );
+            $updatedTask->archive();
+            $savedTask = $this->taskRepository->save($updatedTask);
+
+            $history = new TaskHistory(null, $taskId, $userId, 'archived', 'Task moved to archive.');
+            $this->historyRepository->save($history);
+
+            return $savedTask;
+        } catch (\LogicException $e) {
+            throw new ValidationException($e->getMessage());
+        }
+    }
+
+    public function unarchiveTask(int $taskId, int $userId, int $expectedVersion = 0): Task
+    {
+        $task = $this->taskRepository->findById($taskId);
+        if (!$task) {
+            throw new ValidationException("Task not found.");
+        }
+
+        try {
+            $updatedTask = new Task(
+                $task->getId(),
+                $task->getProjectId(),
+                $task->getTitle(),
+                $task->getDetails(),
+                $task->getStatus(),
+                $task->getDeadline(),
+                $task->getCreatedBy(),
+                $task->getAssignedTo(),
+                $task->getCheckedOutAt(),
+                $task->getCreatedAt(),
+                $task->isBug(),
+                $task->isArchived(),
+                $expectedVersion > 0 ? $expectedVersion : $task->getVersion()
+            );
+            $updatedTask->unarchive();
+            $savedTask = $this->taskRepository->save($updatedTask);
+
+            $history = new TaskHistory(null, $taskId, $userId, 'unarchived', 'Task restored from archive.');
+            $this->historyRepository->save($history);
+
+            return $savedTask;
+        } catch (\LogicException $e) {
+            throw new ValidationException($e->getMessage());
+        }
     }
 }

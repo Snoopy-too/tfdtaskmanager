@@ -19,7 +19,27 @@ $selectedStatus = isset($_GET['status']) && $_GET['status'] !== '' ? $_GET['stat
 $onlyBugs = isset($_GET['only_bugs']) && $_GET['only_bugs'] === '1';
 $sortBy = $_GET['sort_by'] ?? '';
 
-$tasks = $taskService->getTasksFiltered($selectedProjectId, $selectedStatus, $onlyBugs, $sortBy);
+$csrfToken = SecurityHelper::generateCsrfToken();
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'archive') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $taskId = (int)($_POST['task_id'] ?? 0);
+        $currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
+        try {
+            $taskService->archiveTask($taskId, $currentUserId);
+            header('Location: index.php?' . http_build_query($_GET));
+            exit();
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+        }
+    } else {
+        $error = 'Security check failed. Please try again.';
+    }
+}
+
+$tasks = $taskService->getTasksFiltered($selectedProjectId, $selectedStatus, $onlyBugs, $sortBy, false);
 
 $projects = $projectService->getAllProjects();
 $users = $userService->getAllUsers();
@@ -265,7 +285,17 @@ require_once __DIR__ . '/templates/header.php';
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                                     <span>Done</span>
                                 </span>
-                                <a href="task_detail.php?id=<?php echo $task->getId(); ?>" class="text-indigo-400 hover:text-indigo-300 font-semibold transition">View Details &rarr;</a>
+                                <div class="flex items-center space-x-3">
+                                    <form action="index.php?<?php echo SecurityHelper::escape(http_build_query($_GET)); ?>" method="POST" class="inline">
+                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                        <input type="hidden" name="action" value="archive">
+                                        <input type="hidden" name="task_id" value="<?php echo $task->getId(); ?>">
+                                        <button type="submit" class="text-slate-400 hover:text-amber-400 font-semibold transition" onclick="return confirm('Archive task #<?php echo $task->getId(); ?>?');">
+                                            Archive
+                                        </button>
+                                    </form>
+                                    <a href="task_detail.php?id=<?php echo $task->getId(); ?>" class="text-indigo-400 hover:text-indigo-300 font-semibold transition">View Details &rarr;</a>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>

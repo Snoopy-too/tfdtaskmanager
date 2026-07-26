@@ -71,6 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = $_POST['message'] ?? '';
                 $taskService->editComment($commentId, $currentUserId, $message);
                 $success = "Comment updated successfully.";
+            } elseif ($action === 'archive') {
+                $taskService->archiveTask($taskId, $currentUserId, $expectedVersion);
+                $success = "Task archived successfully.";
+            } elseif ($action === 'unarchive') {
+                $taskService->unarchiveTask($taskId, $currentUserId, $expectedVersion);
+                $success = "Task unarchived successfully.";
             }
             
             $task = $taskService->getTaskById($taskId);
@@ -145,7 +151,9 @@ require_once __DIR__ . '/templates/header.php';
             </div>
 
             <div>
-                <?php if ($task->getStatus() === 'To Do'): ?>
+                <?php if ($task->isArchived()): ?>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Archived</span>
+                <?php elseif ($task->getStatus() === 'To Do'): ?>
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">To Do</span>
                 <?php elseif ($task->getStatus() === 'In Progress'): ?>
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">In Progress</span>
@@ -162,7 +170,9 @@ require_once __DIR__ . '/templates/header.php';
 
         <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="text-sm">
-                <?php if ($task->getStatus() === 'To Do'): ?>
+                <?php if ($task->isArchived()): ?>
+                    <span class="text-slate-400">This task is archived. You can unarchive it to return it to active views.</span>
+                <?php elseif ($task->getStatus() === 'To Do'): ?>
                     <span class="text-slate-400">This task is open. You can check it out to start working.</span>
                 <?php elseif ($task->getStatus() === 'In Progress'): ?>
                     <span class="text-slate-400">
@@ -172,36 +182,58 @@ require_once __DIR__ . '/templates/header.php';
                         <?php endif; ?>
                     </span>
                 <?php elseif ($task->getStatus() === 'Done'): ?>
-                    <span class="text-slate-400">This task has been completed. No actions are required.</span>
+                    <span class="text-slate-400">This task has been completed. You can archive it or keep it as completed.</span>
                 <?php endif; ?>
             </div>
 
             <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
-                <?php if ($task->getStatus() === 'To Do'): ?>
-                    <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="w-full">
-                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                        <input type="hidden" name="action" value="checkout">
-                        <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
-                        <button type="submit" class="w-full text-center px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition duration-200">
-                            Check Out Task
-                        </button>
-                    </form>
-                <?php endif; ?>
-
-                <?php if ($task->getStatus() === 'In Progress' && $task->getAssignedTo() === $currentUserId): ?>
-                    <button onclick="document.getElementById('checkin_modal').classList.remove('hidden')" 
-                        class="w-full sm:w-auto px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm rounded-lg transition duration-200">
-                        Return / Check In
-                    </button>
-                    
+                <?php if ($task->isArchived()): ?>
                     <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="w-full sm:w-auto">
                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                        <input type="hidden" name="action" value="complete">
+                        <input type="hidden" name="action" value="unarchive">
                         <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
-                        <button type="submit" class="w-full text-center px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm rounded-lg transition duration-200">
-                            Mark as Done
+                        <button type="submit" class="w-full text-center px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition duration-200">
+                            Unarchive Task
                         </button>
                     </form>
+                <?php else: ?>
+                    <?php if ($task->getStatus() === 'To Do'): ?>
+                        <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="w-full">
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                            <input type="hidden" name="action" value="checkout">
+                            <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
+                            <button type="submit" class="w-full text-center px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition duration-200">
+                                Check Out Task
+                            </button>
+                        </form>
+                    <?php endif; ?>
+
+                    <?php if ($task->getStatus() === 'In Progress' && $task->getAssignedTo() === $currentUserId): ?>
+                        <button onclick="document.getElementById('checkin_modal').classList.remove('hidden')" 
+                            class="w-full sm:w-auto px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm rounded-lg transition duration-200">
+                            Return / Check In
+                        </button>
+                        
+                        <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="w-full sm:w-auto">
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                            <input type="hidden" name="action" value="complete">
+                            <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
+                            <button type="submit" class="w-full text-center px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm rounded-lg transition duration-200">
+                                Mark as Done
+                            </button>
+                        </form>
+                    <?php endif; ?>
+
+                    <?php if ($task->getStatus() === 'Done'): ?>
+                        <form action="task_detail.php?id=<?php echo $taskId; ?>" method="POST" class="w-full sm:w-auto">
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                            <input type="hidden" name="action" value="archive">
+                            <input type="hidden" name="version" value="<?php echo $task->getVersion(); ?>">
+                            <button type="submit" class="w-full text-center px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium text-sm rounded-lg transition duration-200">
+                                Archive Task
+                            </button>
+                        </form>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

@@ -27,10 +27,12 @@ class PDOTaskRepository implements TaskRepositoryInterface
 
     public function save(Task $task): Task
     {
+        $this->ensureTaskArchivedColumn();
+
         if ($task->getId() === null) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO tasks (project_id, title, details, status, deadline, created_by, assigned_to, checked_out_at, is_bug)
-                VALUES (:project_id, :title, :details, :status, :deadline, :created_by, :assigned_to, :checked_out_at, :is_bug)
+                INSERT INTO tasks (project_id, title, details, status, deadline, created_by, assigned_to, checked_out_at, is_bug, is_archived)
+                VALUES (:project_id, :title, :details, :status, :deadline, :created_by, :assigned_to, :checked_out_at, :is_bug, :is_archived)
             ");
             $stmt->execute([
                 'project_id' => $task->getProjectId(),
@@ -41,7 +43,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 'created_by' => $task->getCreatedBy(),
                 'assigned_to' => $task->getAssignedTo(),
                 'checked_out_at' => $task->getCheckedOutAt(),
-                'is_bug' => $task->isBug() ? 1 : 0
+                'is_bug' => $task->isBug() ? 1 : 0,
+                'is_archived' => $task->isArchived() ? 1 : 0
             ]);
             $id = (int)$this->pdo->lastInsertId();
             return new Task(
@@ -55,7 +58,9 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 $task->getAssignedTo(),
                 $task->getCheckedOutAt(),
                 date('Y-m-d H:i:s'),
-                $task->isBug()
+                $task->isBug(),
+                $task->isArchived(),
+                1
             );
         } else {
             $this->ensureTaskVersionColumn();
@@ -64,7 +69,8 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 UPDATE tasks
                 SET project_id = :project_id, title = :title, details = :details, status = :status,
                     deadline = :deadline, created_by = :created_by, assigned_to = :assigned_to,
-                    checked_out_at = :checked_out_at, is_bug = :is_bug, version = COALESCE(version, 1) + 1
+                    checked_out_at = :checked_out_at, is_bug = :is_bug, is_archived = :is_archived,
+                    version = COALESCE(version, 1) + 1
                 WHERE id = :id AND (version = :expected_version OR version IS NULL)
             ");
             
@@ -78,6 +84,7 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 'assigned_to' => $task->getAssignedTo(),
                 'checked_out_at' => $task->getCheckedOutAt(),
                 'is_bug' => $task->isBug() ? 1 : 0,
+                'is_archived' => $task->isArchived() ? 1 : 0,
                 'id' => $task->getId(),
                 'expected_version' => $task->getVersion()
             ]);
@@ -98,6 +105,7 @@ class PDOTaskRepository implements TaskRepositoryInterface
                 $task->getCheckedOutAt(),
                 $task->getCreatedAt(),
                 $task->isBug(),
+                $task->isArchived(),
                 $task->getVersion() + 1
             );
         }
@@ -111,6 +119,7 @@ class PDOTaskRepository implements TaskRepositoryInterface
 
     public function findAll(): array
     {
+        $this->ensureTaskArchivedColumn();
         $stmt = $this->pdo->query("SELECT * FROM tasks ORDER BY created_at DESC");
         $rows = $stmt->fetchAll();
         $tasks = [];
@@ -120,10 +129,16 @@ class PDOTaskRepository implements TaskRepositoryInterface
         return $tasks;
     }
 
-    public function findByFilters(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null): array
+    public function findByFilters(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null, ?bool $isArchived = false): array
     {
+        $this->ensureTaskArchivedColumn();
         $sql = "SELECT * FROM tasks WHERE 1=1";
         $params = [];
+
+        if ($isArchived !== null) {
+            $sql .= " AND is_archived = :is_archived";
+            $params['is_archived'] = $isArchived ? 1 : 0;
+        }
 
         if ($projectId !== null) {
             $sql .= " AND project_id = :project_id";
@@ -173,6 +188,7 @@ class PDOTaskRepository implements TaskRepositoryInterface
             $row['checked_out_at'] ? (string)$row['checked_out_at'] : null,
             $row['created_at'],
             (bool)($row['is_bug'] ?? false),
+            (bool)($row['is_archived'] ?? false),
             (int)($row['version'] ?? 1)
         );
     }
@@ -185,6 +201,21 @@ class PDOTaskRepository implements TaskRepositoryInterface
             $cols = $this->pdo->query("SHOW COLUMNS FROM `tasks` LIKE 'version'")->fetchAll();
             if (empty($cols)) {
                 $this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `version` INT NOT NULL DEFAULT 1 AFTER `is_bug`");
+            }
+        } catch (\Throwable $e) {
+            // Ignore if already exists or permission denied
+        }
+        $checked = true;
+    }
+
+    private function ensureTaskArchivedColumn(): void
+    {
+        static $checked = false;
+        if ($checked) return;
+        try {
+            $cols = $this->pdo->query("SHOW COLUMNS FROM `tasks` LIKE 'is_archived'")->fetchAll();
+            if (empty($cols)) {
+                $this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `is_archived` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_bug`");
             }
         } catch (\Throwable $e) {
             // Ignore if already exists or permission denied
