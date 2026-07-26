@@ -88,6 +88,7 @@ class TaskService
                 $task->getCheckedOutAt(),
                 $task->getCreatedAt(),
                 $task->isBug(),
+                $task->isArchived(),
                 $expectedVersion
             );
             $task->checkout($userId);
@@ -131,6 +132,7 @@ class TaskService
                 $task->getCheckedOutAt(),
                 $task->getCreatedAt(),
                 $task->isBug(),
+                $task->isArchived(),
                 $expectedVersion
             );
             $task->checkin();
@@ -169,6 +171,7 @@ class TaskService
                 $task->getCheckedOutAt(),
                 $task->getCreatedAt(),
                 $task->isBug(),
+                $task->isArchived(),
                 $expectedVersion
             );
             $task->complete();
@@ -285,6 +288,7 @@ class TaskService
             $task->getCheckedOutAt(),
             $task->getCreatedAt(),
             $isBug,
+            $task->isArchived(),
             $expectedVersion
         );
 
