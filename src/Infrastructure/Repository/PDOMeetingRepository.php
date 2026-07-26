@@ -18,6 +18,7 @@ class PDOMeetingRepository implements MeetingRepositoryInterface
 
     public function findById(int $id): ?Meeting
     {
+        $this->ensureMeetingColumns();
         $stmt = $this->pdo->prepare("SELECT * FROM meetings WHERE id = :id");
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
@@ -29,14 +30,17 @@ class PDOMeetingRepository implements MeetingRepositoryInterface
 
     public function save(Meeting $meeting): Meeting
     {
+        $this->ensureMeetingColumns();
         if ($meeting->getId() === null) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO meetings (title, scheduled_date, created_by)
-                VALUES (:title, :scheduled_date, :created_by)
+                INSERT INTO meetings (title, scheduled_date, status, notes, created_by)
+                VALUES (:title, :scheduled_date, :status, :notes, :created_by)
             ");
             $stmt->execute([
                 'title' => $meeting->getTitle(),
                 'scheduled_date' => $meeting->getScheduledDate(),
+                'status' => $meeting->getStatus(),
+                'notes' => $meeting->getNotes(),
                 'created_by' => $meeting->getCreatedBy()
             ]);
             $id = (int)$this->pdo->lastInsertId();
@@ -45,17 +49,21 @@ class PDOMeetingRepository implements MeetingRepositoryInterface
                 $meeting->getTitle(),
                 $meeting->getScheduledDate(),
                 $meeting->getCreatedBy(),
-                date('Y-m-d H:i:s')
+                date('Y-m-d H:i:s'),
+                $meeting->getStatus(),
+                $meeting->getNotes()
             );
         } else {
             $stmt = $this->pdo->prepare("
                 UPDATE meetings
-                SET title = :title, scheduled_date = :scheduled_date
+                SET title = :title, scheduled_date = :scheduled_date, status = :status, notes = :notes
                 WHERE id = :id
             ");
             $stmt->execute([
                 'title' => $meeting->getTitle(),
                 'scheduled_date' => $meeting->getScheduledDate(),
+                'status' => $meeting->getStatus(),
+                'notes' => $meeting->getNotes(),
                 'id' => $meeting->getId()
             ]);
             return $meeting;
@@ -64,10 +72,11 @@ class PDOMeetingRepository implements MeetingRepositoryInterface
 
     public function findAll(): array
     {
-        // ponytail: Sort pending dates first, then scheduled dates in ascending order
+        $this->ensureMeetingColumns();
+        // ponytail: Sort pending dates first, then scheduled dates in ascending order, finished last
         $stmt = $this->pdo->query("
             SELECT * FROM meetings 
-            ORDER BY (scheduled_date IS NULL) DESC, scheduled_date ASC, created_at DESC
+            ORDER BY (status = 'Finished') ASC, (scheduled_date IS NULL) DESC, scheduled_date ASC, created_at DESC
         ");
         $rows = $stmt->fetchAll();
         $meetings = [];
@@ -79,12 +88,34 @@ class PDOMeetingRepository implements MeetingRepositoryInterface
 
     private function mapRowToEntity(array $row): Meeting
     {
+        $status = $row['status'] ?? ($row['scheduled_date'] ? 'Scheduled' : 'Pending');
         return new Meeting(
             (int)$row['id'],
             $row['title'],
             $row['scheduled_date'] ? (string)$row['scheduled_date'] : null,
             (int)$row['created_by'],
-            $row['created_at']
+            $row['created_at'],
+            $status,
+            $row['notes'] ?? null
         );
+    }
+
+    private function ensureMeetingColumns(): void
+    {
+        static $checked = false;
+        if ($checked) return;
+        try {
+            $cols = $this->pdo->query("SHOW COLUMNS FROM `meetings` LIKE 'status'")->fetchAll();
+            if (empty($cols)) {
+                $this->pdo->exec("ALTER TABLE `meetings` ADD COLUMN `status` ENUM('Pending', 'Scheduled', 'Finished') NOT NULL DEFAULT 'Pending' AFTER `scheduled_date`");
+            }
+            $noteCols = $this->pdo->query("SHOW COLUMNS FROM `meetings` LIKE 'notes'")->fetchAll();
+            if (empty($noteCols)) {
+                $this->pdo->exec("ALTER TABLE `meetings` ADD COLUMN `notes` TEXT DEFAULT NULL AFTER `status`");
+            }
+        } catch (\Throwable $e) {
+            // Ignore if already exists or permission error
+        }
+        $checked = true;
     }
 }

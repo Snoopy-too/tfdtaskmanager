@@ -76,6 +76,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (ValidationException $e) {
                 $error = $e->getMessage();
             }
+        } elseif ($action === 'finish_meeting') {
+            $notes = $_POST['notes'] ?? null;
+            try {
+                $meeting = $meetingService->finishMeeting($meetingId, $notes);
+                $success = 'Meeting marked as finished.';
+            } catch (ValidationException $e) {
+                $error = $e->getMessage();
+            }
+        } elseif ($action === 'reopen_meeting') {
+            try {
+                $meeting = $meetingService->reopenMeeting($meetingId);
+                $success = 'Meeting re-opened.';
+            } catch (ValidationException $e) {
+                $error = $e->getMessage();
+            }
+        } elseif ($action === 'save_notes') {
+            $notes = $_POST['notes'] ?? '';
+            try {
+                $meeting = $meetingService->updateMeeting($meetingId, $meeting->getTitle(), $meeting->getScheduledDate(), $meeting->getStatus(), $notes);
+                $success = 'Meeting notes saved successfully.';
+            } catch (ValidationException $e) {
+                $error = $e->getMessage();
+            }
         }
     }
 }
@@ -155,7 +178,9 @@ require_once __DIR__ . '/templates/header.php';
                 <div>
                     <div class="flex items-center gap-3 flex-wrap">
                         <h2 class="text-2xl font-extrabold text-white"><?php echo SecurityHelper::escape($meeting->getTitle()); ?></h2>
-                        <?php if ($meeting->getScheduledDate() === null): ?>
+                        <?php if ($meeting->isFinished()): ?>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Finished</span>
+                        <?php elseif ($meeting->getScheduledDate() === null): ?>
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>
                         <?php else: ?>
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Scheduled</span>
@@ -168,8 +193,22 @@ require_once __DIR__ . '/templates/header.php';
                         Organized by <?php echo SecurityHelper::escape($userMap[$meeting->getCreatedBy()] ?? 'Unknown User'); ?> &bull; Created on <?php echo date('M d, Y', strtotime($meeting->getCreatedAt())); ?>
                     </p>
                 </div>
-                <div>
-                    <!-- ponytail: simple state toggle for edit via URL parameter -->
+                <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                    <?php if (!$meeting->isFinished()): ?>
+                        <button onclick="document.getElementById('finish_meeting_modal').classList.remove('hidden')"
+                            class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-md transition duration-200">
+                            &check; Mark as Finished
+                        </button>
+                    <?php else: ?>
+                        <form action="meeting_detail.php?id=<?php echo $meetingId; ?>" method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                            <input type="hidden" name="action" value="reopen_meeting">
+                            <button type="submit" class="inline-flex items-center px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium rounded-lg border border-slate-700 transition duration-200">
+                                Re-open Meeting
+                            </button>
+                        </form>
+                    <?php endif; ?>
+                    
                     <a href="meeting_detail.php?id=<?php echo $meetingId; ?>&edit=1"
                         class="inline-flex items-center px-4 py-2 border border-slate-700 text-sm font-medium rounded-lg text-slate-300 hover:text-white hover:border-slate-500 hover:bg-slate-800 transition duration-200">
                         Edit Details
@@ -177,6 +216,34 @@ require_once __DIR__ . '/templates/header.php';
                 </div>
             </div>
         <?php endif; ?>
+    </div>
+
+    <!-- Meeting Notes Section -->
+    <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-slate-200 flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                <span>Meeting Notes & Key Takeaways</span>
+            </h3>
+            <?php if ($meeting->getNotes()): ?>
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Notes Recorded</span>
+            <?php endif; ?>
+        </div>
+
+        <form action="meeting_detail.php?id=<?php echo $meetingId; ?>" method="POST" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+            <input type="hidden" name="action" value="save_notes">
+            
+            <textarea name="notes" rows="4"
+                placeholder="Add discussion notes, decisions made, action items, or key takeaways from this meeting..."
+                class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl p-3.5 text-slate-200 text-sm placeholder-slate-500 transition outline-none resize-y"><?php echo SecurityHelper::escape($meeting->getNotes() ?? ''); ?></textarea>
+            
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow transition duration-200">
+                    Save Notes
+                </button>
+            </div>
+        </form>
     </div>
 
     <!-- Agenda Topics Section -->
@@ -199,15 +266,13 @@ require_once __DIR__ . '/templates/header.php';
                             </div>
                             <div class="flex-grow">
                                 <?php if (isset($_GET['edit_topic']) && (int)$_GET['edit_topic'] === $topic->getId() && $topic->getUserId() === $currentUserId): ?>
-                                    <form action="meeting_detail.php?id=<?php echo $meetingId; ?>" method="POST" class="space-y-2">
+                                    <form action="meeting_detail.php?id=<?php echo $meetingId; ?>" method="POST" class="space-y-3">
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="edit_topic">
                                         <input type="hidden" name="topic_id" value="<?php echo $topic->getId(); ?>">
-                                        <input type="text" name="topic_title" required
-                                            value="<?php echo SecurityHelper::escape($topic->getTitle()); ?>"
-                                            class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 transition outline-none text-sm">
+                                        <textarea name="topic_title" rows="2" required class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg p-2 text-slate-100 text-sm transition outline-none"><?php echo SecurityHelper::escape($topic->getTitle()); ?></textarea>
                                         <div class="flex items-center space-x-2">
-                                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3 py-1 rounded text-xs transition duration-200">
+                                            <button type="submit" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded transition">
                                                 Save
                                             </button>
                                             <a href="meeting_detail.php?id=<?php echo $meetingId; ?>" class="text-slate-400 hover:text-white font-medium text-xs transition">
@@ -256,6 +321,44 @@ require_once __DIR__ . '/templates/header.php';
                 </button>
             </form>
         </div>
+    </div>
+</div>
+
+<!-- Finish Meeting Modal -->
+<div id="finish_meeting_modal" class="hidden fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="relative bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span>Mark Meeting as Finished</span>
+            </h3>
+            <button type="button" onclick="document.getElementById('finish_meeting_modal').classList.add('hidden')" class="text-slate-400 hover:text-white">&times;</button>
+        </div>
+        
+        <p class="text-xs text-slate-400">Mark this meeting as completed and save final notes or action items for future reference.</p>
+        
+        <form action="meeting_detail.php?id=<?php echo $meetingId; ?>" method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+            <input type="hidden" name="action" value="finish_meeting">
+
+            <div>
+                <label for="finish_notes" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Meeting Notes / Minutes (Optional)</label>
+                <textarea id="finish_notes" name="notes" rows="4"
+                    placeholder="Enter summary notes, decisions made, next steps..."
+                    class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl p-3 text-slate-200 text-sm placeholder-slate-500 transition outline-none resize-y"><?php echo SecurityHelper::escape($meeting->getNotes() ?? ''); ?></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+                <button type="button" onclick="document.getElementById('finish_meeting_modal').classList.add('hidden')"
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition duration-200">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm rounded-lg shadow-lg transition duration-200">
+                    Finish Meeting
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

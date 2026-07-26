@@ -102,6 +102,8 @@ try {
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `title` VARCHAR(150) NOT NULL,
             `scheduled_date` DATE DEFAULT NULL,
+            `status` ENUM('Pending', 'Scheduled', 'Finished') NOT NULL DEFAULT 'Pending',
+            `notes` TEXT DEFAULT NULL,
             `created_by` INT NOT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT `fk_meetings_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE

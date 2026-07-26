@@ -120,7 +120,9 @@ require_once __DIR__ . '/templates/header.php';
                                             <?php echo SecurityHelper::escape($meeting->getTitle()); ?>
                                         </a>
                                     </h3>
-                                    <?php if ($meeting->getScheduledDate() === null): ?>
+                                    <?php if ($meeting->isFinished()): ?>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Finished</span>
+                                    <?php elseif ($meeting->getScheduledDate() === null): ?>
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>
                                     <?php else: ?>
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Scheduled</span>

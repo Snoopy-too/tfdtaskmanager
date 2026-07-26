@@ -48,12 +48,12 @@ class MeetingService
             throw new ValidationException("Scheduled date must be in YYYY-MM-DD format.");
         }
 
-        // ponytail: Keep domain validation clean and minimal
-        $meeting = new Meeting(null, $title, $scheduledDate, $createdByUserId);
+        $initialStatus = $scheduledDate !== null ? 'Scheduled' : 'Pending';
+        $meeting = new Meeting(null, $title, $scheduledDate, $createdByUserId, '', $initialStatus, null);
         return $this->meetingRepository->save($meeting);
     }
 
-    public function updateMeeting(int $id, string $title, ?string $scheduledDate): Meeting
+    public function updateMeeting(int $id, string $title, ?string $scheduledDate, ?string $status = null, ?string $notes = null): Meeting
     {
         $title = trim($title);
         $scheduledDate = $scheduledDate ? trim($scheduledDate) : null;
@@ -74,14 +74,65 @@ class MeetingService
             throw new ValidationException("Meeting not found.");
         }
 
+        $newStatus = $status ?? $meeting->getStatus();
+        if ($status === null && $meeting->getStatus() !== 'Finished') {
+            $newStatus = $scheduledDate !== null ? 'Scheduled' : 'Pending';
+        }
+
+        $newNotes = $notes !== null ? trim($notes) : $meeting->getNotes();
+
         $updatedMeeting = new Meeting(
             $id,
             $title,
             $scheduledDate,
             $meeting->getCreatedBy(),
-            $meeting->getCreatedAt()
+            $meeting->getCreatedAt(),
+            $newStatus,
+            $newNotes
         );
         return $this->meetingRepository->save($updatedMeeting);
+    }
+
+    public function finishMeeting(int $id, ?string $notes = null): Meeting
+    {
+        $meeting = $this->meetingRepository->findById($id);
+        if (!$meeting) {
+            throw new ValidationException("Meeting not found.");
+        }
+
+        $finalNotes = $notes !== null && trim($notes) !== '' ? trim($notes) : $meeting->getNotes();
+
+        $finishedMeeting = new Meeting(
+            $id,
+            $meeting->getTitle(),
+            $meeting->getScheduledDate(),
+            $meeting->getCreatedBy(),
+            $meeting->getCreatedAt(),
+            'Finished',
+            $finalNotes
+        );
+        return $this->meetingRepository->save($finishedMeeting);
+    }
+
+    public function reopenMeeting(int $id): Meeting
+    {
+        $meeting = $this->meetingRepository->findById($id);
+        if (!$meeting) {
+            throw new ValidationException("Meeting not found.");
+        }
+
+        $newStatus = $meeting->getScheduledDate() !== null ? 'Scheduled' : 'Pending';
+
+        $reopenedMeeting = new Meeting(
+            $id,
+            $meeting->getTitle(),
+            $meeting->getScheduledDate(),
+            $meeting->getCreatedBy(),
+            $meeting->getCreatedAt(),
+            $newStatus,
+            $meeting->getNotes()
+        );
+        return $this->meetingRepository->save($reopenedMeeting);
     }
 
     public function addTopic(int $meetingId, int $userId, string $topicTitle): MeetingTopic
