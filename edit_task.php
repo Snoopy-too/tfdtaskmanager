@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = $_POST['status'] ?? 'To Do';
             $isBug = isset($_POST['is_bug']) && $_POST['is_bug'] === '1';
             $version = (int)($_POST['version'] ?? 0);
+            $currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 
             try {
                 $taskService->updateTask(
