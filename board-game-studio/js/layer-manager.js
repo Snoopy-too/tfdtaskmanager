@@ -148,7 +148,8 @@
             const isActive = activeObject === obj;
 
             const item = document.createElement('div');
-            item.className = `flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer border ${isActive ? 'bg-indigo-500/10 border-indigo-500/30 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:text-white'} transition`;
+            item.className = `flex flex-col p-2.5 rounded-xl text-xs font-semibold cursor-pointer border space-y-1.5 ${isActive ? 'bg-indigo-500/10 border-indigo-500/40 text-white shadow-md' : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:text-white'} transition`;
+            item.title = obj.name || `${obj.type} Layer`;
 
             // ponytail: native HTML5 drag and drop layer reordering
             item.draggable = true;
@@ -206,33 +207,40 @@
                 }
             });
 
-            // Left part: Icon, Layer Name
-            const leftBlock = document.createElement('div');
-            leftBlock.className = 'flex items-center space-x-2 truncate flex-grow';
-            leftBlock.addEventListener('click', () => {
+            // Top Row: Type Badge + Full Layer Name (Gets 100% width)
+            const topRow = document.createElement('div');
+            topRow.className = 'flex items-center space-x-2 w-full overflow-hidden';
+            topRow.addEventListener('click', () => {
                 canvas.setActiveObject(obj);
                 canvas.renderAll();
             });
 
             // Small type indicator badge
             const typeBadge = document.createElement('span');
-            typeBadge.className = 'px-1 rounded bg-slate-950 text-[9px] uppercase tracking-wider text-slate-500';
+            typeBadge.className = 'px-1.5 py-0.5 rounded bg-slate-950 text-[9px] font-bold uppercase tracking-wider text-slate-400 border border-slate-800 shrink-0';
             typeBadge.textContent = (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') ? 'TXT' : (obj.type === 'image' ? 'IMG' : (obj.type === 'line' ? 'LN' : 'SHP'));
 
             const nameSpan = document.createElement('span');
-            nameSpan.className = 'truncate pr-2';
+            nameSpan.className = 'truncate text-xs font-semibold text-slate-100 flex-1 min-w-0';
             nameSpan.textContent = obj.name || `${obj.type} Layer`;
 
-            leftBlock.appendChild(typeBadge);
-            leftBlock.appendChild(nameSpan);
+            topRow.appendChild(typeBadge);
+            topRow.appendChild(nameSpan);
 
-            // Right part: Action controls (Visibility, Locking, Move Up/Down, Delete)
-            const rightBlock = document.createElement('div');
-            rightBlock.className = 'flex items-center space-x-1.5 flex-shrink-0';
+            // Bottom Row: Action Controls Toolbar
+            const bottomRow = document.createElement('div');
+            bottomRow.className = 'flex items-center justify-between pt-1.5 border-t border-slate-800/60 w-full text-slate-400 text-xs';
+
+            const statusGroup = document.createElement('div');
+            statusGroup.className = 'flex items-center space-x-1';
+
+            const actionGroup = document.createElement('div');
+            actionGroup.className = 'flex items-center space-x-1';
 
             // Visibility Toggle
             const btnVisible = document.createElement('button');
-            btnVisible.className = `p-1 hover:text-white ${obj.visible ? 'text-indigo-400' : 'text-slate-600'}`;
+            btnVisible.className = `p-1 rounded hover:bg-slate-800 hover:text-white ${obj.visible ? 'text-indigo-400' : 'text-slate-600'}`;
+            btnVisible.title = obj.visible ? 'Hide Layer' : 'Show Layer';
             btnVisible.innerHTML = obj.visible ? 
                 `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>` : 
                 `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>`;
@@ -247,7 +255,8 @@
             // Lock Toggle
             const btnLock = document.createElement('button');
             const isLocked = obj.lockMovementX || false;
-            btnLock.className = `p-1 hover:text-white ${isLocked ? 'text-indigo-400' : 'text-slate-600'}`;
+            btnLock.className = `p-1 rounded hover:bg-slate-800 hover:text-white ${isLocked ? 'text-indigo-400' : 'text-slate-600'}`;
+            btnLock.title = isLocked ? 'Unlock Layer' : 'Lock Layer';
             btnLock.innerHTML = isLocked ? 
                 `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>` : 
                 `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2z"/></svg>`;
@@ -264,14 +273,17 @@
                 window.editorCore.triggerAutoSave();
             });
 
+            statusGroup.appendChild(btnVisible);
+            statusGroup.appendChild(btnLock);
+
             // Reordering up
             const btnUp = document.createElement('button');
-            btnUp.className = 'p-1 hover:text-white text-slate-600';
-            btnUp.innerHTML = `<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>`;
+            btnUp.className = 'p-1 rounded hover:bg-slate-800 hover:text-white text-slate-500';
+            btnUp.title = 'Move Layer Up';
+            btnUp.innerHTML = `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>`;
             btnUp.addEventListener('click', (e) => {
                 e.stopPropagation();
                 canvas.bringForward(obj);
-                // Keep guides on top
                 if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                     window.guideRenderer.renderGuides();
                 }
@@ -282,12 +294,12 @@
 
             // Reordering down
             const btnDown = document.createElement('button');
-            btnDown.className = 'p-1 hover:text-white text-slate-600';
-            btnDown.innerHTML = `<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>`;
+            btnDown.className = 'p-1 rounded hover:bg-slate-800 hover:text-white text-slate-500';
+            btnDown.title = 'Move Layer Down';
+            btnDown.innerHTML = `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
             btnDown.addEventListener('click', (e) => {
                 e.stopPropagation();
                 canvas.sendBackwards(obj);
-                // Make sure it doesn't go below index 0 if index 0 is not a guide
                 canvas.renderAll();
                 renderLayersList();
                 window.editorCore.triggerAutoSave();
@@ -295,7 +307,7 @@
 
             // Duplicate Layer
             const btnDuplicate = document.createElement('button');
-            btnDuplicate.className = 'p-1 hover:text-white text-slate-600';
+            btnDuplicate.className = 'p-1 rounded hover:bg-slate-800 hover:text-white text-slate-500';
             btnDuplicate.title = 'Duplicate Layer';
             btnDuplicate.innerHTML = `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>`;
             btnDuplicate.addEventListener('click', (e) => {
@@ -307,7 +319,8 @@
 
             // Delete Layer
             const btnDelete = document.createElement('button');
-            btnDelete.className = 'p-1 hover:text-rose-500 text-slate-600';
+            btnDelete.className = 'p-1 rounded hover:bg-rose-500/20 hover:text-rose-400 text-slate-500';
+            btnDelete.title = 'Delete Layer';
             btnDelete.innerHTML = `<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
             btnDelete.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -323,15 +336,16 @@
                     });
             });
 
-            rightBlock.appendChild(btnVisible);
-            rightBlock.appendChild(btnLock);
-            rightBlock.appendChild(btnUp);
-            rightBlock.appendChild(btnDown);
-            rightBlock.appendChild(btnDuplicate);
-            rightBlock.appendChild(btnDelete);
+            actionGroup.appendChild(btnUp);
+            actionGroup.appendChild(btnDown);
+            actionGroup.appendChild(btnDuplicate);
+            actionGroup.appendChild(btnDelete);
 
-            item.appendChild(leftBlock);
-            item.appendChild(rightBlock);
+            bottomRow.appendChild(statusGroup);
+            bottomRow.appendChild(actionGroup);
+
+            item.appendChild(topRow);
+            item.appendChild(bottomRow);
             container.appendChild(item);
         }
 
