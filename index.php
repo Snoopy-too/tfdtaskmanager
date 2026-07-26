@@ -290,7 +290,7 @@ require_once __DIR__ . '/templates/header.php';
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="archive">
                                         <input type="hidden" name="task_id" value="<?php echo $task->getId(); ?>">
-                                        <button type="submit" class="text-slate-400 hover:text-amber-400 font-semibold transition" onclick="return confirm('Archive task #<?php echo $task->getId(); ?>?');">
+                                        <button type="submit" class="text-slate-400 hover:text-amber-400 font-semibold transition" onclick="return showCustomConfirm('Archive task #<?php echo $task->getId(); ?>?', this.form, 'Archive', 'Archive Task');">
                                             Archive
                                         </button>
                                     </form>

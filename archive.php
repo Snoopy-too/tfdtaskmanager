@@ -168,7 +168,7 @@ require_once __DIR__ . '/templates/header.php';
                                 <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                 <input type="hidden" name="action" value="unarchive">
                                 <input type="hidden" name="task_id" value="<?php echo $task->getId(); ?>">
-                                <button type="submit" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium rounded-lg transition" onclick="return confirm('Restore task #<?php echo $task->getId(); ?> to active board?');">
+                                <button type="submit" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium rounded-lg transition" onclick="return showCustomConfirm('Restore task #<?php echo $task->getId(); ?> to active board?', this.form, 'Unarchive', 'Restore Task');">
                                     Unarchive
                                 </button>
                             </form>
