@@ -159,4 +159,24 @@ class BgDatasetService
             $this->datasetRepository->updateLock($datasetId, null, null);
         }
     }
+
+    public function generateCsvContent(BgDataset $dataset): string
+    {
+        $columns = $dataset->getColumnMap();
+        $rows = $dataset->getRowData();
+
+        $output = fopen('php://temp', 'r+');
+        fputcsv($output, $columns);
+        foreach ($rows as $row) {
+            $line = [];
+            foreach ($columns as $col) {
+                $line[] = $row[$col] ?? '';
+            }
+            fputcsv($output, $line);
+        }
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+        return $csv;
+    }
 }
