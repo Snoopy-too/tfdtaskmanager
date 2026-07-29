@@ -44,29 +44,12 @@ $tasks = $taskService->getTasksFiltered($selectedProjectId, $selectedStatus, $on
 $projects = $projectService->getAllProjects();
 $users = $userService->getAllUsers();
 
-$projectMap = [];
-foreach ($projects as $p) {
-    $projectMap[$p->getId()] = $p->getName();
-}
+$projectMap = array_column(array_map(fn($p) => ['id' => $p->getId(), 'name' => $p->getName()], $projects), 'name', 'id');
+$userMap = array_column(array_map(fn($u) => ['id' => $u->getId(), 'name' => $u->getName()], $users), 'name', 'id');
 
-$userMap = [];
-foreach ($users as $u) {
-    $userMap[$u->getId()] = $u->getName();
-}
-
-$todoTasks = [];
-$inProgressTasks = [];
-$doneTasks = [];
-
-foreach ($tasks as $task) {
-    if ($task->getStatus() === 'To Do') {
-        $todoTasks[] = $task;
-    } elseif ($task->getStatus() === 'In Progress') {
-        $inProgressTasks[] = $task;
-    } elseif ($task->getStatus() === 'Done') {
-        $doneTasks[] = $task;
-    }
-}
+$todoTasks = array_filter($tasks, fn($t) => $t->getStatus() === 'To Do');
+$inProgressTasks = array_filter($tasks, fn($t) => $t->getStatus() === 'In Progress');
+$doneTasks = array_filter($tasks, fn($t) => $t->getStatus() === 'Done');
 
 require_once __DIR__ . '/templates/header.php';
 ?>

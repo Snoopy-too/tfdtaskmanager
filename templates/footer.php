@@ -67,133 +67,65 @@ declare(strict_types=1);
 
         function showCustomConfirm(message, formElement, buttonText = 'Delete', titleText = 'Confirm Action') {
             currentConfirmForm = formElement;
-            document.getElementById('global_confirm_message').innerText = message;
-            document.getElementById('global_confirm_ok_btn').innerText = buttonText;
-            document.getElementById('global_confirm_title').innerText = titleText;
-            
-            // Adjust button color based on whether it is a delete action
-            const okBtn = document.getElementById('global_confirm_ok_btn');
-            if (buttonText.toLowerCase() === 'delete') {
-                okBtn.className = "px-4 py-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200";
-            } else {
-                okBtn.className = "px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200";
-            }
-            
-            document.getElementById('global_confirm_modal').classList.remove('hidden');
+            window.studioConfirm(message, buttonText, titleText).then(confirmed => {
+                if (confirmed && currentConfirmForm) {
+                    currentConfirmForm.submit();
+                    currentConfirmForm = null;
+                }
+            });
             return false;
         }
 
-        document.getElementById('global_confirm_cancel_btn').addEventListener('click', function() {
-            document.getElementById('global_confirm_modal').classList.add('hidden');
-            currentConfirmForm = null;
-        });
-
-        document.getElementById('global_confirm_ok_btn').addEventListener('click', function() {
-            document.getElementById('global_confirm_modal').classList.add('hidden');
-            if (currentConfirmForm) {
-                currentConfirmForm.submit();
-            }
-        });
-
-        // Promise-based Confirm helper
-        window.studioConfirm = function(message, buttonText = 'Delete', titleText = 'Confirm Action') {
+        // Generic modal helper to eliminate node-cloning hacks
+        function _openModal(modalId, setupFn) {
             return new Promise(resolve => {
-                const modal = document.getElementById('global_confirm_modal');
-                const cancelBtn = document.getElementById('global_confirm_cancel_btn');
-                const okBtn = document.getElementById('global_confirm_ok_btn');
-                
-                document.getElementById('global_confirm_message').innerText = message;
-                okBtn.innerText = buttonText;
-                document.getElementById('global_confirm_title').innerText = titleText;
-                
-                if (buttonText.toLowerCase() === 'delete' || buttonText.toLowerCase() === 'remove') {
-                    okBtn.className = "px-4 py-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200";
-                } else {
-                    okBtn.className = "px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200";
-                }
-                
+                const modal = document.getElementById(modalId);
                 modal.classList.remove('hidden');
-                
-                // Clean up previous event listeners by cloning buttons
-                const newCancelBtn = cancelBtn.cloneNode(true);
-                const newOkBtn = okBtn.cloneNode(true);
-                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-                okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-                
-                newCancelBtn.addEventListener('click', () => {
+                setupFn(modal, (val) => {
                     modal.classList.add('hidden');
-                    resolve(false);
+                    resolve(val);
                 });
-                
-                newOkBtn.addEventListener('click', () => {
-                    modal.classList.add('hidden');
-                    resolve(true);
-                });
+            });
+        }
+
+        window.studioConfirm = function(message, buttonText = 'Delete', titleText = 'Confirm Action') {
+            return _openModal('global_confirm_modal', (modal, close) => {
+                document.getElementById('global_confirm_message').innerText = message;
+                document.getElementById('global_confirm_title').innerText = titleText;
+                const okBtn = document.getElementById('global_confirm_ok_btn');
+                okBtn.innerText = buttonText;
+                okBtn.className = (buttonText.toLowerCase() === 'delete' || buttonText.toLowerCase() === 'remove')
+                    ? "px-4 py-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200"
+                    : "px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200";
+
+                document.getElementById('global_confirm_cancel_btn').onclick = () => close(false);
+                okBtn.onclick = () => close(true);
             });
         };
 
-        // Promise-based Alert helper
         window.studioAlert = function(message, titleText = 'Alert') {
-            return new Promise(resolve => {
-                const modal = document.getElementById('global_alert_modal');
-                const okBtn = document.getElementById('global_alert_ok_btn');
-                
+            return _openModal('global_alert_modal', (modal, close) => {
                 document.getElementById('global_alert_message').innerText = message;
                 document.getElementById('global_alert_title').innerText = titleText;
-                
-                modal.classList.remove('hidden');
-                
-                const newOkBtn = okBtn.cloneNode(true);
-                okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-                
-                newOkBtn.addEventListener('click', () => {
-                    modal.classList.add('hidden');
-                    resolve();
-                });
+                document.getElementById('global_alert_ok_btn').onclick = () => close();
             });
         };
 
-        // Promise-based Prompt helper
         window.studioPrompt = function(message, defaultValue = '', titleText = 'Input Required') {
-            return new Promise(resolve => {
-                const modal = document.getElementById('global_prompt_modal');
-                const cancelBtn = document.getElementById('global_prompt_cancel_btn');
-                const okBtn = document.getElementById('global_prompt_ok_btn');
+            return _openModal('global_prompt_modal', (modal, close) => {
                 const input = document.getElementById('global_prompt_input');
-                
                 document.getElementById('global_prompt_message').innerText = message;
                 document.getElementById('global_prompt_title').innerText = titleText;
                 input.value = defaultValue;
-                
-                modal.classList.remove('hidden');
                 input.focus();
                 if (defaultValue) input.select();
-                
-                // Clean up previous event listeners by cloning
-                const newCancelBtn = cancelBtn.cloneNode(true);
-                const newOkBtn = okBtn.cloneNode(true);
-                const newInput = input.cloneNode(true);
-                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-                okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-                input.parentNode.replaceChild(newInput, input);
-                
-                const close = (value) => {
-                    modal.classList.add('hidden');
-                    resolve(value);
+
+                document.getElementById('global_prompt_cancel_btn').onclick = () => close(null);
+                document.getElementById('global_prompt_ok_btn').onclick = () => close(input.value);
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); close(input.value); }
+                    if (e.key === 'Escape') close(null);
                 };
-                
-                newCancelBtn.addEventListener('click', () => close(null));
-                newOkBtn.addEventListener('click', () => close(newInput.value));
-                
-                newInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        close(newInput.value);
-                    }
-                    if (e.key === 'Escape') {
-                        close(null);
-                    }
-                });
             });
         };
     </script>
