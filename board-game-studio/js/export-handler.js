@@ -175,13 +175,27 @@
         })
         .then(() => {
             updateProgress('Pre-loading fonts & typography...', 20);
-            if (document.fonts && typeof document.fonts.load === 'function' && typeof templateJson === 'string') {
-                const fontMatches = templateJson.match(/"fontFamily"\s*:\s*"([^"]+)"/g);
-                if (fontMatches) {
-                    const fontNames = [...new Set(fontMatches.map(m => m.split(':')[1].replace(/"/g, '').trim()))];
-                    const fontPromises = fontNames.map(f => document.fonts.load(`16px "${f}"`).catch(() => {}));
-                    return Promise.all(fontPromises);
+            if (document.fonts && typeof document.fonts.load === 'function') {
+                let fontNames = ['Inter', 'Plus Jakarta Sans', 'Montserrat', 'Rajdhani', 'Lora', 'EB Garamond', 'Cinzel'];
+                if (typeof templateJson === 'string') {
+                    const fontMatches = templateJson.match(/"fontFamily"\s*:\s*"([^"]+)"/g);
+                    if (fontMatches) {
+                        fontNames = [...new Set(fontMatches.map(m => m.split(':')[1].replace(/"/g, '').trim()))];
+                    }
                 }
+
+                const fontPromises = [];
+                fontNames.forEach(f => {
+                    fontPromises.push(document.fonts.load(`400 16px "${f}"`).catch(() => {}));
+                    fontPromises.push(document.fonts.load(`bold 16px "${f}"`).catch(() => {}));
+                    fontPromises.push(document.fonts.load(`700 16px "${f}"`).catch(() => {}));
+                    fontPromises.push(document.fonts.load(`italic 16px "${f}"`).catch(() => {}));
+                    fontPromises.push(document.fonts.load(`bold italic 16px "${f}"`).catch(() => {}));
+                });
+
+                return Promise.all(fontPromises).then(() => {
+                    return document.fonts.ready ? document.fonts.ready : Promise.resolve();
+                });
             }
         })
         .then(() => {
@@ -336,7 +350,7 @@
         function getEffectiveStyle() {
             if (styleStack.length === 0) return null;
             const eff = {};
-            styleStack.forEach(s => Object.assign(eff, s));
+            styleStack.forEach(item => Object.assign(eff, item.style));
             return eff;
         }
 
@@ -355,12 +369,19 @@
 
             const rawTag = match[1];
             const isClosing = match[0].startsWith('</');
+            const lowerTag = rawTag.toLowerCase();
+            const tagKey = lowerTag.split(/[:=]/)[0];
 
             if (isClosing) {
-                styleStack.pop();
+                // Find matching tag from top of stack and remove it
+                for (let s = styleStack.length - 1; s >= 0; s--) {
+                    if (styleStack[s].tag === tagKey || styleStack[s].rawTag === lowerTag) {
+                        styleStack.splice(s, 1);
+                        break;
+                    }
+                }
             } else {
                 const newStyle = {};
-                const lowerTag = rawTag.toLowerCase();
 
                 if (lowerTag.startsWith('color:') || lowerTag.startsWith('color=')) {
                     const colorVal = rawTag.substring(6).trim();
@@ -378,7 +399,7 @@
                 }
 
                 if (Object.keys(newStyle).length > 0) {
-                    styleStack.push(newStyle);
+                    styleStack.push({ tag: tagKey, rawTag: lowerTag, style: newStyle });
                 }
             }
 

@@ -179,7 +179,7 @@
         function getEffectiveStyle() {
             if (styleStack.length === 0) return null;
             const eff = {};
-            styleStack.forEach(s => Object.assign(eff, s));
+            styleStack.forEach(item => Object.assign(eff, item.style));
             return eff;
         }
 
@@ -198,12 +198,19 @@
 
             const rawTag = match[1];
             const isClosing = match[0].startsWith('</');
+            const lowerTag = rawTag.toLowerCase();
+            const tagKey = lowerTag.split(/[:=]/)[0];
 
             if (isClosing) {
-                styleStack.pop();
+                // Find matching tag from top of stack and remove it
+                for (let s = styleStack.length - 1; s >= 0; s--) {
+                    if (styleStack[s].tag === tagKey || styleStack[s].rawTag === lowerTag) {
+                        styleStack.splice(s, 1);
+                        break;
+                    }
+                }
             } else {
                 const newStyle = {};
-                const lowerTag = rawTag.toLowerCase();
 
                 if (lowerTag.startsWith('color:') || lowerTag.startsWith('color=')) {
                     const colorVal = rawTag.substring(6).trim();
@@ -221,7 +228,7 @@
                 }
 
                 if (Object.keys(newStyle).length > 0) {
-                    styleStack.push(newStyle);
+                    styleStack.push({ tag: tagKey, rawTag: lowerTag, style: newStyle });
                 }
             }
 
