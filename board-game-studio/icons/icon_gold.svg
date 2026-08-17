@@ -1,1 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6h10l2 4H5L7 6z"/><path d="M5 10v4l2 2h10l2-2v-4"/><path d="M2 18l1.5-3h6l1.5 3H2z"/><path d="M13 18l1.5-3h6l1.5 3h-9z"/><path d="M2 18v2l1.5 1h7.5l1.5-1v-2"/><path d="M13 18v2l1.5 1h7.5l1.5-1v-2"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="goldTop2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="35%" stop-color="#fde047"/>
+      <stop offset="70%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+    <linearGradient id="goldFront2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#eab308"/>
+      <stop offset="60%" stop-color="#ca8a04"/>
+      <stop offset="100%" stop-color="#a16207"/>
+    </linearGradient>
+    <linearGradient id="goldLeft2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ca8a04"/>
+      <stop offset="100%" stop-color="#713f12"/>
+    </linearGradient>
+  </defs>
+  <polygon points="12,33 22,23 22,35 12,47" fill="url(#goldLeft2)" stroke="#713f12" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="12,47 22,35 56,25 46,37" fill="url(#goldFront2)" stroke="#713f12" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="22,23 48,15 56,25 22,35" fill="url(#goldTop2)" stroke="#713f12" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="23" y1="34.5" x2="54" y2="25.5" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="22.5" y1="23.5" x2="47" y2="16" stroke="#fef08a" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="13.5" y1="46" x2="44.5" y2="36.5" stroke="#fde047" stroke-width="1" stroke-linecap="round"/>
+</svg>

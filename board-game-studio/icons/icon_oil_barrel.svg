@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="oilBody" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="35%" stop-color="#334155"/>
+      <stop offset="70%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="oilTop" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="oilDrop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+  <!-- Drum Main Outer Cylinder -->
+  <path d="M14 15 C14 11 22 8 32 8 C42 8 50 11 50 15 V49 C50 53 42 56 32 56 C22 56 14 53 14 49 Z" fill="url(#oilBody)" stroke="#0f172a" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Base Rim Shadow/Bevel -->
+  <path d="M14 49 C14 53 22 56 32 56 C42 56 50 53 50 49" fill="none" stroke="#475569" stroke-width="2"/>
+  <!-- Middle Rib 2 -->
+  <path d="M14 39 C14 43 22 45.5 32 45.5 C42 45.5 50 43 50 39" fill="none" stroke="#0f172a" stroke-width="3.5"/>
+  <path d="M14 39 C14 43 22 45.5 32 45.5 C42 45.5 50 43 50 39" fill="none" stroke="#64748b" stroke-width="1.8"/>
+  <!-- Middle Rib 1 -->
+  <path d="M14 25 C14 29 22 31.5 32 31.5 C42 31.5 50 29 50 25" fill="none" stroke="#0f172a" stroke-width="3.5"/>
+  <path d="M14 25 C14 29 22 31.5 32 31.5 C42 31.5 50 29 50 25" fill="none" stroke="#64748b" stroke-width="1.8"/>
+  <!-- Top Ellipse Rim -->
+  <ellipse cx="32" cy="15" rx="18" ry="7" fill="url(#oilTop)" stroke="#0f172a" stroke-width="2.5"/>
+  <ellipse cx="32" cy="15" rx="15" ry="5.2" fill="none" stroke="#64748b" stroke-width="1.2"/>
+  <!-- Bung Cap Plug -->
+  <ellipse cx="24" cy="14" rx="2.5" ry="1.5" fill="#94a3b8" stroke="#0f172a" stroke-width="1"/>
+  <!-- Center Oil Drop Emblem -->
+  <path d="M32 27.5 C32 27.5 25.5 35 25.5 38.5 C25.5 42 28.4 44.5 32 44.5 C35.6 44.5 38.5 42 38.5 38.5 C38.5 35 32 27.5 32 27.5 Z" fill="url(#oilDrop)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M28.5 38.5 C28.5 36.5 30.5 33 32 30.5" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

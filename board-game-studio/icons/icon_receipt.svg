@@ -1,35 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
-    <linearGradient id="receiptBg" x1="0%" y1="0%" x2="0%" y2="100%">
+    <linearGradient id="receiptBg2" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#ffffff"/>
       <stop offset="100%" stop-color="#f1f5f9"/>
     </linearGradient>
-    <filter id="receiptShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#0f172a" flood-opacity="0.3"/>
-    </filter>
   </defs>
-
-  <!-- Paper Body with Zig-Zag / Serrated Tear-off Bottom -->
-  <path d="M16 8 H48 V50 L44 46 L40 50 L36 46 L32 50 L28 46 L24 50 L20 46 L16 50 Z" 
-        fill="url(#receiptBg)" stroke="#0f172a" stroke-width="2.5" stroke-linejoin="round"/>
-
-  <!-- Receipt Header Title Bar -->
+  <path d="M16 8 H48 V50 L44 46 L40 50 L36 46 L32 50 L28 46 L24 50 L20 46 L16 50 Z" fill="url(#receiptBg2)" stroke="#0f172a" stroke-width="2.5" stroke-linejoin="round"/>
   <rect x="22" y="14" width="20" height="3" rx="1.5" fill="#0f172a"/>
-
-  <!-- Itemized Rows -->
   <rect x="22" y="21" width="13" height="2" rx="1" fill="#64748b"/>
   <rect x="39" y="21" width="5" height="2" rx="1" fill="#0f172a"/>
-
   <rect x="22" y="26" width="10" height="2" rx="1" fill="#64748b"/>
   <rect x="39" y="26" width="5" height="2" rx="1" fill="#0f172a"/>
-
   <rect x="22" y="31" width="14" height="2" rx="1" fill="#64748b"/>
   <rect x="39" y="31" width="5" height="2" rx="1" fill="#0f172a"/>
-
-  <!-- Perforated / Dashed Subtotal Divider -->
   <line x1="22" y1="37" x2="44" y2="37" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="2,2" stroke-linecap="round"/>
-
-  <!-- Total Line -->
   <rect x="22" y="41" width="9" height="2.5" rx="1" fill="#0f172a"/>
   <rect x="35" y="41" width="9" height="2.5" rx="1" fill="#e11d48"/>
 </svg>
