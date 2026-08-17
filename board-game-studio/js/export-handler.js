@@ -176,21 +176,31 @@
         .then(() => {
             updateProgress('Pre-loading fonts & typography...', 20);
             if (document.fonts && typeof document.fonts.load === 'function') {
-                let fontNames = ['Inter', 'Plus Jakarta Sans', 'Montserrat', 'Rajdhani', 'Lora', 'EB Garamond', 'Cinzel'];
+                const fontNames = [
+                    'Inter', 'Plus Jakarta Sans', 'Montserrat', 'Rajdhani', 'Lora', 
+                    'EB Garamond', 'Cinzel', 'Playfair Display', 'Outfit', 'Courier Prime', 
+                    'Special Elite', 'Share Tech Mono', 'Bangers', 'Fredoka', 'Luckiest Guy', 
+                    'MedievalSharp', 'Almendra', 'Orbitron'
+                ];
+
                 if (typeof templateJson === 'string') {
                     const fontMatches = templateJson.match(/"fontFamily"\s*:\s*"([^"]+)"/g);
                     if (fontMatches) {
-                        fontNames = [...new Set(fontMatches.map(m => m.split(':')[1].replace(/"/g, '').trim()))];
+                        fontMatches.forEach(m => {
+                            const name = m.split(':')[1].replace(/"/g, '').trim();
+                            if (name && !fontNames.includes(name)) fontNames.push(name);
+                        });
                     }
                 }
 
                 const fontPromises = [];
                 fontNames.forEach(f => {
                     fontPromises.push(document.fonts.load(`400 16px "${f}"`).catch(() => {}));
-                    fontPromises.push(document.fonts.load(`bold 16px "${f}"`).catch(() => {}));
                     fontPromises.push(document.fonts.load(`700 16px "${f}"`).catch(() => {}));
+                    fontPromises.push(document.fonts.load(`bold 16px "${f}"`).catch(() => {}));
                     fontPromises.push(document.fonts.load(`italic 16px "${f}"`).catch(() => {}));
-                    fontPromises.push(document.fonts.load(`bold italic 16px "${f}"`).catch(() => {}));
+                    fontPromises.push(document.fonts.load(`bold 39px "${f}"`).catch(() => {}));
+                    fontPromises.push(document.fonts.load(`700 39px "${f}"`).catch(() => {}));
                 });
 
                 return Promise.all(fontPromises).then(() => {
@@ -423,6 +433,17 @@
     function applyStyledTextToObject(obj, rawText) {
         const parsed = parseStyledText(rawText !== undefined && rawText !== null ? rawText : '');
         obj.set('text', parsed.cleanText);
+        obj.set('styles', {});
+
+        // Explicitly re-wrap text lines in Fabric Textbox
+        if (typeof obj._splitTextIntoLines === 'function') {
+            const splitRes = obj._splitTextIntoLines(parsed.cleanText);
+            if (typeof obj._wrapText === 'function' && obj.width) {
+                obj._textLines = obj._wrapText(splitRes.lines, obj.width);
+            } else {
+                obj._textLines = splitRes.lines;
+            }
+        }
 
         if (typeof obj.initDimensions === 'function') {
             obj.initDimensions();
@@ -431,6 +452,7 @@
         const hasAnyStyles = parsed.charStyles.some(s => s !== null);
         if (!hasAnyStyles) {
             obj.set('styles', {});
+            if (obj._clearCache) obj._clearCache();
             obj.setCoords();
             obj.set('dirty', true);
             return;
@@ -463,6 +485,7 @@
         }
 
         obj.set('styles', styles);
+        if (obj._clearCache) obj._clearCache();
         obj.setCoords();
         obj.set('dirty', true);
     }
@@ -594,6 +617,14 @@
                         : Promise.resolve();
 
                     afterImages.then(() => {
+                        canvas.getObjects().forEach(o => {
+                            if (o.type === 'textbox' || o.type === 'text' || o.type === 'i-text') {
+                                if (o._clearCache) o._clearCache();
+                                if (typeof o.initDimensions === 'function') o.initDimensions();
+                                o.setCoords();
+                                o.dirty = true;
+                            }
+                        });
                         canvas.renderAll();
 
                         // Export data URL PNG

@@ -252,8 +252,18 @@
     function applyStyledTextToObject(obj, rawText) {
         const parsed = parseStyledText(rawText !== undefined && rawText !== null ? rawText : '');
         obj.set('text', parsed.cleanText);
+        obj.set('styles', {});
 
-        // Recalculate visual wrapped lines in Fabric Textbox
+        // Explicitly re-wrap text lines in Fabric Textbox
+        if (typeof obj._splitTextIntoLines === 'function') {
+            const splitRes = obj._splitTextIntoLines(parsed.cleanText);
+            if (typeof obj._wrapText === 'function' && obj.width) {
+                obj._textLines = obj._wrapText(splitRes.lines, obj.width);
+            } else {
+                obj._textLines = splitRes.lines;
+            }
+        }
+
         if (typeof obj.initDimensions === 'function') {
             obj.initDimensions();
         }
@@ -261,6 +271,7 @@
         const hasAnyStyles = parsed.charStyles.some(s => s !== null);
         if (!hasAnyStyles) {
             obj.set('styles', {});
+            if (obj._clearCache) obj._clearCache();
             obj.setCoords();
             obj.set('dirty', true);
             return;
