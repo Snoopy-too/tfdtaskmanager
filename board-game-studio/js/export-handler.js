@@ -324,7 +324,7 @@
     // ponytail: parse inline color/format tags (<red>, <gold>, <color:#hex>, <b>, <i>, <u>) into 1D character styles for export
     function parseStyledText(rawText) {
         if (rawText === null || rawText === undefined) return { cleanText: '', charStyles: [] };
-        rawText = String(rawText);
+        rawText = String(rawText).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
         const colorMap = {
             'red': '#ef4444',
