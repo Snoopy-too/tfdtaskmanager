@@ -32,7 +32,12 @@ class BgAssetService
             'icon_power' => 'icon_power.svg',
             'icon_appeal' => 'icon_appeal.svg',
             'icon_chin' => 'icon_chin.svg',
-            'icon_stamina' => 'icon_stamina.svg'
+            'icon_stamina' => 'icon_stamina.svg',
+            'icon_oil' => 'icon_oil.svg',
+            'icon_gold' => 'icon_gold.svg',
+            'icon_rare_metals' => 'icon_rare_metals.svg',
+            'icon_food' => 'icon_food.svg',
+            'icon_taxes' => 'icon_taxes.svg'
         ];
 
         $folderName = ($projectId === null) ? 'global' : (string)$projectId;
