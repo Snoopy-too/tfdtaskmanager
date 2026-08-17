@@ -439,7 +439,7 @@
 
     function switchDataset(newDatasetId) {
         const templateId = window.studioConfig ? window.studioConfig.templateId : null;
-        const csrfToken = window.studioConfig ? window.studioConfig.csrfToken : '';
+        const csrfToken = window.studioConfig?.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 
         if (!templateId) return;
 
@@ -450,7 +450,8 @@
 
         fetch('api.php?action=bind_template_dataset', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
         })
         .then(r => r.json())
         .then(res => {
@@ -463,21 +464,24 @@
 
             const navControls = document.getElementById('dataset-nav-controls');
             const totalContainer = document.getElementById('dataset-total-container');
+            const filterContainer = document.getElementById('dataset-filter-container');
             const statusDot = document.getElementById('dataset-status-dot');
 
-            if (res.dataset && res.dataset.rowData && res.dataset.rowData.length > 0) {
+            if (res.dataset) {
                 dataset = res.dataset;
                 currentRowIndex = 0;
+                const totalRows = (dataset.rowData && Array.isArray(dataset.rowData)) ? dataset.rowData.length : 0;
 
                 if (navControls) navControls.classList.remove('hidden');
                 if (totalContainer) totalContainer.classList.remove('hidden');
+                if (filterContainer) filterContainer.classList.remove('hidden');
                 if (statusDot) {
                     statusDot.classList.remove('bg-slate-600');
                     statusDot.classList.add('bg-violet-400');
                 }
 
                 const rowTotal = document.getElementById('row-total');
-                if (rowTotal) rowTotal.textContent = dataset.rowData.length.toString();
+                if (rowTotal) rowTotal.textContent = totalRows.toString();
 
                 setupNavControls();
             } else {
@@ -486,6 +490,7 @@
 
                 if (navControls) navControls.classList.add('hidden');
                 if (totalContainer) totalContainer.classList.add('hidden');
+                if (filterContainer) filterContainer.classList.add('hidden');
                 if (statusDot) {
                     statusDot.classList.remove('bg-violet-400');
                     statusDot.classList.add('bg-slate-600');

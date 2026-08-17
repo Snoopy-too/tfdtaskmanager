@@ -529,7 +529,12 @@ require_once __DIR__ . '/../templates/header.php';
                         </div>
 
                         <div>
-                            <label for="prop-text-bind" class="block text-xs font-semibold text-slate-400 mb-1">Dataset Variable Binding</label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="prop-text-bind" class="block text-xs font-semibold text-slate-400">Dataset Variable Binding</label>
+                                <span id="prop-text-bind-hint" class="text-[10px] text-amber-400/90 font-medium <?php echo $dataset ? 'hidden' : ''; ?>" title="Bind a dataset using the bottom toolbar below canvas">
+                                    (Select in bottom bar ▾)
+                                </span>
+                            </div>
                             <select id="prop-text-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                                 <option value="">No Binding (Static Text)</option>
                                 <?php if ($dataset): ?>

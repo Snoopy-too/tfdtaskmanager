@@ -1033,18 +1033,35 @@
     function updateDatasetColumns(columnMap) {
         const textSelect = document.getElementById('prop-text-bind');
         const imageSelect = document.getElementById('prop-image-bind');
+        const shapeSelect = document.getElementById('prop-shape-bind');
+        const bindHint = document.getElementById('prop-text-bind-hint');
 
-        [textSelect, imageSelect].forEach(select => {
+        const hasColumns = Array.isArray(columnMap) && columnMap.length > 0;
+        if (bindHint) {
+            if (hasColumns) {
+                bindHint.classList.add('hidden');
+            } else {
+                bindHint.classList.remove('hidden');
+            }
+        }
+
+        [textSelect, imageSelect, shapeSelect].forEach(select => {
             if (!select) return;
             const currentVal = select.value;
             select.innerHTML = '';
 
             const defaultOpt = document.createElement('option');
             defaultOpt.value = '';
-            defaultOpt.textContent = select.id === 'prop-text-bind' ? 'No Binding (Static Text)' : 'No Binding (Static Image)';
+            if (select.id === 'prop-text-bind') {
+                defaultOpt.textContent = 'No Binding (Static Text)';
+            } else if (select.id === 'prop-image-bind') {
+                defaultOpt.textContent = 'No Binding (Static Image)';
+            } else {
+                defaultOpt.textContent = 'No Binding (Always Visible)';
+            }
             select.appendChild(defaultOpt);
 
-            if (Array.isArray(columnMap)) {
+            if (hasColumns) {
                 columnMap.forEach(col => {
                     const opt = document.createElement('option');
                     opt.value = `{{${col}}}`;
