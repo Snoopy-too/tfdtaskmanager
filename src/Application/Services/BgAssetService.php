@@ -34,10 +34,18 @@ class BgAssetService
             'icon_chin' => 'icon_chin.svg',
             'icon_stamina' => 'icon_stamina.svg',
             'icon_oil' => 'icon_oil.svg',
+            'icon_oil_barrel' => 'icon_oil_barrel.svg',
             'icon_gold' => 'icon_gold.svg',
+            'icon_take_revenue' => 'icon_take_revenue.svg',
             'icon_rare_metals' => 'icon_rare_metals.svg',
             'icon_food' => 'icon_food.svg',
-            'icon_taxes' => 'icon_taxes.svg'
+            'icon_taxes' => 'icon_taxes.svg',
+            'icon_build_foundation' => 'icon_build_foundation.svg',
+            'icon_crane' => 'icon_crane.svg',
+            'icon_build_rebuild' => 'icon_build_rebuild.svg',
+            'icon_factory' => 'icon_factory.svg',
+            'icon_repair_fortify' => 'icon_repair_fortify.svg',
+            'icon_tools' => 'icon_tools.svg'
         ];
 
         $folderName = ($projectId === null) ? 'global' : (string)$projectId;
@@ -58,8 +66,8 @@ class BgAssetService
         }
 
         foreach ($defaultIcons as $tag => $filename) {
+            $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
             if (!isset($existingTags[$tag])) {
-                $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
                 if (file_exists($srcPath)) {
                     $storedName = uniqid() . '_' . $filename;
                     $destPath = $projectUploadDir . DIRECTORY_SEPARATOR . $storedName;
@@ -82,9 +90,8 @@ class BgAssetService
             } else {
                 $asset = $existingTags[$tag];
                 $filePath = $projectUploadDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
-                if (!file_exists($filePath)) {
-                    $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
-                    if (file_exists($srcPath)) {
+                if (file_exists($srcPath)) {
+                    if (!file_exists($filePath) || (filemtime($srcPath) > filemtime($filePath))) {
                         copy($srcPath, $filePath);
                     }
                 }
