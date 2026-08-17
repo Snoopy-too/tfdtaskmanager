@@ -459,13 +459,33 @@
         }
 
         const styles = {};
+
+        // 1. Map styles by paragraph (unwrapped line) as required by Fabric's internal _styleMap
+        const paragraphs = parsed.cleanText.split('\n');
+        let globalOffset = 0;
+        for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+            const pStr = paragraphs[pIdx];
+            const pStyles = {};
+            for (let c = 0; c < pStr.length; c++) {
+                const style = parsed.charStyles[globalOffset + c];
+                if (style && Object.keys(style).length > 0) {
+                    pStyles[c] = { ...style };
+                }
+            }
+            if (Object.keys(pStyles).length > 0) {
+                styles[pIdx] = pStyles;
+            }
+            globalOffset += pStr.length + 1;
+        }
+
+        // 2. Also map styles by wrapped line index in case _styleMap is bypassed
         const rawLines = obj._textLines || (obj.text ? obj.text.split('\n') : []);
         let searchOffset = 0;
 
         for (let lineIdx = 0; lineIdx < rawLines.length; lineIdx++) {
             const rawLine = rawLines[lineIdx];
             const lineStr = Array.isArray(rawLine) ? rawLine.join('') : String(rawLine);
-            const lineStyles = {};
+            const lineStyles = styles[lineIdx] ? { ...styles[lineIdx] } : {};
             const matchIdx = parsed.cleanText.indexOf(lineStr, searchOffset);
             const startCharPos = (matchIdx !== -1) ? matchIdx : searchOffset;
 
