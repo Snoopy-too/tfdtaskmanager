@@ -92,11 +92,19 @@ class PDOBgTemplateRepository implements BgTemplateRepositoryInterface
     {
         $stmt = $this->pdo->prepare("
             UPDATE bg_templates
-            SET name = :name, dataset_id = :dataset_id, row_filter = :row_filter, bleed_mm = :bleed_mm, safe_margin_mm = :safe_margin_mm
+            SET name = :name,
+                canvas_width_px = :canvas_width_px,
+                canvas_height_px = :canvas_height_px,
+                dataset_id = :dataset_id,
+                row_filter = :row_filter,
+                bleed_mm = :bleed_mm,
+                safe_margin_mm = :safe_margin_mm
             WHERE id = :id
         ");
         $stmt->execute([
             'name' => $template->getName(),
+            'canvas_width_px' => $template->getCanvasWidthPx(),
+            'canvas_height_px' => $template->getCanvasHeightPx(),
             'dataset_id' => $template->getDatasetId(),
             'row_filter' => $template->getRowFilter(),
             'bleed_mm' => $template->getBleedMm(),

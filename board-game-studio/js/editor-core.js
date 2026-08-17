@@ -1215,7 +1215,110 @@
             });
     }
 
+    function toggleCanvasOrientation() {
+        if (window.studioConfig.isViewMode) return;
+
+        const curW = window.studioConfig.canvasWidth;
+        const curH = window.studioConfig.canvasHeight;
+        const newW = curH;
+        const newH = curW;
+        const newOrientation = (newW > newH) ? 'landscape' : 'portrait';
+
+        const formData = new FormData();
+        formData.append('csrf_token', window.studioConfig.csrfToken);
+        formData.append('template_id', window.studioConfig.templateId);
+        formData.append('target_orientation', newOrientation);
+
+        setSaveStatus('Changing orientation...', 'saving');
+
+        fetch('api.php?action=toggle_orientation', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': window.studioConfig.csrfToken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                setSaveStatus('Orientation change failed', 'error');
+                return;
+            }
+
+            // Update configuration
+            window.studioConfig.canvasWidth = data.canvasWidth;
+            window.studioConfig.canvasHeight = data.canvasHeight;
+            window.studioConfig.orientation = data.orientation;
+
+            // Resize Fabric canvas
+            canvas.setWidth(data.canvasWidth);
+            canvas.setHeight(data.canvasHeight);
+
+            // Resize container wrapper
+            const wrapper = document.getElementById('canvas-container-wrapper');
+            if (wrapper) {
+                wrapper.style.width = data.canvasWidth + 'px';
+                wrapper.style.height = data.canvasHeight + 'px';
+            }
+
+            // Re-render guidelines
+            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                window.guideRenderer.renderGuides();
+            }
+
+            // Update UI elements in header
+            const badge = document.getElementById('template-orientation-badge');
+            if (badge) {
+                if (data.orientation === 'landscape') {
+                    badge.textContent = 'Landscape';
+                    badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                } else {
+                    badge.textContent = 'Portrait';
+                    badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700';
+                }
+            }
+
+            const btnText = document.getElementById('orient-btn-text');
+            if (btnText) {
+                btnText.textContent = data.orientation === 'landscape' ? 'Switch to Portrait' : 'Switch to Landscape';
+            }
+
+            const sizeDisplay = document.getElementById('template-size-display');
+            if (sizeDisplay) {
+                const wMm = Math.round((data.canvasWidth / 300 * 25.4) * 10) / 10;
+                const hMm = Math.round((data.canvasHeight / 300 * 25.4) * 10) / 10;
+                sizeDisplay.textContent = `${wMm}x${hMm} mm (${data.canvasWidth}x${data.canvasHeight} px)`;
+            }
+
+            // Re-fit canvas to view
+            const viewport = document.getElementById('canvas-viewport');
+            if (viewport && wrapper) {
+                const containerWidth = viewport.clientWidth - 64;
+                const containerHeight = viewport.clientHeight - 64;
+                const widthScale = containerWidth / data.canvasWidth;
+                const heightScale = containerHeight / data.canvasHeight;
+                zoomLevel = Math.min(widthScale, heightScale, 1.0);
+                const zoomValElem = document.getElementById('zoom-value');
+                if (zoomValElem) zoomValElem.value = Math.round(zoomLevel * 100) + '%';
+                wrapper.style.transform = `scale(${zoomLevel})`;
+            }
+
+            canvas.renderAll();
+            pushState();
+            triggerAutoSave();
+            setSaveStatus(`Switched to ${data.orientation.charAt(0).toUpperCase() + data.orientation.slice(1)}`, 'saved');
+        })
+        .catch(err => {
+            console.error('Error switching orientation:', err);
+            alert('Failed to update orientation. Please try again.');
+            setSaveStatus('Orientation change failed', 'error');
+        });
+    }
+
     // Expose functions globally
+    window.toggleCanvasOrientation = toggleCanvasOrientation;
+
     window.editorCore = {
         saveCanvas: saveCanvas,
         triggerAutoSave: triggerAutoSave,
@@ -1227,6 +1330,7 @@
         duplicateObject: duplicateObject,
         refreshCanvasTextLayers: refreshCanvasTextLayers,
         importTemplateToCanvas: importTemplateToCanvas,
+        toggleCanvasOrientation: toggleCanvasOrientation,
         getZoomLevel: () => zoomLevel
     };
 })();

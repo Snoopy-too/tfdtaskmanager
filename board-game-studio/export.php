@@ -233,8 +233,8 @@ require_once __DIR__ . '/../templates/header.php';
                             </div>
 
                             <?php
-                            $tmplWidth = $compType ? $compType->getWidthMm() : ($activeTemplate ? (float)$activeTemplate->getCanvasWidthPx() : 0.0);
-                            $tmplHeight = $compType ? $compType->getHeightMm() : ($activeTemplate ? (float)$activeTemplate->getCanvasHeightPx() : 0.0);
+                            $tmplWidth = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasWidthPx()) : ($compType ? $compType->getWidthMm() : 0.0);
+                            $tmplHeight = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasHeightPx()) : ($compType ? $compType->getHeightMm() : 0.0);
                             $autoOrientation = ($tmplWidth > $tmplHeight) ? 'landscape' : 'portrait';
                             ?>
                             <div>
@@ -404,8 +404,8 @@ require_once __DIR__ . '/../templates/header.php';
             canvasHeight: <?php echo $activeTemplate->getCanvasHeightPx(); ?>,
             bleedMm: <?php echo $activeTemplate->getBleedMm(); ?>,
             safeMarginMm: <?php echo $activeTemplate->getSafeMarginMm(); ?>,
-            widthMm: <?php echo $compType ? $compType->getWidthMm() : 0; ?>,
-            heightMm: <?php echo $compType ? $compType->getHeightMm() : 0; ?>,
+            widthMm: <?php echo $activeTemplate ? round(\App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasWidthPx()), 1) : ($compType ? $compType->getWidthMm() : 0); ?>,
+            heightMm: <?php echo $activeTemplate ? round(\App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasHeightPx()), 1) : ($compType ? $compType->getHeightMm() : 0); ?>,
             templateName: "<?php echo SecurityHelper::escape($activeTemplate->getName()); ?>",
             rowFilter: <?php echo json_encode($activeTemplate->getRowFilter() ?? ''); ?>
         };

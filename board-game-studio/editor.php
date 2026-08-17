@@ -178,6 +178,11 @@ require_once __DIR__ . '/../templates/header.php';
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             </a>
             <div>
+                <?php
+                $isLandscape = $template->getCanvasWidthPx() > $template->getCanvasHeightPx();
+                $widthMm = round(\App\Domain\Entities\BgTemplate::pxToMm($template->getCanvasWidthPx()), 1);
+                $heightMm = round(\App\Domain\Entities\BgTemplate::pxToMm($template->getCanvasHeightPx()), 1);
+                ?>
                 <h1 class="text-xl font-bold text-white flex items-center space-x-2">
                     <span id="template-title-display"><?php echo SecurityHelper::escape($template->getName()); ?></span>
                     <?php if (!$isViewMode): ?>
@@ -188,11 +193,13 @@ require_once __DIR__ . '/../templates/header.php';
                     <span class="text-xs uppercase font-extrabold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                         <?php echo $compType ? SecurityHelper::escape($compType->getName()) : 'Component'; ?>
                     </span>
+                    <span id="template-orientation-badge" class="text-xs font-semibold px-2 py-0.5 rounded <?php echo $isLandscape ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700'; ?>">
+                        <?php echo $isLandscape ? 'Landscape' : 'Portrait'; ?>
+                    </span>
                 </h1>
                 <p class="text-xs text-slate-400">
                     Project: <?php echo SecurityHelper::escape($project->getName()); ?> | 
-                    Size: <?php echo $compType ? $compType->getWidthMm() : 0; ?>x<?php echo $compType ? $compType->getHeightMm() : 0; ?> mm 
-                    (<?php echo $template->getCanvasWidthPx(); ?>x<?php echo $template->getCanvasHeightPx(); ?> px)
+                    Size: <span id="template-size-display"><?php echo $widthMm; ?>x<?php echo $heightMm; ?> mm (<?php echo $template->getCanvasWidthPx(); ?>x<?php echo $template->getCanvasHeightPx(); ?> px)</span>
                 </p>
             </div>
         </div>
@@ -203,6 +210,16 @@ require_once __DIR__ . '/../templates/header.php';
                 <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span id="save-status-text">All changes saved</span>
             </div>
+
+            <?php if (!$isViewMode): ?>
+                <!-- Orientation Switch Button -->
+                <button id="btn-toggle-orientation" onclick="toggleCanvasOrientation()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 rounded transition flex items-center gap-1.5" title="Switch Canvas Orientation (Portrait ↔ Landscape)">
+                    <svg id="orient-btn-icon" class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span id="orient-btn-text">Switch to <?php echo $isLandscape ? 'Portrait' : 'Landscape'; ?></span>
+                </button>
+            <?php endif; ?>
 
             <!-- Guides Toggle -->
             <button id="btn-toggle-guides" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">
@@ -747,7 +764,8 @@ require_once __DIR__ . '/../templates/header.php';
         bleedMm: <?php echo $template->getBleedMm(); ?>,
         safeMarginMm: <?php echo $template->getSafeMarginMm(); ?>,
         rowFilter: "<?php echo SecurityHelper::escape(addslashes($template->getRowFilter() ?? '')); ?>",
-        componentTypeName: "<?php echo $compType ? SecurityHelper::escape($compType->getName()) : ''; ?>"
+        componentTypeName: "<?php echo $compType ? SecurityHelper::escape($compType->getName()) : ''; ?>",
+        orientation: "<?php echo ($template->getCanvasWidthPx() > $template->getCanvasHeightPx()) ? 'landscape' : 'portrait'; ?>"
     };
 </script>
 

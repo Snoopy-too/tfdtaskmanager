@@ -75,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $datasetId = (isset($_POST['dataset_id']) && $_POST['dataset_id'] !== '') ? (int)$_POST['dataset_id'] : null;
         $customWidthMm = isset($_POST['custom_width_mm']) ? (float)$_POST['custom_width_mm'] : null;
         $customHeightMm = isset($_POST['custom_height_mm']) ? (float)$_POST['custom_height_mm'] : null;
+        $orientation = isset($_POST['orientation']) && $_POST['orientation'] === 'landscape' ? 'landscape' : 'portrait';
         $currentUserId = (int)($_SESSION['user_id'] ?? 0);
 
         try {
@@ -90,7 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $datasetId,
                 $currentUserId,
                 $customWidthMm,
-                $customHeightMm
+                $customHeightMm,
+                $orientation
             );
             header("Location: editor.php?id=" . $newTemplate->getId());
             exit;
@@ -429,9 +431,15 @@ require_once __DIR__ . '/../templates/header.php';
                                                 </div>
                                             <?php endif; ?>
                                         </div>
-                                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 h-fit flex-shrink-0">
-                                            <?php echo $cType ? SecurityHelper::escape($cType->getName()) : 'Unknown'; ?>
-                                        </span>
+                                        <?php $isLandscape = $tmpl->getCanvasWidthPx() > $tmpl->getCanvasHeightPx(); ?>
+                                        <div class="flex items-center space-x-1.5 flex-shrink-0">
+                                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded <?php echo $isLandscape ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700'; ?>">
+                                                <?php echo $isLandscape ? 'Landscape' : 'Portrait'; ?>
+                                            </span>
+                                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                                <?php echo $cType ? SecurityHelper::escape($cType->getName()) : 'Component'; ?>
+                                            </span>
+                                        </div>
                                     </div>
                                     <p class="text-xs text-slate-400">
                                         Dimensions: <?php echo round(\App\Domain\Entities\BgTemplate::pxToMm($tmpl->getCanvasWidthPx(), 300), 1); ?>x<?php echo round(\App\Domain\Entities\BgTemplate::pxToMm($tmpl->getCanvasHeightPx(), 300), 1); ?>mm (<?php echo $tmpl->getCanvasWidthPx(); ?>x<?php echo $tmpl->getCanvasHeightPx(); ?>px)
@@ -524,34 +532,129 @@ require_once __DIR__ . '/../templates/header.php';
 
                     <div>
                         <label for="component_type_id" class="block text-sm font-medium text-slate-300 mb-1">Component Type</label>
-                        <select id="component_type_id" name="component_type_id" required onchange="toggleCustomDimensions(this)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                        <select id="component_type_id" name="component_type_id" required onchange="handleComponentTypeChange(this)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
                             <?php foreach ($compTypes as $type): ?>
-                                <option value="<?php echo $type->getId(); ?>" data-is-custom="<?php echo $type->getName() === 'Custom' ? '1' : '0'; ?>">
+                                <option value="<?php echo $type->getId(); ?>" data-is-custom="<?php echo $type->getName() === 'Custom' ? '1' : '0'; ?>" data-width="<?php echo $type->getWidthMm(); ?>" data-height="<?php echo $type->getHeightMm(); ?>" data-name="<?php echo SecurityHelper::escape($type->getName()); ?>">
                                     <?php echo SecurityHelper::escape($type->getName()); ?> <?php echo $type->getName() !== 'Custom' ? "({$type->getWidthMm()}x{$type->getHeightMm()}mm)" : ""; ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
 
+                    <!-- Orientation Selector -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Canvas Orientation</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label id="orient-label-portrait" class="relative flex items-center justify-center p-2.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 cursor-pointer transition select-none">
+                                <input type="radio" name="orientation" value="portrait" checked class="sr-only" onchange="updateOrientation('portrait')">
+                                <div class="flex items-center space-x-2 text-xs font-semibold text-indigo-300">
+                                    <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="6" y="3" width="12" height="18" rx="2" ry="2"/>
+                                    </svg>
+                                    <span>Portrait</span>
+                                </div>
+                            </label>
+                            <label id="orient-label-landscape" class="relative flex items-center justify-center p-2.5 rounded-xl border border-slate-800 bg-slate-950/80 cursor-pointer hover:border-slate-700 transition select-none">
+                                <input type="radio" name="orientation" value="landscape" class="sr-only" onchange="updateOrientation('landscape')">
+                                <div class="flex items-center space-x-2 text-xs font-semibold text-slate-400">
+                                    <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="6" width="18" height="12" rx="2" ry="2"/>
+                                    </svg>
+                                    <span>Landscape</span>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="dimensions_preview_badge" class="mt-2 text-[11px] text-indigo-300/90 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1.5 rounded-lg flex items-center justify-between">
+                            <span class="text-slate-400">Resulting Size:</span>
+                            <span id="dimensions_preview_text" class="font-bold text-indigo-300">63 × 88 mm (744 × 1039 px)</span>
+                        </div>
+                    </div>
+
                     <div id="custom_dimensions" class="grid grid-cols-2 gap-4 hidden">
                         <div>
                             <label for="custom_width_mm" class="block text-sm font-medium text-slate-300 mb-1">Custom Width (mm)</label>
-                            <input type="number" id="custom_width_mm" name="custom_width_mm" min="10" max="1000" step="1" value="63" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                            <input type="number" id="custom_width_mm" name="custom_width_mm" min="10" max="1000" step="1" value="63" oninput="updateDimensionsPreview()" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
                         </div>
                         <div>
                             <label for="custom_height_mm" class="block text-sm font-medium text-slate-300 mb-1">Custom Height (mm)</label>
-                            <input type="number" id="custom_height_mm" name="custom_height_mm" min="10" max="1000" step="1" value="88" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                            <input type="number" id="custom_height_mm" name="custom_height_mm" min="10" max="1000" step="1" value="88" oninput="updateDimensionsPreview()" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
                         </div>
                     </div>
 
                     <script>
-                        function toggleCustomDimensions(select) {
+                        let currentOrientation = 'portrait';
+
+                        function mmToPx(mm) {
+                            return Math.round((mm / 25.4) * 300);
+                        }
+
+                        function updateOrientation(orient) {
+                            currentOrientation = orient;
+                            const portLabel = document.getElementById('orient-label-portrait');
+                            const landLabel = document.getElementById('orient-label-landscape');
+
+                            if (orient === 'portrait') {
+                                portLabel.className = 'relative flex items-center justify-center p-2.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 cursor-pointer transition select-none';
+                                portLabel.querySelector('div').className = 'flex items-center space-x-2 text-xs font-semibold text-indigo-300';
+                                portLabel.querySelector('svg').className = 'w-4 h-4 text-indigo-400';
+
+                                landLabel.className = 'relative flex items-center justify-center p-2.5 rounded-xl border border-slate-800 bg-slate-950/80 cursor-pointer hover:border-slate-700 transition select-none';
+                                landLabel.querySelector('div').className = 'flex items-center space-x-2 text-xs font-semibold text-slate-400';
+                                landLabel.querySelector('svg').className = 'w-4 h-4 text-slate-400';
+                            } else {
+                                landLabel.className = 'relative flex items-center justify-center p-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 cursor-pointer transition select-none';
+                                landLabel.querySelector('div').className = 'flex items-center space-x-2 text-xs font-semibold text-amber-300';
+                                landLabel.querySelector('svg').className = 'w-4 h-4 text-amber-400';
+
+                                portLabel.className = 'relative flex items-center justify-center p-2.5 rounded-xl border border-slate-800 bg-slate-950/80 cursor-pointer hover:border-slate-700 transition select-none';
+                                portLabel.querySelector('div').className = 'flex items-center space-x-2 text-xs font-semibold text-slate-400';
+                                portLabel.querySelector('svg').className = 'w-4 h-4 text-slate-400';
+                            }
+                            updateDimensionsPreview();
+                        }
+
+                        function handleComponentTypeChange(select) {
                             const selectedOption = select.options[select.selectedIndex];
                             const isCustom = selectedOption.getAttribute('data-is-custom') === '1';
                             document.getElementById('custom_dimensions').style.display = isCustom ? 'grid' : 'none';
+                            updateDimensionsPreview();
                         }
-                        // Trigger on load in case Custom is default
-                        document.addEventListener('DOMContentLoaded', () => toggleCustomDimensions(document.getElementById('component_type_id')));
+
+                        function updateDimensionsPreview() {
+                            const select = document.getElementById('component_type_id');
+                            if (!select) return;
+                            const selectedOption = select.options[select.selectedIndex];
+                            const isCustom = selectedOption.getAttribute('data-is-custom') === '1';
+                            
+                            let w, h;
+                            if (isCustom) {
+                                w = parseFloat(document.getElementById('custom_width_mm').value) || 63;
+                                h = parseFloat(document.getElementById('custom_height_mm').value) || 88;
+                            } else {
+                                w = parseFloat(selectedOption.getAttribute('data-width')) || 63;
+                                h = parseFloat(selectedOption.getAttribute('data-height')) || 88;
+                            }
+
+                            if (currentOrientation === 'landscape' && w < h) {
+                                const tmp = w; w = h; h = tmp;
+                            } else if (currentOrientation === 'portrait' && w > h) {
+                                const tmp = w; w = h; h = tmp;
+                            }
+
+                            const wPx = mmToPx(w);
+                            const hPx = mmToPx(h);
+
+                            const previewElem = document.getElementById('dimensions_preview_text');
+                            if (previewElem) {
+                                previewElem.textContent = `${w} × ${h} mm (${wPx} × ${hPx} px)`;
+                            }
+                        }
+
+                        // Trigger on load
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const compSelect = document.getElementById('component_type_id');
+                            if (compSelect) handleComponentTypeChange(compSelect);
+                        });
 
                         function renameTemplate(templateId, originalName, form) {
                             if (form.dataset.renaming === "true") {

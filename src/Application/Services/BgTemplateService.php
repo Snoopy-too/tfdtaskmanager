@@ -61,7 +61,8 @@ class BgTemplateService
         ?int $datasetId,
         int $createdByUserId,
         ?float $customWidthMm = null,
-        ?float $customHeightMm = null
+        ?float $customHeightMm = null,
+        string $orientation = 'portrait'
     ): BgTemplate {
         $name = trim($name);
         if (empty($name)) {
@@ -84,6 +85,17 @@ class BgTemplateService
             $heightMm = $customHeightMm;
         }
 
+        // Apply orientation
+        if ($orientation === 'landscape' && $widthMm < $heightMm) {
+            $temp = $widthMm;
+            $widthMm = $heightMm;
+            $heightMm = $temp;
+        } elseif ($orientation === 'portrait' && $widthMm > $heightMm) {
+            $temp = $widthMm;
+            $widthMm = $heightMm;
+            $heightMm = $temp;
+        }
+
         // Calculate pixel dimensions at 300 DPI
         $widthPx = BgTemplate::mmToPx($widthMm, 300);
         $heightPx = BgTemplate::mmToPx($heightMm, 300);
@@ -102,6 +114,39 @@ class BgTemplateService
         );
 
         return $this->templateRepository->save($template);
+    }
+
+    public function updateTemplateDimensions(int $id, int $widthPx, int $heightPx): BgTemplate
+    {
+        if ($widthPx <= 0 || $heightPx <= 0) {
+            throw new ValidationException("Dimensions must be greater than 0.");
+        }
+
+        $template = $this->templateRepository->findById($id);
+        if (!$template) {
+            throw new ValidationException("Template not found.");
+        }
+
+        $updated = new BgTemplate(
+            $id,
+            $template->getProjectId(),
+            $template->getComponentTypeId(),
+            $template->getName(),
+            $widthPx,
+            $heightPx,
+            $template->getBleedMm(),
+            $template->getSafeMarginMm(),
+            $template->getDatasetId(),
+            $template->getCreatedBy(),
+            $template->getCreatedAt()
+        );
+        $updated->setRowFilter($template->getRowFilter());
+        if ($template->getCanvasJson() !== null) {
+            $updated->setCanvasJson($template->getCanvasJson());
+        }
+
+        $this->templateRepository->update($updated);
+        return $updated;
     }
 
     public function updateTemplate(
