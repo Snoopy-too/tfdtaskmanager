@@ -416,11 +416,12 @@
         }
 
         const styles = {};
-        const lines = obj._textLines || (obj.text ? obj.text.split('\n') : []);
+        const rawLines = obj._textLines || (obj.text ? obj.text.split('\n') : []);
         let searchOffset = 0;
 
-        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-            const lineStr = lines[lineIdx];
+        for (let lineIdx = 0; lineIdx < rawLines.length; lineIdx++) {
+            const rawLine = rawLines[lineIdx];
+            const lineStr = Array.isArray(rawLine) ? rawLine.join('') : String(rawLine);
             const lineStyles = {};
             const matchIdx = parsed.cleanText.indexOf(lineStr, searchOffset);
             const startCharPos = (matchIdx !== -1) ? matchIdx : searchOffset;
