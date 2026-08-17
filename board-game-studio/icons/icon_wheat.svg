@@ -1,74 +1,66 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
-    <linearGradient id="wheatGold2" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="grainGoldLeft2" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#fef08a"/>
-      <stop offset="35%" stop-color="#fde047"/>
-      <stop offset="75%" stop-color="#eab308"/>
+      <stop offset="40%" stop-color="#facc15"/>
+      <stop offset="80%" stop-color="#eab308"/>
       <stop offset="100%" stop-color="#ca8a04"/>
     </linearGradient>
-    <linearGradient id="wheatDark2" x1="0%" y1="0%" x2="0%" y2="100%">
+    <linearGradient id="grainGoldRight2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="50%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#a16207"/>
+    </linearGradient>
+    <linearGradient id="stemGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#eab308"/>
-      <stop offset="100%" stop-color="#854d0e"/>
-    </linearGradient>
-    <linearGradient id="stalkGreen2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#84cc16"/>
-      <stop offset="100%" stop-color="#4d7c0f"/>
-    </linearGradient>
-    <linearGradient id="ribbonRed2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f43f5e"/>
-      <stop offset="100%" stop-color="#9f1239"/>
+      <stop offset="100%" stop-color="#713f12"/>
     </linearGradient>
   </defs>
 
-  <line x1="16" y1="12" x2="8" y2="4" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="13" y1="18" x2="4" y2="12" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="12" y1="24" x2="3" y2="20" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="14" y1="30" x2="5" y2="28" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-
-  <line x1="32" y1="6" x2="32" y2="1" stroke="#fde047" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="28" y1="10" x2="22" y2="3" stroke="#fde047" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="36" y1="10" x2="42" y2="3" stroke="#fde047" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="27" y1="16" x2="19" y2="10" stroke="#fde047" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="37" y1="16" x2="45" y2="10" stroke="#fde047" stroke-width="1.5" stroke-linecap="round"/>
-
-  <line x1="48" y1="12" x2="56" y2="4" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="51" y1="18" x2="60" y2="12" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="52" y1="24" x2="61" y2="20" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="50" y1="30" x2="59" y2="28" stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-
-  <path d="M19 28 C23 38 29 48 30 58" fill="none" stroke="#ca8a04" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M32 20 V58" fill="none" stroke="#ca8a04" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M45 28 C41 38 35 48 34 58" fill="none" stroke="#ca8a04" stroke-width="2.5" stroke-linecap="round"/>
-
-  <g transform="rotate(-22, 20, 24)">
-    <path d="M20 12 C18 12 16 14 16 17 C16 20 20 22 20 22 C20 22 24 20 24 17 C24 14 22 12 20 12 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M16 18 C14 18 12 20 12 23 C12 26 16 28 16 28 C16 28 20 26 20 23 C20 20 18 18 16 18 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M24 18 C22 18 20 20 20 23 C20 26 24 28 24 28 C24 28 28 26 28 23 C28 20 26 18 24 18 Z" fill="url(#wheatDark2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M16 24 C14 24 12 26 12 29 C12 32 16 34 16 34 C16 34 20 32 20 29 C20 26 18 24 16 24 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M24 24 C22 24 20 26 20 29 C20 32 24 34 24 34 C24 34 28 32 28 29 C28 26 26 24 24 24 Z" fill="url(#wheatDark2)" stroke="#854d0e" stroke-width="1.2"/>
+  <g>
+    <path d="M22 8 C20 4 17 2 13 2" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M20 12 C16 9 12 7 8 7" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M23 15 C20 12 15 11 10 12" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M22 20 C18 17 14 17 10 18" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M25 24 C21 21 17 22 13 24" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M24 29 C20 27 16 29 13 32" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M24 7 C23 3 24 1 25 0" fill="none" stroke="#eab308" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M26 10 C27 6 30 3 33 2" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M24 8 C25 24 29 42 22 58" fill="none" stroke="url(#stemGrad2)" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M24 7 C22 9 22 12 24 14 C26 12 26 9 24 7 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M20 11 C17 13 18 17 21 18 C23 17 23 14 20 11 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M27 11 C30 13 29 17 26 18 C24 17 24 14 27 11 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M19 17 C16 19 17 23 20 24 C23 23 23 20 19 17 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M27 17 C30 19 30 23 27 24 C24 23 24 20 27 17 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M20 23 C17 25 18 29 21 30 C24 29 24 26 20 23 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M28 23 C31 25 30 29 27 30 C25 29 25 26 28 23 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M21 29 C18 31 19 35 22 36 C25 35 25 32 21 29 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M29 29 C32 31 31 35 28 36 C26 35 26 32 29 29 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M23 35 C20 37 21 41 24 41 C27 40 26 37 23 35 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
   </g>
 
-  <g transform="rotate(22, 44, 24)">
-    <path d="M44 12 C42 12 40 14 40 17 C40 20 44 22 44 22 C44 22 48 20 48 17 C48 14 46 12 44 12 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M40 18 C38 18 36 20 36 23 C36 26 40 28 40 28 C40 28 44 26 44 23 C44 20 42 18 40 18 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M48 18 C46 18 44 20 44 23 C44 26 48 28 48 28 C48 28 52 26 52 23 C52 20 50 18 48 18 Z" fill="url(#wheatDark2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M40 24 C38 24 36 26 36 29 C36 32 40 34 40 34 C40 34 44 32 44 29 C44 26 42 24 40 24 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.2"/>
-    <path d="M48 24 C46 24 44 26 44 29 C44 32 48 34 48 34 C48 34 52 32 52 29 C52 26 50 24 48 24 Z" fill="url(#wheatDark2)" stroke="#854d0e" stroke-width="1.2"/>
+  <g>
+    <path d="M42 8 C44 4 47 2 51 2" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M44 12 C48 9 52 7 56 7" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M41 15 C44 12 49 11 54 12" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M42 20 C46 17 50 17 54 18" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M39 24 C43 21 47 22 51 24" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M40 29 C44 27 48 29 51 32" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M40 7 C41 3 40 1 39 0" fill="none" stroke="#eab308" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M38 10 C37 6 34 3 31 2" fill="none" stroke="#ca8a04" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M40 8 C39 24 35 42 42 58" fill="none" stroke="url(#stemGrad2)" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M40 7 C38 9 38 12 40 14 C42 12 42 9 40 7 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M37 11 C34 13 35 17 38 18 C40 17 40 14 37 11 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M44 11 C47 13 46 17 43 18 C41 17 41 14 44 11 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M37 17 C34 19 34 23 37 24 C40 23 40 20 37 17 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M45 17 C48 19 47 23 44 24 C41 23 41 20 45 17 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M36 23 C33 25 34 29 37 30 C39 29 39 26 36 23 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M44 23 C47 25 46 29 43 30 C40 29 40 26 44 23 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M35 29 C32 31 33 35 36 36 C38 35 38 32 35 29 Z" fill="url(#grainGoldLeft2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M43 29 C46 31 45 35 42 36 C39 35 39 32 43 29 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M41 35 C44 37 43 41 40 41 C37 40 38 37 41 35 Z" fill="url(#grainGoldRight2)" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>
   </g>
 
-  <path d="M32 6 C30 6 28 8 28 11 C28 14 32 17 32 17 C32 17 36 14 36 11 C36 8 34 6 32 6 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.4"/>
-  <path d="M28 12 C25 12 23 15 23 18 C23 21 28 24 28 24 C28 24 33 21 33 18 C33 15 31 12 28 12 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.4"/>
-  <path d="M36 12 C33 12 31 15 31 18 C31 21 36 24 36 24 C36 24 41 21 41 18 C41 15 39 12 36 12 Z" fill="url(#wheatDark2)" stroke="#854d0e" stroke-width="1.4"/>
-  <path d="M28 19 C25 19 23 22 23 25 C23 28 28 31 28 31 C28 31 33 28 33 25 C33 22 31 19 28 19 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.4"/>
-  <path d="M36 19 C33 19 31 22 31 25 C31 28 36 31 36 31 C36 31 41 28 41 25 C41 22 39 19 36 19 Z" fill="url(#wheatDark2)" stroke="#854d0e" stroke-width="1.4"/>
-  <path d="M28 26 C25 26 23 29 23 32 C23 35 28 38 28 38 C28 38 33 35 33 32 C33 29 31 26 28 26 Z" fill="url(#wheatGold2)" stroke="#854d0e" stroke-width="1.4"/>
-  <path d="M36 26 C33 26 31 29 31 32 C31 35 36 38 36 38 C36 38 41 35 41 32 C41 29 39 26 36 26 Z" fill="url(#wheatDark2)" stroke="#854d0e" stroke-width="1.4"/>
-
-  <path d="M30 46 C20 44 14 36 10 32 C12 38 20 48 28 50 Z" fill="url(#stalkGreen2)" stroke="#365314" stroke-width="1.2"/>
-  <path d="M34 46 C44 44 50 36 54 32 C52 38 44 48 36 50 Z" fill="url(#stalkGreen2)" stroke="#365314" stroke-width="1.2"/>
-
-  <rect x="25" y="47" width="14" height="6" rx="2" fill="url(#ribbonRed2)" stroke="#4c0519" stroke-width="1.5"/>
-  <line x1="26" y1="50" x2="38" y2="50" stroke="#fecdd3" stroke-width="1"/>
-  <path d="M28 53 L26 60 L30 58 L32 53 Z" fill="url(#ribbonRed2)" stroke="#4c0519" stroke-width="1"/>
-  <path d="M36 53 L38 60 L34 58 L32 53 Z" fill="url(#ribbonRed2)" stroke="#4c0519" stroke-width="1"/>
+  <path d="M28 47 C28 45 36 45 36 47 L35 52 C35 53 29 53 29 52 Z" fill="#b45309" stroke="#0f172a" stroke-width="1.5"/>
+  <ellipse cx="32" cy="49" rx="4" ry="2.5" fill="#facc15" stroke="#713f12" stroke-width="1"/>
 </svg>
