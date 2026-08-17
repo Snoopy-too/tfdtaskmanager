@@ -709,6 +709,7 @@ require_once __DIR__ . '/../templates/header.php';
                                                                data-dataset-id="<?php echo $inspectDataset->getId(); ?>"
                                                                data-row-index="<?php echo $index; ?>"
                                                                data-column-name="<?php echo SecurityHelper::escape($col); ?>"
+                                                               data-csrf-token="<?php echo SecurityHelper::escape($csrfToken); ?>"
                                                                class="dataset-cell-input w-full bg-transparent border-0 focus:border-0 focus:ring-0 text-xs text-slate-300 focus:text-white px-2 py-2"
                                                                <?php echo $isDatasetLocked ? 'disabled' : ''; ?>
                                                         >
@@ -745,6 +746,14 @@ require_once __DIR__ . '/../templates/header.php';
     </div>
 </div>
 
+<script>
+    window.studioConfig = window.studioConfig || {};
+    window.studioConfig.csrfToken = '<?php echo SecurityHelper::escape($csrfToken); ?>';
+    window.studioConfig.projectId = <?php echo (int)($activeProjectId ?? 0); ?>;
+    <?php if ($inspectDataset): ?>
+    window.studioConfig.datasetId = <?php echo (int)$inspectDataset->getId(); ?>;
+    <?php endif; ?>
+</script>
 <script src="js/dataset-builder.js"></script>
 <?php if (isset($activeTab) && $activeTab === 'build'): ?>
 <script>

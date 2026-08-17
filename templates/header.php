@@ -22,6 +22,7 @@ function isActive(string $page, string $current_page, bool $in_studio, bool $che
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Manager - Board Game Dev</title>
+    <meta name="csrf-token" content="<?php echo SecurityHelper::escape(SecurityHelper::generateCsrfToken()); ?>">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
