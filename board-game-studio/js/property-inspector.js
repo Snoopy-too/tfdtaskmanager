@@ -57,6 +57,7 @@
         });
 
         document.querySelectorAll('.btn-text-color-tag').forEach(btn => {
+            btn.addEventListener('mousedown', (e) => e.preventDefault());
             btn.addEventListener('click', () => {
                 const tag = btn.dataset.tag;
                 if (tag) wrapTextSelectionWithTag(`<${tag}>`, `</${tag}>`);
@@ -73,16 +74,19 @@
 
         const btnTagBold = document.getElementById('btn-tag-bold');
         if (btnTagBold) {
+            btnTagBold.addEventListener('mousedown', (e) => e.preventDefault());
             btnTagBold.addEventListener('click', () => wrapTextSelectionWithTag('<b>', '</b>'));
         }
 
         const btnTagItalic = document.getElementById('btn-tag-italic');
         if (btnTagItalic) {
+            btnTagItalic.addEventListener('mousedown', (e) => e.preventDefault());
             btnTagItalic.addEventListener('click', () => wrapTextSelectionWithTag('<i>', '</i>'));
         }
 
         const btnTagClear = document.getElementById('btn-tag-clear');
         if (btnTagClear) {
+            btnTagClear.addEventListener('mousedown', (e) => e.preventDefault());
             btnTagClear.addEventListener('click', clearTextTags);
         }
         
@@ -396,84 +400,6 @@
         document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
     }
 
-    // Set form fields based on active selection
-    function inspect(obj) {
-        // ponytail: skip temp crop overlay objects — they shouldn't update the inspector
-        if (obj && (obj.id === '_crop_box' || obj.id === '_crop_bg')) return;
-        activeObj = obj;
-        isUpdatingForm = true;
-
-        // ponytail: auto-correct text originX mismatch upon selecting/inspecting the layer to align anchor point
-        if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
-            const alignVal = obj.textAlign || 'left';
-            const expectedOriginX = alignVal === 'justify' ? 'left' : alignVal;
-            if (obj.originX !== expectedOriginX) {
-                let centerLeft;
-                const width = obj.width * obj.scaleX;
-                const oldOriginX = obj.originX || 'left';
-                if (oldOriginX === 'left') {
-                    centerLeft = obj.left + width / 2;
-                } else if (oldOriginX === 'right') {
-                    centerLeft = obj.left - width / 2;
-                } else {
-                    centerLeft = obj.left;
-                }
-
-                let newLeft;
-                if (expectedOriginX === 'left') {
-                    newLeft = centerLeft - width / 2;
-                } else if (expectedOriginX === 'right') {
-                    newLeft = centerLeft + width / 2;
-                } else {
-                    newLeft = centerLeft;
-                }
-
-                obj.set({
-                    originX: expectedOriginX,
-                    left: newLeft
-                });
-                obj.setCoords();
-                if (window.editorCanvas) {
-                    window.editorCanvas.renderAll();
-                }
-                if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
-                    window.editorCore.triggerAutoSave();
-                }
-            }
-        }
-
-        const noneSelected = document.getElementById('inspector-none-selected');
-        const form = document.getElementById('inspector-form');
-        
-        noneSelected.classList.add('hidden');
-        form.classList.remove('hidden');
-
-        // Populate common properties
-        document.getElementById('prop-name').value = obj.name || '';
-        document.getElementById('prop-left').value = Math.round(obj.left);
-        document.getElementById('prop-top').value = Math.round(obj.top);
-        const wPx = obj.width * obj.scaleX;
-        const hPx = obj.height * obj.scaleY;
-        document.getElementById('prop-width').value = Math.round(wPx);
-        document.getElementById('prop-height').value = Math.round(hPx);
-        
-        // Convert to millimeters and round to 1 decimal place
-        const wMm = (wPx * 25.4) / 300;
-        const hMm = (hPx * 25.4) / 300;
-        document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
-        document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
-        document.getElementById('prop-rotation').value = Math.round(obj.angle || 0);
-        document.getElementById('prop-opacity').value = Math.round((obj.opacity || 1.0) * 100);
-
-        // Hide specific sections by default
-        const textSec = document.getElementById('inspector-text-section');
-        const shapeSec = document.getElementById('inspector-shape-section');
-        const imgSec = document.getElementById('inspector-image-section');
-        
-        textSec.classList.add('hidden');
-        shapeSec.classList.add('hidden');
-        imgSec.classList.add('hidden');
-
     // ponytail: handle text edits seamlessly across bound dataset rows and static template layers
     function applyTextContentChange(newVal) {
         if (!activeObj || isUpdatingForm) return;
@@ -552,35 +478,113 @@
         applyTextContentChange(newVal);
     }
 
-    // Render type-specific sections
-    if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
-        textSec.classList.remove('hidden');
+    // Set form fields based on active selection
+    function inspect(obj) {
+        // ponytail: skip temp crop overlay objects — they shouldn't update the inspector
+        if (obj && (obj.id === '_crop_box' || obj.id === '_crop_bg')) return;
+        activeObj = obj;
+        isUpdatingForm = true;
 
-        let currentText = obj.text || '';
-        const bindBadge = document.getElementById('text-bind-badge');
-
-        if (obj.variable_binding && window.templateEngine && typeof window.templateEngine.getCurrentRowData === 'function') {
-            const row = window.templateEngine.getCurrentRowData();
-            const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
-            if (row && row[colName] !== undefined) {
-                currentText = row[colName];
-                if (bindBadge) {
-                    const rowIdx = window.templateEngine.getCurrentRowIndex ? window.templateEngine.getCurrentRowIndex() + 1 : '';
-                    bindBadge.textContent = `Row ${rowIdx} • {{${colName}}}`;
-                    bindBadge.classList.remove('hidden');
+        // ponytail: auto-correct text originX mismatch upon selecting/inspecting the layer to align anchor point
+        if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
+            const alignVal = obj.textAlign || 'left';
+            const expectedOriginX = alignVal === 'justify' ? 'left' : alignVal;
+            if (obj.originX !== expectedOriginX) {
+                let centerLeft;
+                const width = obj.width * obj.scaleX;
+                const oldOriginX = obj.originX || 'left';
+                if (oldOriginX === 'left') {
+                    centerLeft = obj.left + width / 2;
+                } else if (oldOriginX === 'right') {
+                    centerLeft = obj.left - width / 2;
+                } else {
+                    centerLeft = obj.left;
                 }
-            } else {
-                if (bindBadge) bindBadge.classList.add('hidden');
+
+                let newLeft;
+                if (expectedOriginX === 'left') {
+                    newLeft = centerLeft - width / 2;
+                } else if (expectedOriginX === 'right') {
+                    newLeft = centerLeft + width / 2;
+                } else {
+                    newLeft = centerLeft;
+                }
+
+                obj.set({
+                    originX: expectedOriginX,
+                    left: newLeft
+                });
+                obj.setCoords();
+                if (window.editorCanvas) {
+                    window.editorCanvas.renderAll();
+                }
+                if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
+                    window.editorCore.triggerAutoSave();
+                }
             }
-        } else {
-            if (window.templateEngine && typeof window.templateEngine.getTextTemplate === 'function') {
-                const tmpl = window.templateEngine.getTextTemplate(obj);
-                if (tmpl !== undefined && tmpl !== null) currentText = tmpl;
-            }
-            if (bindBadge) bindBadge.classList.add('hidden');
         }
 
-        document.getElementById('prop-text-val').value = currentText;
+        const noneSelected = document.getElementById('inspector-none-selected');
+        const form = document.getElementById('inspector-form');
+        
+        noneSelected.classList.add('hidden');
+        form.classList.remove('hidden');
+
+        // Populate common properties
+        document.getElementById('prop-name').value = obj.name || '';
+        document.getElementById('prop-left').value = Math.round(obj.left);
+        document.getElementById('prop-top').value = Math.round(obj.top);
+        const wPx = obj.width * obj.scaleX;
+        const hPx = obj.height * obj.scaleY;
+        document.getElementById('prop-width').value = Math.round(wPx);
+        document.getElementById('prop-height').value = Math.round(hPx);
+        
+        // Convert to millimeters and round to 1 decimal place
+        const wMm = (wPx * 25.4) / 300;
+        const hMm = (hPx * 25.4) / 300;
+        document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
+        document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
+        document.getElementById('prop-rotation').value = Math.round(obj.angle || 0);
+        document.getElementById('prop-opacity').value = Math.round((obj.opacity || 1.0) * 100);
+
+        // Hide specific sections by default
+        const textSec = document.getElementById('inspector-text-section');
+        const shapeSec = document.getElementById('inspector-shape-section');
+        const imgSec = document.getElementById('inspector-image-section');
+        
+        textSec.classList.add('hidden');
+        shapeSec.classList.add('hidden');
+        imgSec.classList.add('hidden');
+
+        // Render type-specific sections
+        if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+            textSec.classList.remove('hidden');
+
+            let currentText = obj.text || '';
+            const bindBadge = document.getElementById('text-bind-badge');
+
+            if (obj.variable_binding && window.templateEngine && typeof window.templateEngine.getCurrentRowData === 'function') {
+                const row = window.templateEngine.getCurrentRowData();
+                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
+                if (row && row[colName] !== undefined) {
+                    currentText = row[colName];
+                    if (bindBadge) {
+                        const rowIdx = window.templateEngine.getCurrentRowIndex ? window.templateEngine.getCurrentRowIndex() + 1 : '';
+                        bindBadge.textContent = `Row ${rowIdx} • {{${colName}}}`;
+                        bindBadge.classList.remove('hidden');
+                    }
+                } else {
+                    if (bindBadge) bindBadge.classList.add('hidden');
+                }
+            } else {
+                if (window.templateEngine && typeof window.templateEngine.getTextTemplate === 'function') {
+                    const tmpl = window.templateEngine.getTextTemplate(obj);
+                    if (tmpl !== undefined && tmpl !== null) currentText = tmpl;
+                }
+                if (bindBadge) bindBadge.classList.add('hidden');
+            }
+
+            document.getElementById('prop-text-val').value = currentText;
         
         const bindSelect = document.getElementById('prop-text-bind');
         if (bindSelect) {

@@ -752,13 +752,13 @@ require_once __DIR__ . '/../templates/header.php';
 </script>
 
 <!-- Editor Scripts -->
-<script src="js/editor-core.js"></script>
-<script src="js/guide-renderer.js"></script>
-<script src="js/layer-manager.js"></script>
-<script src="js/property-inspector.js"></script>
-<script src="js/asset-picker.js"></script>
-<script src="js/template-engine.js"></script>
-<script src="js/editor-actions.js"></script>
+<script src="js/editor-core.js?v=<?php echo filemtime(__DIR__ . '/js/editor-core.js'); ?>"></script>
+<script src="js/guide-renderer.js?v=<?php echo filemtime(__DIR__ . '/js/guide-renderer.js'); ?>"></script>
+<script src="js/layer-manager.js?v=<?php echo filemtime(__DIR__ . '/js/layer-manager.js'); ?>"></script>
+<script src="js/property-inspector.js?v=<?php echo filemtime(__DIR__ . '/js/property-inspector.js'); ?>"></script>
+<script src="js/asset-picker.js?v=<?php echo filemtime(__DIR__ . '/js/asset-picker.js'); ?>"></script>
+<script src="js/template-engine.js?v=<?php echo filemtime(__DIR__ . '/js/template-engine.js'); ?>"></script>
+<script src="js/editor-actions.js?v=<?php echo filemtime(__DIR__ . '/js/editor-actions.js'); ?>"></script>
 
 <!-- Import Template Component Modal -->
 <div id="modal-import-template" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden">
