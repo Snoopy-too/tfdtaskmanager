@@ -356,10 +356,61 @@
                     }
                 }
             } else if (obj.variable_binding) {
-                // Shape / Object visibility and dataset binding
+                // Shape / Object visibility and dataset binding (including SVG layer substitution)
                 if (row) {
                     const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
                     const val = row[colName] !== undefined ? String(row[colName]).trim() : '';
+
+                    // Check if value is an image/SVG asset filename
+                    if (val && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                        const assetUrl = window.assetPicker.getAssetUrlByFilename(val);
+                        if (assetUrl) {
+                            if (obj.setSrc && typeof obj.setSrc === 'function') {
+                                const currentSrc = obj.getSrc ? obj.getSrc() : '';
+                                if (!currentSrc.endsWith(assetUrl) && currentSrc !== assetUrl) {
+                                    const swapPromise = new Promise((resolve) => {
+                                        obj.setSrc(assetUrl, () => {
+                                            obj.setCoords();
+                                            resolve();
+                                        }, { crossOrigin: 'anonymous' });
+                                    });
+                                    imageSwapPromises.push(swapPromise);
+                                }
+                            } else {
+                                // Swap legacy group/path SVG with dynamic fabric.Image
+                                const swapPromise = new Promise((resolve) => {
+                                    fabric.Image.fromURL(assetUrl, (newImg) => {
+                                        if (!newImg) return resolve();
+                                        newImg.set({
+                                            left: obj.left,
+                                            top: obj.top,
+                                            originX: obj.originX || 'center',
+                                            originY: obj.originY || 'center',
+                                            scaleX: obj.scaleX,
+                                            scaleY: obj.scaleY,
+                                            angle: obj.angle || 0,
+                                            opacity: obj.opacity !== undefined ? obj.opacity : 1,
+                                            name: val,
+                                            variable_binding: obj.variable_binding,
+                                            id: obj.id,
+                                            original_filename: val
+                                        });
+                                        const idx = canvas.getObjects().indexOf(obj);
+                                        canvas.remove(obj);
+                                        if (idx >= 0) {
+                                            canvas.insertAt(newImg, idx);
+                                        } else {
+                                            canvas.add(newImg);
+                                        }
+                                        newImg.setCoords();
+                                        resolve();
+                                    }, { crossOrigin: 'anonymous' });
+                                });
+                                imageSwapPromises.push(swapPromise);
+                            }
+                            return;
+                        }
+                    }
 
                     if (obj._originalOpacity === undefined) {
                         obj._originalOpacity = obj.opacity !== undefined ? obj.opacity : 1;

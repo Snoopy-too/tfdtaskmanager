@@ -474,12 +474,61 @@
                                     }
                                 }
                             } else if (obj.variable_binding) {
-                                // Shape / Generic object dataset visibility binding
+                                // Shape / Generic object dataset visibility or image binding
                                 const rawVal = getRowValue(row, obj.variable_binding);
                                 if (rawVal !== undefined && rawVal !== null) {
-                                    const val = String(rawVal).trim().toLowerCase();
+                                    const val = String(rawVal).trim();
+
+                                    // Check if value is an image/SVG asset filename
+                                    if (val && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                                        const assetUrl = window.assetPicker.getAssetUrlByFilename(val);
+                                        if (assetUrl) {
+                                            if (obj.setSrc && typeof obj.setSrc === 'function') {
+                                                const swapPromise = new Promise((imgResolve) => {
+                                                    obj.setSrc(assetUrl, () => {
+                                                        obj.setCoords();
+                                                        imgResolve();
+                                                    }, { crossOrigin: 'anonymous' });
+                                                });
+                                                imageSwapPromises.push(swapPromise);
+                                            } else {
+                                                const swapPromise = new Promise((imgResolve) => {
+                                                    fabric.Image.fromURL(assetUrl, (newImg) => {
+                                                        if (!newImg) return imgResolve();
+                                                        newImg.set({
+                                                            left: obj.left,
+                                                            top: obj.top,
+                                                            originX: obj.originX || 'center',
+                                                            originY: obj.originY || 'center',
+                                                            scaleX: obj.scaleX,
+                                                            scaleY: obj.scaleY,
+                                                            angle: obj.angle || 0,
+                                                            opacity: obj.opacity !== undefined ? obj.opacity : 1,
+                                                            name: val,
+                                                            variable_binding: obj.variable_binding,
+                                                            id: obj.id,
+                                                            original_filename: val
+                                                        });
+                                                        const idx = cardCanvas.getObjects().indexOf(obj);
+                                                        cardCanvas.remove(obj);
+                                                        if (idx >= 0) {
+                                                            cardCanvas.insertAt(newImg, idx);
+                                                        } else {
+                                                            cardCanvas.add(newImg);
+                                                        }
+                                                        newImg.setCoords();
+                                                        imgResolve();
+                                                    }, { crossOrigin: 'anonymous' });
+                                                });
+                                                imageSwapPromises.push(swapPromise);
+                                            }
+                                            return;
+                                        }
+                                    }
+
+                                    const lowerVal = val.toLowerCase();
                                     const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide'];
-                                    if (hideValues.includes(val)) {
+                                    if (hideValues.includes(lowerVal)) {
                                         obj.set('opacity', 0);
                                         obj.set('visible', false);
                                     } else {

@@ -1065,13 +1065,20 @@
                 }
             }
 
-            // Shape / Generic object visibility binding
+            // Shape / Generic object visibility & dynamic asset binding
             if (obj.variable_binding && obj.type !== 'text' && obj.type !== 'i-text' && obj.type !== 'textbox' && obj.type !== 'image') {
                 const rawVal = getRowValue(rowData, obj.variable_binding);
                 if (rawVal !== undefined && rawVal !== null) {
-                    const val = String(rawVal).trim().toLowerCase();
+                    const val = String(rawVal).trim();
+                    if (val && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                        const assetUrl = window.assetPicker.getAssetUrlByFilename(val);
+                        if (assetUrl) {
+                            obj.src = assetUrl;
+                        }
+                    }
+                    const lowerVal = val.toLowerCase();
                     const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide'];
-                    if (hideValues.includes(val)) {
+                    if (hideValues.includes(lowerVal)) {
                         obj.opacity = 0;
                         obj.visible = false;
                     } else {

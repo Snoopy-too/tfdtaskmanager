@@ -167,79 +167,38 @@
         const canvas = window.editorCanvas;
         if (!canvas) return;
 
-        const isSvg = asset.mime_type === 'image/svg+xml' || asset.original_filename.endsWith('.svg');
         const posX = (typeof left === 'number') ? left : (canvas.width / 2);
         const posY = (typeof top === 'number') ? top : (canvas.height / 2);
 
-        if (isSvg) {
-            fabric.loadSVGFromURL(asset.url, (objects, options) => {
-                const svgObj = fabric.util.groupSVGElements(objects, options);
-                
-                // Keep size reasonable inside card workspace
-                const maxWidth = canvas.width * 0.4;
-                const maxHeight = canvas.height * 0.4;
-                let scale = 1.0;
+        fabric.Image.fromURL(asset.url, (img) => {
+            if (!img) return;
 
-                if (svgObj.width > maxWidth || svgObj.height > maxHeight) {
-                    scale = Math.min(maxWidth / svgObj.width, maxHeight / svgObj.height);
-                }
+            // Keep size reasonable inside card workspace
+            const maxWidth = canvas.width * 0.7;
+            const maxHeight = canvas.height * 0.7;
+            let scale = 1.0;
 
-                svgObj.set({
-                    left: posX,
-                    top: posY,
-                    originX: 'center',
-                    originY: 'center',
-                    scaleX: scale,
-                    scaleY: scale,
-                    name: asset.original_filename,
-                    original_filename: asset.original_filename,
-                    stored_filename: asset.stored_filename
-                });
+            if (img.width > maxWidth || img.height > maxHeight) {
+                scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+            }
 
-                // Default our vector icons to dark charcoal (#1e293b) if they don't have a visible stroke
-                if (svgObj.getObjects) {
-                    svgObj.getObjects().forEach(child => {
-                        if (!child.stroke || child.stroke === 'currentColor' || child.stroke === 'none') {
-                            child.set('stroke', '#1e293b');
-                        }
-                    });
-                }
-                svgObj.set('stroke', '#1e293b');
-
-                canvas.add(svgObj);
-                canvas.setActiveObject(svgObj);
-                canvas.renderAll();
-                window.editorCore.triggerAutoSave();
+            img.set({
+                left: posX,
+                top: posY,
+                originX: 'center',
+                originY: 'center',
+                scaleX: scale,
+                scaleY: scale,
+                name: asset.original_filename,
+                original_filename: asset.original_filename,
+                stored_filename: asset.stored_filename
             });
-        } else {
-            fabric.Image.fromURL(asset.url, (img) => {
-                // Keep size reasonable inside card workspace
-                const maxWidth = canvas.width * 0.7;
-                const maxHeight = canvas.height * 0.7;
-                let scale = 1.0;
 
-                if (img.width > maxWidth || img.height > maxHeight) {
-                    scale = Math.min(maxWidth / img.width, maxHeight / img.height);
-                }
-
-                img.set({
-                    left: posX,
-                    top: posY,
-                    originX: 'center',
-                    originY: 'center',
-                    scaleX: scale,
-                    scaleY: scale,
-                    name: asset.original_filename,
-                    original_filename: asset.original_filename,
-                    stored_filename: asset.stored_filename
-                });
-
-                canvas.add(img);
-                canvas.setActiveObject(img);
-                canvas.renderAll();
-                window.editorCore.triggerAutoSave();
-            }, { crossOrigin: 'anonymous' });
-        }
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+            window.editorCore.triggerAutoSave();
+        }, { crossOrigin: 'anonymous' });
     }
 
     // Select custom font for active text layer
@@ -370,12 +329,16 @@
     /**
      * Resolve an original filename to its full asset URL.
      * Used by template-engine and export-handler for per-row image binding.
-     * @param {string} filename - The original_filename of the asset.
+     * @param {string} filename - The original_filename or tag of the asset.
      * @returns {string|null} The asset URL, or null if not found.
      */
     function getAssetUrlByFilename(filename) {
         if (!filename) return null;
-        const cleanName = String(filename).trim().toLowerCase();
+        let cleanName = String(filename).trim().toLowerCase();
+        // Remove enclosing brackets if passed as tag like [icon_taxes]
+        if (cleanName.startsWith('[') && cleanName.endsWith(']')) {
+            cleanName = cleanName.substring(1, cleanName.length - 1).trim();
+        }
         
         // 1. Exact match on original_filename
         let match = cachedAssets.find(a => a.original_filename && a.original_filename.toLowerCase() === cleanName);
@@ -390,14 +353,28 @@
             });
         }
 
-        // 3. Match stored_filename
+        // 3. Match by tag (e.g. [icon_taxes] or icon_taxes)
+        if (!match) {
+            match = cachedAssets.find(a => {
+                if (!a.tag) return false;
+                const tagClean = a.tag.replace(/\[|\]/g, '').trim().toLowerCase();
+                return tagClean === cleanName;
+            });
+        }
+
+        // 4. Match stored_filename
         if (!match) {
             match = cachedAssets.find(a => a.stored_filename && a.stored_filename.toLowerCase() === cleanName);
         }
 
-        // 4. Match URL ending
+        // 5. Match URL ending
         if (!match) {
             match = cachedAssets.find(a => a.url && a.url.toLowerCase().endsWith(cleanName));
+        }
+
+        // 6. Partial prefix match (e.g. notices-board-icon-removebg- matching notices-board-icon-removebg-preview.png)
+        if (!match && cleanName.length >= 6) {
+            match = cachedAssets.find(a => a.original_filename && a.original_filename.toLowerCase().startsWith(cleanName));
         }
 
         return match ? match.url : null;
