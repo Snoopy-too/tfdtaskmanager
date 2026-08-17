@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Gunmetal Steel Gradients -->
+    <linearGradient id="gunSteel1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#64748b"/>
+      <stop offset="40%" stop-color="#334155"/>
+      <stop offset="80%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="gunSteel2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="50%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <!-- Brass Ammo Accent -->
+    <linearGradient id="brassBullet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="40%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+  </defs>
+
+  <!-- === RIFLE 1 (Top-Left to Bottom-Right) === -->
+  <g transform="rotate(45, 32, 32)">
+    <!-- Barrel & Flash Hider -->
+    <rect x="30.5" y="4" width="3" height="14" fill="#64748b" stroke="#0f172a" stroke-width="1.2"/>
+    <rect x="29.5" y="3" width="5" height="3" rx="0.5" fill="#0f172a"/>
+    <!-- Gas Block & Front Sight -->
+    <polygon points="32,7 30,12 34,12" fill="#0f172a"/>
+
+    <!-- Handguard / Rail Shroud -->
+    <rect x="29" y="16" width="6" height="12" rx="1" fill="url(#gunSteel1)" stroke="#0f172a" stroke-width="1.5"/>
+    <line x1="29.5" y1="19" x2="34.5" y2="19" stroke="#94a3b8" stroke-width="1"/>
+    <line x1="29.5" y1="23" x2="34.5" y2="23" stroke="#94a3b8" stroke-width="1"/>
+
+    <!-- Upper & Lower Receiver -->
+    <rect x="28.5" y="27" width="7" height="15" rx="1.2" fill="url(#gunSteel1)" stroke="#0f172a" stroke-width="2"/>
+    <!-- Ejection Port -->
+    <rect x="31" y="29" width="3.5" height="3.5" fill="#0f172a"/>
+
+    <!-- Top Picatinny Rail & Tactical Scope / Red Dot Optic -->
+    <rect x="26.5" y="26" width="2.5" height="10" rx="0.5" fill="#0f172a"/>
+    <rect x="25" y="28" width="2" height="6" rx="0.5" fill="#38bdf8" stroke="#0f172a" stroke-width="0.8"/>
+
+    <!-- Curved Banana Magazine -->
+    <path d="M35 34 C39 36 41 42 40 47 L36 46 C37 42 36 38 34 36 Z" fill="url(#gunSteel1)" stroke="#0f172a" stroke-width="1.5"/>
+    <!-- Magazine Ribs -->
+    <line x1="36" y1="40" x2="38.5" y2="41" stroke="#94a3b8" stroke-width="0.8"/>
+    <line x1="36" y1="43" x2="38.5" y2="44" stroke="#94a3b8" stroke-width="0.8"/>
+
+    <!-- Pistol Grip -->
+    <path d="M32 40 L35 48 L31 49 L29 41 Z" fill="#0f172a" stroke="#0f172a" stroke-width="1.2"/>
+
+    <!-- Stock Buffer Tube & Tactical Stock -->
+    <rect x="30" y="42" width="4" height="11" fill="#475569" stroke="#0f172a" stroke-width="1.2"/>
+    <path d="M28 48 L36 48 L36 57 C36 58 34 59 32 59 C30 59 28 58 28 57 Z" fill="url(#gunSteel1)" stroke="#0f172a" stroke-width="1.8"/>
+  </g>
+
+  <!-- === RIFLE 2 (Top-Right to Bottom-Left) === -->
+  <g transform="rotate(-45, 32, 32)">
+    <!-- Barrel & Flash Hider -->
+    <rect x="30.5" y="4" width="3" height="14" fill="#64748b" stroke="#0f172a" stroke-width="1.2"/>
+    <rect x="29.5" y="3" width="5" height="3" rx="0.5" fill="#0f172a"/>
+    <polygon points="32,7 30,12 34,12" fill="#0f172a"/>
+
+    <!-- Handguard / Rail Shroud -->
+    <rect x="29" y="16" width="6" height="12" rx="1" fill="url(#gunSteel2)" stroke="#0f172a" stroke-width="1.5"/>
+    <line x1="29.5" y1="19" x2="34.5" y2="19" stroke="#94a3b8" stroke-width="1"/>
+    <line x1="29.5" y1="23" x2="34.5" y2="23" stroke="#94a3b8" stroke-width="1"/>
+
+    <!-- Upper & Lower Receiver -->
+    <rect x="28.5" y="27" width="7" height="15" rx="1.2" fill="url(#gunSteel2)" stroke="#0f172a" stroke-width="2"/>
+    <rect x="29.5" y="29" width="3.5" height="3.5" fill="#0f172a"/>
+
+    <!-- Top Rail & Scope -->
+    <rect x="35" y="26" width="2.5" height="10" rx="0.5" fill="#0f172a"/>
+    <rect x="37" y="28" width="2" height="6" rx="0.5" fill="#38bdf8" stroke="#0f172a" stroke-width="0.8"/>
+
+    <!-- Curved Magazine -->
+    <path d="M29 34 C25 36 23 42 24 47 L28 46 C27 42 28 38 30 36 Z" fill="url(#gunSteel2)" stroke="#0f172a" stroke-width="1.5"/>
+
+    <!-- Pistol Grip -->
+    <path d="M32 40 L29 48 L33 49 L35 41 Z" fill="#0f172a" stroke="#0f172a" stroke-width="1.2"/>
+
+    <!-- Stock -->
+    <rect x="30" y="42" width="4" height="11" fill="#475569" stroke="#0f172a" stroke-width="1.2"/>
+    <path d="M28 48 L36 48 L36 57 C36 58 34 59 32 59 C30 59 28 58 28 57 Z" fill="url(#gunSteel2)" stroke="#0f172a" stroke-width="1.8"/>
+  </g>
+
+  <!-- Central Ammunition Bullet Badge Accent -->
+  <g transform="translate(0, 0)">
+    <ellipse cx="32" cy="32" rx="4.5" ry="4.5" fill="#0f172a"/>
+    <polygon points="32,27 34,31 30,31" fill="url(#brassBullet)" stroke="#713f12" stroke-width="0.8"/>
+    <rect x="30" y="31" width="4" height="5" fill="url(#brassBullet)" stroke="#713f12" stroke-width="0.8"/>
+    <rect x="29" y="36" width="6" height="1.5" rx="0.3" fill="#ca8a04"/>
+  </g>
+</svg>

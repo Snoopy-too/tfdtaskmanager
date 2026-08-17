@@ -51,7 +51,11 @@ class BgAssetService
             'icon_notice_board' => 'icon_notice_board.svg',
             'icon_restriction' => 'icon_restriction.svg',
             'icon_decree' => 'icon_decree.svg',
-            'icon_embargo' => 'icon_embargo.svg'
+            'icon_embargo' => 'icon_embargo.svg',
+            'icon_drone' => 'icon_drone.svg',
+            'icon_uav' => 'icon_uav.svg',
+            'icon_weapons' => 'icon_weapons.svg',
+            'icon_arms' => 'icon_arms.svg'
         ];
 
         $folderName = ($projectId === null) ? 'global' : (string)$projectId;
