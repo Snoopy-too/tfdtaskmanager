@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="woodBack2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#451a03"/>
+      <stop offset="50%" stop-color="#290e02"/>
+      <stop offset="100%" stop-color="#1c0a00"/>
+    </linearGradient>
+    <linearGradient id="parchment2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fefce8"/>
+      <stop offset="40%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#fde68a"/>
+    </linearGradient>
+    <linearGradient id="waxSeal2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="40%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#881337"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="4" fill="url(#woodBack2)" stroke="#0f172a" stroke-width="2.5"/>
+  <rect x="9" y="9" width="46" height="46" rx="2.5" fill="none" stroke="#78350f" stroke-width="1.2"/>
+  <circle cx="10" cy="10" r="1.5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.8"/>
+  <circle cx="54" cy="10" r="1.5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.8"/>
+  <circle cx="10" cy="54" r="1.5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.8"/>
+  <circle cx="54" cy="54" r="1.5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.8"/>
+  <path d="M14 11 H50 V48 L44 48 L44 52 H14 Z" fill="url(#parchment2)" stroke="#78350f" stroke-width="1.8" stroke-linejoin="round"/>
+  <polygon points="44,48 50,48 44,52" fill="#d97706" stroke="#78350f" stroke-width="1.2" stroke-linejoin="round"/>
+  <circle cx="32" cy="14" r="2.2" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+  <circle cx="31.2" cy="13.2" r="0.7" fill="#f8fafc"/>
+  <rect x="18" y="19" width="28" height="3.5" rx="1.2" fill="#0f172a"/>
+  <rect x="18" y="25" width="28" height="2" rx="1" fill="#475569"/>
+  <rect x="18" y="29.5" width="24" height="2" rx="1" fill="#475569"/>
+  <rect x="18" y="34" width="26" height="2" rx="1" fill="#475569"/>
+  <rect x="18" y="38.5" width="18" height="2" rx="1" fill="#475569"/>
+  <rect x="18" y="43" width="14" height="2" rx="1" fill="#475569"/>
+  <path d="M40 46 L37 57 L41 54 L44 57 L42 46 Z" fill="#9f1239" stroke="#4c0519" stroke-width="0.8"/>
+  <circle cx="41" cy="45" r="7" fill="url(#waxSeal2)" stroke="#4c0519" stroke-width="1.5"/>
+  <circle cx="41" cy="45" r="5.2" fill="none" stroke="#fecdd3" stroke-width="0.8" opacity="0.6"/>
+  <rect x="40.2" y="41" width="1.6" height="4.5" rx="0.8" fill="#ffffff"/>
+  <circle cx="41" cy="47.5" r="0.9" fill="#ffffff"/>
+</svg>

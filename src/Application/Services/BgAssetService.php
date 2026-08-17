@@ -39,13 +39,19 @@ class BgAssetService
             'icon_take_revenue' => 'icon_take_revenue.svg',
             'icon_rare_metals' => 'icon_rare_metals.svg',
             'icon_food' => 'icon_food.svg',
+            'icon_wheat' => 'icon_wheat.svg',
             'icon_taxes' => 'icon_taxes.svg',
             'icon_build_foundation' => 'icon_build_foundation.svg',
             'icon_crane' => 'icon_crane.svg',
             'icon_build_rebuild' => 'icon_build_rebuild.svg',
             'icon_factory' => 'icon_factory.svg',
             'icon_repair_fortify' => 'icon_repair_fortify.svg',
-            'icon_tools' => 'icon_tools.svg'
+            'icon_tools' => 'icon_tools.svg',
+            'icon_notice' => 'icon_notice.svg',
+            'icon_notice_board' => 'icon_notice_board.svg',
+            'icon_restriction' => 'icon_restriction.svg',
+            'icon_decree' => 'icon_decree.svg',
+            'icon_embargo' => 'icon_embargo.svg'
         ];
 
         $folderName = ($projectId === null) ? 'global' : (string)$projectId;
