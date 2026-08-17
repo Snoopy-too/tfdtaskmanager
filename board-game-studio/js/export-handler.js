@@ -297,45 +297,167 @@
                         return matchKey !== undefined ? r[matchKey] : undefined;
                     }
 
-                    function processExportObjects(objectsList) {
-                        objectsList.forEach(obj => {
-                            if (obj.id === 'safe-zone-guide') {
-                                toRemove.push(obj);
-                            } else if (obj.id === 'bleed-zone-guide' && !drawBleedCheckbox) {
-                                toRemove.push(obj);
-                            }
+    // ponytail: parse inline color/format tags (<red>, <gold>, <color:#hex>, <b>, <i>, <u>) into FabricJS character styles for export
+    function parseStyledText(rawText) {
+        if (rawText === null || rawText === undefined) return { cleanText: '', styles: {} };
+        rawText = String(rawText);
 
-                            if (obj.type === 'group' && typeof obj.getObjects === 'function') {
-                                processExportObjects(obj.getObjects());
-                            }
+        const colorMap = {
+            'red': '#ef4444',
+            'gold': '#f59e0b',
+            'yellow': '#eab308',
+            'amber': '#d97706',
+            'blue': '#3b82f6',
+            'sky': '#0ea5e9',
+            'indigo': '#6366f1',
+            'green': '#22c55e',
+            'emerald': '#10b981',
+            'purple': '#a855f7',
+            'violet': '#8b5cf6',
+            'orange': '#f97316',
+            'rose': '#f43f5e',
+            'pink': '#ec4899',
+            'white': '#ffffff',
+            'black': '#000000',
+            'cyan': '#06b6d4',
+            'gray': '#9ca3af',
+            'grey': '#9ca3af'
+        };
 
-                            // Substitute variables in text layers
-                            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
-                                let rawText = obj.variable_binding || obj.text;
-                                let subText = rawText;
-                                
-                                const matches = rawText ? String(rawText).match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g) : null;
-                                if (matches) {
-                                    matches.forEach(placeholder => {
-                                        const colName = placeholder.replace(/\{\{|\}\}/g, '').trim();
-                                        const val = getRowValue(row, colName);
-                                        const replacement = val !== undefined ? val : placeholder;
-                                        subText = String(subText).replaceAll(placeholder, String(replacement));
-                                    });
-                                } else if (obj.variable_binding) {
-                                    const val = getRowValue(row, obj.variable_binding);
-                                    if (val !== undefined) {
-                                        subText = String(val);
-                                    }
-                                }
-                                obj.set('styles', {});
-                                obj.set('text', String(subText !== undefined && subText !== null ? subText : ''));
-                                if (typeof obj.initDimensions === 'function') {
-                                    obj.initDimensions();
-                                }
-                                obj.setCoords();
-                                obj.set('dirty', true);
-                            } else if (obj.type === 'image' && obj.variable_binding) {
+        if (!rawText.includes('<')) {
+            return { cleanText: rawText, styles: {} };
+        }
+
+        const lines = rawText.split('\n');
+        const allStyles = {};
+        const cleanLines = [];
+        const tagRegex = /<\/?([a-zA-Z0-9_\-#:=]+)>/g;
+
+        lines.forEach((line, lineIdx) => {
+            let cleanLine = '';
+            const lineStyles = {};
+            const styleStack = [];
+
+            function getEffectiveStyle() {
+                const eff = {};
+                styleStack.forEach(s => Object.assign(eff, s));
+                return eff;
+            }
+
+            let lastIndex = 0;
+            let match;
+            tagRegex.lastIndex = 0;
+
+            while ((match = tagRegex.exec(line)) !== null) {
+                const textBefore = line.substring(lastIndex, match.index);
+                const currentStyle = getEffectiveStyle();
+                const hasStyle = Object.keys(currentStyle).length > 0;
+
+                for (let i = 0; i < textBefore.length; i++) {
+                    const charPos = cleanLine.length;
+                    cleanLine += textBefore[i];
+                    if (hasStyle) {
+                        lineStyles[charPos] = { ...currentStyle };
+                    }
+                }
+
+                const rawTag = match[1];
+                const isClosing = match[0].startsWith('</');
+
+                if (isClosing) {
+                    styleStack.pop();
+                } else {
+                    const newStyle = {};
+                    const lowerTag = rawTag.toLowerCase();
+
+                    if (lowerTag.startsWith('color:') || lowerTag.startsWith('color=')) {
+                        const colorVal = rawTag.substring(6).trim();
+                        newStyle.fill = colorMap[colorVal.toLowerCase()] || colorVal;
+                    } else if (colorMap[lowerTag]) {
+                        newStyle.fill = colorMap[lowerTag];
+                    } else if (lowerTag.startsWith('#') || lowerTag.startsWith('rgb')) {
+                        newStyle.fill = rawTag;
+                    } else if (lowerTag === 'b' || lowerTag === 'strong') {
+                        newStyle.fontWeight = 'bold';
+                    } else if (lowerTag === 'i' || lowerTag === 'em') {
+                        newStyle.fontStyle = 'italic';
+                    } else if (lowerTag === 'u') {
+                        newStyle.underline = true;
+                    }
+
+                    if (Object.keys(newStyle).length > 0) {
+                        styleStack.push(newStyle);
+                    }
+                }
+
+                lastIndex = tagRegex.lastIndex;
+            }
+
+            const remainingText = line.substring(lastIndex);
+            const remainingStyle = getEffectiveStyle();
+            const hasRemainingStyle = Object.keys(remainingStyle).length > 0;
+
+            for (let i = 0; i < remainingText.length; i++) {
+                const charPos = cleanLine.length;
+                cleanLine += remainingText[i];
+                if (hasRemainingStyle) {
+                    lineStyles[charPos] = { ...remainingStyle };
+                }
+            }
+
+            cleanLines.push(cleanLine);
+            if (Object.keys(lineStyles).length > 0) {
+                allStyles[lineIdx] = lineStyles;
+            }
+        });
+
+        return {
+            cleanText: cleanLines.join('\n'),
+            styles: allStyles
+        };
+    }
+
+    function processExportObjects(objectsList) {
+        objectsList.forEach(obj => {
+            if (obj.id === 'safe-zone-guide') {
+                toRemove.push(obj);
+            } else if (obj.id === 'bleed-zone-guide' && !drawBleedCheckbox) {
+                toRemove.push(obj);
+            }
+
+            if (obj.type === 'group' && typeof obj.getObjects === 'function') {
+                processExportObjects(obj.getObjects());
+            }
+
+            // Substitute variables in text layers and parse styled tags
+            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                let rawText = obj.variable_binding || obj.text;
+                let subText = rawText;
+                
+                const matches = rawText ? String(rawText).match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g) : null;
+                if (matches) {
+                    matches.forEach(placeholder => {
+                        const colName = placeholder.replace(/\{\{|\}\}/g, '').trim();
+                        const val = getRowValue(row, colName);
+                        const replacement = val !== undefined ? val : placeholder;
+                        subText = String(subText).replaceAll(placeholder, String(replacement));
+                    });
+                } else if (obj.variable_binding) {
+                    const val = getRowValue(row, obj.variable_binding);
+                    if (val !== undefined) {
+                        subText = String(val);
+                    }
+                }
+                
+                const parsed = parseStyledText(subText !== undefined && subText !== null ? subText : '');
+                obj.set('styles', parsed.styles);
+                obj.set('text', parsed.cleanText);
+                if (typeof obj.initDimensions === 'function') {
+                    obj.initDimensions();
+                }
+                obj.setCoords();
+                obj.set('dirty', true);
+            } else if (obj.type === 'image' && obj.variable_binding) {
                                 // Substitute image source for bound image layers
                                 const filename = getRowValue(row, obj.variable_binding);
 

@@ -479,8 +479,36 @@ require_once __DIR__ . '/../templates/header.php';
                     <!-- Text-Specific Properties -->
                     <div id="inspector-text-section" class="space-y-3 pb-4 border-b border-slate-800/80 hidden">
                         <div>
-                            <label for="prop-text-val" class="block text-xs font-semibold text-slate-400 mb-1">Text Content</label>
-                            <textarea id="prop-text-val" rows="2" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2"></textarea>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label for="prop-text-val" class="block text-xs font-semibold text-slate-400">Text Content</label>
+                                <span id="text-bind-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-violet-950/80 text-violet-300 border border-violet-800/60 hidden font-mono">Bound to Dataset</span>
+                            </div>
+
+                            <!-- Inline Formatting Toolbar -->
+                            <div class="flex items-center gap-1 mb-1.5 p-1 bg-slate-900/90 border border-slate-800 rounded-lg text-xs">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">Color:</span>
+                                <button type="button" class="btn-text-color-tag w-5 h-5 rounded-full bg-red-500 hover:scale-110 active:scale-95 transition-transform border border-red-400 shadow-sm" data-tag="red" title="Red (&lt;red&gt;)"></button>
+                                <button type="button" class="btn-text-color-tag w-5 h-5 rounded-full bg-amber-400 hover:scale-110 active:scale-95 transition-transform border border-amber-300 shadow-sm" data-tag="gold" title="Gold (&lt;gold&gt;)"></button>
+                                <button type="button" class="btn-text-color-tag w-5 h-5 rounded-full bg-blue-500 hover:scale-110 active:scale-95 transition-transform border border-blue-400 shadow-sm" data-tag="blue" title="Blue (&lt;blue&gt;)"></button>
+                                <button type="button" class="btn-text-color-tag w-5 h-5 rounded-full bg-emerald-500 hover:scale-110 active:scale-95 transition-transform border border-emerald-400 shadow-sm" data-tag="green" title="Green (&lt;green&gt;)"></button>
+                                <button type="button" class="btn-text-color-tag w-5 h-5 rounded-full bg-purple-500 hover:scale-110 active:scale-95 transition-transform border border-purple-400 shadow-sm" data-tag="purple" title="Purple (&lt;purple&gt;)"></button>
+                                
+                                <div class="relative flex items-center">
+                                    <input type="color" id="picker-text-custom-color" value="#f59e0b" class="opacity-0 absolute inset-0 w-5 h-5 cursor-pointer" title="Custom Hex Color">
+                                    <button type="button" class="w-5 h-5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-[10px] text-slate-300 pointer-events-none" title="Custom Color">
+                                        🎨
+                                    </button>
+                                </div>
+
+                                <div class="h-3 w-[1px] bg-slate-800 mx-0.5"></div>
+
+                                <button type="button" id="btn-tag-bold" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold" title="Bold (&lt;b&gt;)">B</button>
+                                <button type="button" id="btn-tag-italic" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] italic" title="Italic (&lt;i&gt;)">I</button>
+                                <button type="button" id="btn-tag-clear" class="ml-auto px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-[10px]" title="Clear Tags from Selection">✕</button>
+                            </div>
+
+                            <textarea id="prop-text-val" rows="3" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 font-mono" placeholder="Type text or use tags like <gold>word</gold>..."></textarea>
+                            <p class="text-[10px] text-slate-500 mt-1">Select text in the box and click a color to highlight words inline.</p>
                         </div>
 
                         <div>

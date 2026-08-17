@@ -51,13 +51,47 @@
             window.editorCore.triggerAutoSave();
         });
 
-        // Text properties
-        document.getElementById('prop-text-val').addEventListener('input', (e) => updateActiveProp('text', e.target.value));
+        // Text properties & inline formatting toolbar
+        document.getElementById('prop-text-val').addEventListener('input', (e) => {
+            applyTextContentChange(e.target.value);
+        });
+
+        document.querySelectorAll('.btn-text-color-tag').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tag = btn.dataset.tag;
+                if (tag) wrapTextSelectionWithTag(`<${tag}>`, `</${tag}>`);
+            });
+        });
+
+        const customColorPicker = document.getElementById('picker-text-custom-color');
+        if (customColorPicker) {
+            customColorPicker.addEventListener('change', (e) => {
+                const hex = e.target.value;
+                if (hex) wrapTextSelectionWithTag(`<color:${hex}>`, '</color>');
+            });
+        }
+
+        const btnTagBold = document.getElementById('btn-tag-bold');
+        if (btnTagBold) {
+            btnTagBold.addEventListener('click', () => wrapTextSelectionWithTag('<b>', '</b>'));
+        }
+
+        const btnTagItalic = document.getElementById('btn-tag-italic');
+        if (btnTagItalic) {
+            btnTagItalic.addEventListener('click', () => wrapTextSelectionWithTag('<i>', '</i>'));
+        }
+
+        const btnTagClear = document.getElementById('btn-tag-clear');
+        if (btnTagClear) {
+            btnTagClear.addEventListener('click', clearTextTags);
+        }
         
         const bindSelect = document.getElementById('prop-text-bind');
         if (bindSelect) {
             bindSelect.addEventListener('change', (e) => {
                 updateActiveProp('variable_binding', e.target.value || null);
+                // Re-inspect to sync bound row value in textarea
+                if (activeObj) inspect(activeObj);
                 // Also trigger rendering update in template engine
                 if (window.templateEngine && typeof window.templateEngine.applyBindings === 'function') {
                     window.templateEngine.applyBindings();
@@ -440,30 +474,133 @@
         shapeSec.classList.add('hidden');
         imgSec.classList.add('hidden');
 
-        // Render type-specific sections
-        if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
-            textSec.classList.remove('hidden');
-            document.getElementById('prop-text-val').value = obj.text || '';
-            
-            const bindSelect = document.getElementById('prop-text-bind');
-            if (bindSelect) {
-                bindSelect.value = obj.variable_binding || '';
-            }
-            
-            document.getElementById('prop-font-size').value = obj.fontSize || 12;
-            document.getElementById('prop-font-family').value = obj.fontFamily || 'Plus Jakarta Sans';
-            
-            // Standardize hex color mapping for color picker
-            const color = obj.fill || '#000000';
-            if (color.startsWith('#')) {
-                document.getElementById('prop-text-color').value = color;
-            }
-            
-            document.getElementById('prop-text-align').value = obj.textAlign || 'left';
-            document.getElementById('prop-font-bold').checked = obj.fontWeight === 'bold';
-            document.getElementById('prop-font-italic').checked = obj.fontStyle === 'italic';
+    // ponytail: handle text edits seamlessly across bound dataset rows and static template layers
+    function applyTextContentChange(newVal) {
+        if (!activeObj || isUpdatingForm) return;
 
-        } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'line' || obj.type === 'group' || obj.type === 'path') {
+        if (activeObj.variable_binding && window.templateEngine && typeof window.templateEngine.getCurrentRowData === 'function') {
+            const row = window.templateEngine.getCurrentRowData();
+            const colName = activeObj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
+            if (row && colName) {
+                // Update active dataset cell in memory & background save
+                window.templateEngine.updateDatasetCell(colName, newVal);
+                return;
+            }
+        }
+
+        // Unbound / template default text
+        if (window.templateEngine && typeof window.templateEngine.updateTextTemplate === 'function') {
+            window.templateEngine.updateTextTemplate(activeObj, newVal);
+        } else {
+            updateActiveProp('text', newVal);
+        }
+    }
+
+    function wrapTextSelectionWithTag(openTag, closeTag) {
+        const textarea = document.getElementById('prop-text-val');
+        if (!textarea || !activeObj) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value || '';
+
+        let newVal;
+        let newCursorPos;
+
+        if (start !== undefined && end !== undefined && start !== end) {
+            const selected = val.substring(start, end);
+            newVal = val.substring(0, start) + openTag + selected + closeTag + val.substring(end);
+            newCursorPos = start + openTag.length + selected.length + closeTag.length;
+        } else {
+            const pos = start !== undefined ? start : val.length;
+            newVal = val.substring(0, pos) + openTag + closeTag + val.substring(pos);
+            newCursorPos = pos + openTag.length;
+        }
+
+        textarea.value = newVal;
+        textarea.focus();
+        if (start !== end) {
+            textarea.setSelectionRange(start, newCursorPos);
+        } else {
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }
+
+        applyTextContentChange(newVal);
+    }
+
+    function clearTextTags() {
+        const textarea = document.getElementById('prop-text-val');
+        if (!textarea || !activeObj) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value || '';
+
+        let newVal;
+        if (start !== undefined && end !== undefined && start !== end) {
+            const selected = val.substring(start, end);
+            const cleaned = selected.replace(/<\/?([a-zA-Z0-9_\-#:=]+)>/g, '');
+            newVal = val.substring(0, start) + cleaned + val.substring(end);
+            textarea.value = newVal;
+            textarea.setSelectionRange(start, start + cleaned.length);
+        } else {
+            newVal = val.replace(/<\/?([a-zA-Z0-9_\-#:=]+)>/g, '');
+            textarea.value = newVal;
+        }
+
+        textarea.focus();
+        applyTextContentChange(newVal);
+    }
+
+    // Render type-specific sections
+    if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+        textSec.classList.remove('hidden');
+
+        let currentText = obj.text || '';
+        const bindBadge = document.getElementById('text-bind-badge');
+
+        if (obj.variable_binding && window.templateEngine && typeof window.templateEngine.getCurrentRowData === 'function') {
+            const row = window.templateEngine.getCurrentRowData();
+            const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
+            if (row && row[colName] !== undefined) {
+                currentText = row[colName];
+                if (bindBadge) {
+                    const rowIdx = window.templateEngine.getCurrentRowIndex ? window.templateEngine.getCurrentRowIndex() + 1 : '';
+                    bindBadge.textContent = `Row ${rowIdx} • {{${colName}}}`;
+                    bindBadge.classList.remove('hidden');
+                }
+            } else {
+                if (bindBadge) bindBadge.classList.add('hidden');
+            }
+        } else {
+            if (window.templateEngine && typeof window.templateEngine.getTextTemplate === 'function') {
+                const tmpl = window.templateEngine.getTextTemplate(obj);
+                if (tmpl !== undefined && tmpl !== null) currentText = tmpl;
+            }
+            if (bindBadge) bindBadge.classList.add('hidden');
+        }
+
+        document.getElementById('prop-text-val').value = currentText;
+        
+        const bindSelect = document.getElementById('prop-text-bind');
+        if (bindSelect) {
+            bindSelect.value = obj.variable_binding || '';
+        }
+        
+        document.getElementById('prop-font-size').value = obj.fontSize || 12;
+        document.getElementById('prop-font-family').value = obj.fontFamily || 'Plus Jakarta Sans';
+        
+        // Standardize hex color mapping for color picker
+        const color = obj.fill || '#000000';
+        if (color.startsWith('#')) {
+            document.getElementById('prop-text-color').value = color;
+        }
+        
+        document.getElementById('prop-text-align').value = obj.textAlign || 'left';
+        document.getElementById('prop-font-bold').checked = obj.fontWeight === 'bold';
+        document.getElementById('prop-font-italic').checked = obj.fontStyle === 'italic';
+
+    } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'line' || obj.type === 'group' || obj.type === 'path') {
             shapeSec.classList.remove('hidden');
             
             // Toggle fill options visibility if it is a Line layer

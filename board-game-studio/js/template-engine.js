@@ -140,25 +140,150 @@
         });
     }
 
-    // Replace bindings in text layers dynamically
+    // ponytail: parse inline color/format tags (<red>, <gold>, <color:#hex>, <b>, <i>, <u>) into FabricJS character styles
+    function parseStyledText(rawText) {
+        if (rawText === null || rawText === undefined) return { cleanText: '', styles: {} };
+        rawText = String(rawText);
+
+        const colorMap = {
+            'red': '#ef4444',
+            'gold': '#f59e0b',
+            'yellow': '#eab308',
+            'amber': '#d97706',
+            'blue': '#3b82f6',
+            'sky': '#0ea5e9',
+            'indigo': '#6366f1',
+            'green': '#22c55e',
+            'emerald': '#10b981',
+            'purple': '#a855f7',
+            'violet': '#8b5cf6',
+            'orange': '#f97316',
+            'rose': '#f43f5e',
+            'pink': '#ec4899',
+            'white': '#ffffff',
+            'black': '#000000',
+            'cyan': '#06b6d4',
+            'gray': '#9ca3af',
+            'grey': '#9ca3af'
+        };
+
+        if (!rawText.includes('<')) {
+            return { cleanText: rawText, styles: {} };
+        }
+
+        const lines = rawText.split('\n');
+        const allStyles = {};
+        const cleanLines = [];
+        const tagRegex = /<\/?([a-zA-Z0-9_\-#:=]+)>/g;
+
+        lines.forEach((line, lineIdx) => {
+            let cleanLine = '';
+            const lineStyles = {};
+            const styleStack = [];
+
+            function getEffectiveStyle() {
+                const eff = {};
+                styleStack.forEach(s => Object.assign(eff, s));
+                return eff;
+            }
+
+            let lastIndex = 0;
+            let match;
+            tagRegex.lastIndex = 0;
+
+            while ((match = tagRegex.exec(line)) !== null) {
+                const textBefore = line.substring(lastIndex, match.index);
+                const currentStyle = getEffectiveStyle();
+                const hasStyle = Object.keys(currentStyle).length > 0;
+
+                for (let i = 0; i < textBefore.length; i++) {
+                    const charPos = cleanLine.length;
+                    cleanLine += textBefore[i];
+                    if (hasStyle) {
+                        lineStyles[charPos] = { ...currentStyle };
+                    }
+                }
+
+                const rawTag = match[1];
+                const isClosing = match[0].startsWith('</');
+
+                if (isClosing) {
+                    styleStack.pop();
+                } else {
+                    const newStyle = {};
+                    const lowerTag = rawTag.toLowerCase();
+
+                    if (lowerTag.startsWith('color:') || lowerTag.startsWith('color=')) {
+                        const colorVal = rawTag.substring(6).trim();
+                        newStyle.fill = colorMap[colorVal.toLowerCase()] || colorVal;
+                    } else if (colorMap[lowerTag]) {
+                        newStyle.fill = colorMap[lowerTag];
+                    } else if (lowerTag.startsWith('#') || lowerTag.startsWith('rgb')) {
+                        newStyle.fill = rawTag;
+                    } else if (lowerTag === 'b' || lowerTag === 'strong') {
+                        newStyle.fontWeight = 'bold';
+                    } else if (lowerTag === 'i' || lowerTag === 'em') {
+                        newStyle.fontStyle = 'italic';
+                    } else if (lowerTag === 'u') {
+                        newStyle.underline = true;
+                    }
+
+                    if (Object.keys(newStyle).length > 0) {
+                        styleStack.push(newStyle);
+                    }
+                }
+
+                lastIndex = tagRegex.lastIndex;
+            }
+
+            const remainingText = line.substring(lastIndex);
+            const remainingStyle = getEffectiveStyle();
+            const hasRemainingStyle = Object.keys(remainingStyle).length > 0;
+
+            for (let i = 0; i < remainingText.length; i++) {
+                const charPos = cleanLine.length;
+                cleanLine += remainingText[i];
+                if (hasRemainingStyle) {
+                    lineStyles[charPos] = { ...remainingStyle };
+                }
+            }
+
+            cleanLines.push(cleanLine);
+            if (Object.keys(lineStyles).length > 0) {
+                allStyles[lineIdx] = lineStyles;
+            }
+        });
+
+        return {
+            cleanText: cleanLines.join('\n'),
+            styles: allStyles
+        };
+    }
+
+    // Apply variable substitution to canvas text/image layers
     function applyBindings() {
         const canvas = window.editorCanvas;
-        if (!canvas || !dataset) return;
+        if (!canvas) return;
 
-        if (!activeRowIndices || activeRowIndices.length === 0) {
-            activeRowIndices = parseRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
-        }
+        let row = null;
+        let actualRowIndex = 0;
 
-        if (currentRowIndex >= activeRowIndices.length) {
-            currentRowIndex = Math.max(0, activeRowIndices.length - 1);
-        }
+        if (dataset && dataset.rowData && dataset.rowData.length > 0) {
+            if (!activeRowIndices || activeRowIndices.length === 0) {
+                activeRowIndices = parseRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
+            }
 
-        const actualRowIndex = activeRowIndices[currentRowIndex] !== undefined ? activeRowIndices[currentRowIndex] : currentRowIndex;
-        const row = dataset.rowData[actualRowIndex];
+            if (currentRowIndex >= activeRowIndices.length) {
+                currentRowIndex = Math.max(0, activeRowIndices.length - 1);
+            }
 
-        const rowIndicator = document.getElementById('row-indicator');
-        if (rowIndicator) {
-            rowIndicator.textContent = `Row ${actualRowIndex + 1} (${currentRowIndex + 1} of ${activeRowIndices.length})`;
+            actualRowIndex = activeRowIndices[currentRowIndex] !== undefined ? activeRowIndices[currentRowIndex] : currentRowIndex;
+            row = dataset.rowData[actualRowIndex];
+
+            const rowIndicator = document.getElementById('row-indicator');
+            if (rowIndicator) {
+                rowIndicator.textContent = `Row ${actualRowIndex + 1} (${currentRowIndex + 1} of ${activeRowIndices.length})`;
+            }
         }
 
         const objects = canvas.getObjects();
@@ -173,11 +298,10 @@
                 }
 
                 let templateText = obj.variable_binding || textTemplates.get(obj);
+                let substitutedText = templateText;
                 
                 // Replace any double brackets syntax {{ColumnName}}
                 if (row) {
-                    // Match and replace all placeholders
-                    let substitutedText = templateText;
                     const matches = templateText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g);
                     
                     if (matches) {
@@ -193,14 +317,17 @@
                             substitutedText = row[colName];
                         }
                     }
-                    
-                    obj.set('text', substitutedText);
-                    if (typeof obj.initDimensions === 'function') {
-                        obj.initDimensions();
-                    }
-                    obj.setCoords();
-                    needsRender = true;
                 }
+
+                const parsed = parseStyledText(substitutedText);
+                obj.set('styles', parsed.styles);
+                obj.set('text', parsed.cleanText);
+                if (typeof obj.initDimensions === 'function') {
+                    obj.initDimensions();
+                }
+                obj.setCoords();
+                obj.set('dirty', true);
+                needsRender = true;
             } else if (obj.type === 'image' && obj.variable_binding) {
                 // Image binding: swap image src based on dataset column value
                 if (!imageOriginalSrcs.has(obj)) {
@@ -255,9 +382,15 @@
             // Wait for all image swaps to complete, then render
             Promise.all(imageSwapPromises).then(() => {
                 canvas.renderAll();
+                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function' && canvas.getActiveObject()) {
+                    window.propertyInspector.inspect(canvas.getActiveObject());
+                }
             });
         } else if (needsRender) {
             canvas.renderAll();
+            if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function' && canvas.getActiveObject()) {
+                window.propertyInspector.inspect(canvas.getActiveObject());
+            }
         }
     }
 
@@ -265,6 +398,43 @@
     function updateTextTemplate(obj, rawText) {
         textTemplates.set(obj, rawText);
         applyBindings();
+    }
+
+    let datasetSaveDebounce = null;
+    function updateDatasetCell(colName, value) {
+        if (!dataset || !dataset.rowData) return;
+        const actualRowIndex = activeRowIndices[currentRowIndex] !== undefined ? activeRowIndices[currentRowIndex] : currentRowIndex;
+        if (!dataset.rowData[actualRowIndex]) return;
+
+        dataset.rowData[actualRowIndex][colName] = value;
+        applyBindings();
+
+        // Debounced background API save to database
+        if (window.studioConfig && window.studioConfig.datasetId) {
+            clearTimeout(datasetSaveDebounce);
+            datasetSaveDebounce = setTimeout(() => {
+                const formData = new FormData();
+                formData.append('dataset_id', window.studioConfig.datasetId);
+                formData.append('row_index', actualRowIndex);
+                formData.append('column_name', colName);
+                formData.append('value', value);
+                if (window.studioConfig.csrfToken) {
+                    formData.append('csrf_token', window.studioConfig.csrfToken);
+                }
+
+                fetch('api.php?action=update_dataset_cell', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-Token': window.studioConfig.csrfToken
+                    }
+                }).then(r => r.json()).then(res => {
+                    if (res.error) {
+                        console.error('Failed to save dataset cell:', res.error);
+                    }
+                }).catch(e => console.error('Dataset save error:', e));
+            }, 350);
+        }
     }
 
     function switchDataset(newDatasetId) {
@@ -340,8 +510,16 @@
     window.templateEngine = {
         applyBindings: applyBindings,
         updateTextTemplate: updateTextTemplate,
+        updateDatasetCell: updateDatasetCell,
+        parseStyledText: parseStyledText,
+        getTextTemplate: (obj) => textTemplates.get(obj),
         switchDataset: switchDataset,
-        getCurrentRowData: () => dataset ? dataset.rowData[currentRowIndex] : null,
+        getCurrentRowIndex: () => activeRowIndices[currentRowIndex] !== undefined ? activeRowIndices[currentRowIndex] : currentRowIndex,
+        getCurrentRowData: () => {
+            if (!dataset || !dataset.rowData) return null;
+            const actualRowIndex = activeRowIndices[currentRowIndex] !== undefined ? activeRowIndices[currentRowIndex] : currentRowIndex;
+            return dataset.rowData[actualRowIndex] || null;
+        },
         getDataset: () => dataset,
         setRowIndex: (idx) => {
             if (dataset && idx >= 0 && idx < dataset.rowData.length) {
