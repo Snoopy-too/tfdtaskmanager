@@ -297,9 +297,9 @@
                         return matchKey !== undefined ? r[matchKey] : undefined;
                     }
 
-    // ponytail: parse inline color/format tags (<red>, <gold>, <color:#hex>, <b>, <i>, <u>) into FabricJS character styles for export
+    // ponytail: parse inline color/format tags (<red>, <gold>, <color:#hex>, <b>, <i>, <u>) into 1D character styles for export
     function parseStyledText(rawText) {
-        if (rawText === null || rawText === undefined) return { cleanText: '', styles: {} };
+        if (rawText === null || rawText === undefined) return { cleanText: '', charStyles: [] };
         rawText = String(rawText);
 
         const colorMap = {
@@ -325,96 +325,124 @@
         };
 
         if (!rawText.includes('<')) {
-            return { cleanText: rawText, styles: {} };
+            return { cleanText: rawText, charStyles: new Array(rawText.length).fill(null) };
         }
 
-        const lines = rawText.split('\n');
-        const allStyles = {};
-        const cleanLines = [];
+        let cleanText = '';
+        const charStyles = [];
+        const styleStack = [];
         const tagRegex = /<\/?([a-zA-Z0-9_\-#:=]+)>/g;
 
-        lines.forEach((line, lineIdx) => {
-            let cleanLine = '';
+        function getEffectiveStyle() {
+            if (styleStack.length === 0) return null;
+            const eff = {};
+            styleStack.forEach(s => Object.assign(eff, s));
+            return eff;
+        }
+
+        let lastIndex = 0;
+        let match;
+        tagRegex.lastIndex = 0;
+
+        while ((match = tagRegex.exec(rawText)) !== null) {
+            const textBefore = rawText.substring(lastIndex, match.index);
+            const currentStyle = getEffectiveStyle();
+
+            for (let i = 0; i < textBefore.length; i++) {
+                cleanText += textBefore[i];
+                charStyles.push(currentStyle ? { ...currentStyle } : null);
+            }
+
+            const rawTag = match[1];
+            const isClosing = match[0].startsWith('</');
+
+            if (isClosing) {
+                styleStack.pop();
+            } else {
+                const newStyle = {};
+                const lowerTag = rawTag.toLowerCase();
+
+                if (lowerTag.startsWith('color:') || lowerTag.startsWith('color=')) {
+                    const colorVal = rawTag.substring(6).trim();
+                    newStyle.fill = colorMap[colorVal.toLowerCase()] || colorVal;
+                } else if (colorMap[lowerTag]) {
+                    newStyle.fill = colorMap[lowerTag];
+                } else if (lowerTag.startsWith('#') || lowerTag.startsWith('rgb')) {
+                    newStyle.fill = rawTag;
+                } else if (lowerTag === 'b' || lowerTag === 'strong') {
+                    newStyle.fontWeight = 'bold';
+                } else if (lowerTag === 'i' || lowerTag === 'em') {
+                    newStyle.fontStyle = 'italic';
+                } else if (lowerTag === 'u') {
+                    newStyle.underline = true;
+                }
+
+                if (Object.keys(newStyle).length > 0) {
+                    styleStack.push(newStyle);
+                }
+            }
+
+            lastIndex = tagRegex.lastIndex;
+        }
+
+        const remainingText = rawText.substring(lastIndex);
+        const remainingStyle = getEffectiveStyle();
+
+        for (let i = 0; i < remainingText.length; i++) {
+            cleanText += remainingText[i];
+            charStyles.push(remainingStyle ? { ...remainingStyle } : null);
+        }
+
+        return { cleanText, charStyles };
+    }
+
+    /**
+     * Map 1D character styles onto an export Fabric text/textbox object across all soft-wrapped lines.
+     */
+    function applyStyledTextToObject(obj, rawText) {
+        const parsed = parseStyledText(rawText !== undefined && rawText !== null ? rawText : '');
+        obj.set('text', parsed.cleanText);
+
+        if (typeof obj.initDimensions === 'function') {
+            obj.initDimensions();
+        }
+
+        const hasAnyStyles = parsed.charStyles.some(s => s !== null);
+        if (!hasAnyStyles) {
+            obj.set('styles', {});
+            obj.setCoords();
+            obj.set('dirty', true);
+            return;
+        }
+
+        const styles = {};
+        const lines = obj._textLines || (obj.text ? obj.text.split('\n') : []);
+        let searchOffset = 0;
+
+        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+            const lineStr = lines[lineIdx];
             const lineStyles = {};
-            const styleStack = [];
+            const matchIdx = parsed.cleanText.indexOf(lineStr, searchOffset);
+            const startCharPos = (matchIdx !== -1) ? matchIdx : searchOffset;
 
-            function getEffectiveStyle() {
-                const eff = {};
-                styleStack.forEach(s => Object.assign(eff, s));
-                return eff;
-            }
-
-            let lastIndex = 0;
-            let match;
-            tagRegex.lastIndex = 0;
-
-            while ((match = tagRegex.exec(line)) !== null) {
-                const textBefore = line.substring(lastIndex, match.index);
-                const currentStyle = getEffectiveStyle();
-                const hasStyle = Object.keys(currentStyle).length > 0;
-
-                for (let i = 0; i < textBefore.length; i++) {
-                    const charPos = cleanLine.length;
-                    cleanLine += textBefore[i];
-                    if (hasStyle) {
-                        lineStyles[charPos] = { ...currentStyle };
-                    }
-                }
-
-                const rawTag = match[1];
-                const isClosing = match[0].startsWith('</');
-
-                if (isClosing) {
-                    styleStack.pop();
-                } else {
-                    const newStyle = {};
-                    const lowerTag = rawTag.toLowerCase();
-
-                    if (lowerTag.startsWith('color:') || lowerTag.startsWith('color=')) {
-                        const colorVal = rawTag.substring(6).trim();
-                        newStyle.fill = colorMap[colorVal.toLowerCase()] || colorVal;
-                    } else if (colorMap[lowerTag]) {
-                        newStyle.fill = colorMap[lowerTag];
-                    } else if (lowerTag.startsWith('#') || lowerTag.startsWith('rgb')) {
-                        newStyle.fill = rawTag;
-                    } else if (lowerTag === 'b' || lowerTag === 'strong') {
-                        newStyle.fontWeight = 'bold';
-                    } else if (lowerTag === 'i' || lowerTag === 'em') {
-                        newStyle.fontStyle = 'italic';
-                    } else if (lowerTag === 'u') {
-                        newStyle.underline = true;
-                    }
-
-                    if (Object.keys(newStyle).length > 0) {
-                        styleStack.push(newStyle);
-                    }
-                }
-
-                lastIndex = tagRegex.lastIndex;
-            }
-
-            const remainingText = line.substring(lastIndex);
-            const remainingStyle = getEffectiveStyle();
-            const hasRemainingStyle = Object.keys(remainingStyle).length > 0;
-
-            for (let i = 0; i < remainingText.length; i++) {
-                const charPos = cleanLine.length;
-                cleanLine += remainingText[i];
-                if (hasRemainingStyle) {
-                    lineStyles[charPos] = { ...remainingStyle };
+            for (let c = 0; c < lineStr.length; c++) {
+                const globalPos = startCharPos + c;
+                const charStyle = parsed.charStyles[globalPos];
+                if (charStyle && Object.keys(charStyle).length > 0) {
+                    lineStyles[c] = { ...charStyle };
                 }
             }
 
-            cleanLines.push(cleanLine);
             if (Object.keys(lineStyles).length > 0) {
-                allStyles[lineIdx] = lineStyles;
+                styles[lineIdx] = lineStyles;
             }
-        });
 
-        return {
-            cleanText: cleanLines.join('\n'),
-            styles: allStyles
-        };
+            searchOffset = startCharPos + lineStr.length;
+        }
+
+        obj.set('styles', styles);
+        obj.setCoords();
+        obj.set('dirty', true);
     }
 
     function processExportObjects(objectsList) {
@@ -449,14 +477,7 @@
                     }
                 }
                 
-                const parsed = parseStyledText(subText !== undefined && subText !== null ? subText : '');
-                obj.set('styles', parsed.styles);
-                obj.set('text', parsed.cleanText);
-                if (typeof obj.initDimensions === 'function') {
-                    obj.initDimensions();
-                }
-                obj.setCoords();
-                obj.set('dirty', true);
+                applyStyledTextToObject(obj, subText !== undefined && subText !== null ? subText : '');
             } else if (obj.type === 'image' && obj.variable_binding) {
                                 // Substitute image source for bound image layers
                                 const filename = getRowValue(row, obj.variable_binding);
