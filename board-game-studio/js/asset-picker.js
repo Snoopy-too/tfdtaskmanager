@@ -91,6 +91,7 @@
 
                 if (isImage) {
                     const img = document.createElement('img');
+                    img.crossOrigin = 'anonymous';
                     img.src = asset.url;
                     img.className = "max-h-full max-w-full object-contain group-hover:scale-105 transition duration-200";
                     preview.appendChild(img);
@@ -173,14 +174,34 @@
         fabric.Image.fromURL(asset.url, (img) => {
             if (!img) return;
 
-            // Keep size reasonable inside card workspace
-            const maxWidth = canvas.width * 0.7;
-            const maxHeight = canvas.height * 0.7;
-            let scale = 1.0;
+            // Ensure natural dimensions are resolved (especially for SVGs)
+            const rawEl = (typeof img.getElement === 'function') ? img.getElement() : null;
+            const naturalW = (rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (img.width || 300);
+            const naturalH = (rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (img.height || 300);
 
-            if (img.width > maxWidth || img.height > maxHeight) {
-                scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+            if (!img.width || img.width <= 0) img.set('width', naturalW);
+            if (!img.height || img.height <= 0) img.set('height', naturalH);
+
+            const imgW = img.width || naturalW || 1;
+            const imgH = img.height || naturalH || 1;
+
+            // Target a visible, balanced proportion: ~40-50% of the canvas workspace, bounded between 20% and 75%
+            const targetWidth = canvas.width * 0.45;
+            const targetHeight = canvas.height * 0.45;
+            const maxFitScale = Math.min((canvas.width * 0.75) / imgW, (canvas.height * 0.75) / imgH);
+
+            let scale = 1.0;
+            // If image is huge compared to canvas (> 70%), scale it down
+            if (imgW > canvas.width * 0.7 || imgH > canvas.height * 0.7) {
+                scale = maxFitScale;
+            } else if (imgW < canvas.width * 0.25 && imgH < canvas.height * 0.25) {
+                // If image is small relative to canvas (< 25%), scale it up so it is clearly visible and noticeable
+                scale = Math.min(targetWidth / imgW, targetHeight / imgH, maxFitScale);
+            } else {
+                scale = Math.min(1.0, maxFitScale);
             }
+
+            if (!isFinite(scale) || scale <= 0) scale = 1.0;
 
             img.set({
                 left: posX,
@@ -194,9 +215,30 @@
                 stored_filename: asset.stored_filename
             });
 
+            img.setCoords();
             canvas.add(img);
+
+            // Ensure the newly added image layer is on top of content layers
+            img.bringToFront();
+
+            // Keep guide lines on the top overlay above all content
+            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                window.guideRenderer.renderGuides();
+            }
+
             canvas.setActiveObject(img);
             canvas.renderAll();
+
+            // Immediately update layer stack sidebar
+            if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                window.layerManager.renderLayersList();
+            }
+
+            // Immediately inspect in properties inspector
+            if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+                window.propertyInspector.inspect(img);
+            }
+
             window.editorCore.triggerAutoSave();
         }, { crossOrigin: 'anonymous' });
     }

@@ -301,9 +301,8 @@ require_once __DIR__ . '/../templates/header.php';
                                     <span class="font-medium text-indigo-400 group-hover:text-indigo-300 transition">Click to upload files or ZIP</span> or drag and drop
                                 </div>
                                 <p class="text-[10px] text-slate-500">PNG, JPG, SVG, TTF, OTF or ZIP up to 10MB each</p>
-                            </div>
                         </div>
-                        <div id="file_selected_name" class="text-xs text-indigo-400 mt-2 font-medium hidden"></div>
+                        <div id="file_selected_preview" class="mt-3 hidden"></div>
                     </div>
 
                     <div>
@@ -547,20 +546,102 @@ require_once __DIR__ . '/../templates/header.php';
 </div>
 
 <script>
-    // Show selected file name inside upload box
+    // ponytail: rich file preview card with live thumbnail and clear action
     const fileInput = document.getElementById('asset_file');
-    const fileNameDiv = document.getElementById('file_selected_name');
-    if (fileInput) {
+    const previewContainer = document.getElementById('file_selected_preview');
+    const tagInput = document.getElementById('tag');
+
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function clearSelectedFiles() {
+        if (fileInput) fileInput.value = '';
+        if (previewContainer) {
+            previewContainer.innerHTML = '';
+            previewContainer.classList.add('hidden');
+        }
+    }
+
+    if (fileInput && previewContainer) {
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                if (e.target.files.length === 1) {
-                    fileNameDiv.textContent = `Selected: ${e.target.files[0].name}`;
-                } else {
-                    fileNameDiv.textContent = `Selected: ${e.target.files.length} files`;
+            const files = e.target.files;
+            if (!files || files.length === 0) {
+                clearSelectedFiles();
+                return;
+            }
+
+            previewContainer.innerHTML = '';
+            previewContainer.classList.remove('hidden');
+
+            if (files.length === 1) {
+                const file = files[0];
+                const isImg = file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.svg');
+                const thumbSrc = isImg ? URL.createObjectURL(file) : null;
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 border border-indigo-500/40 rounded-xl p-3 flex items-center justify-between gap-3 shadow-lg shadow-indigo-500/5";
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden min-w-0">
+                        <div class="w-10 h-10 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0 overflow-hidden p-1">
+                            ${thumbSrc 
+                                ? `<img src="${thumbSrc}" class="w-full h-full object-contain" alt="Preview">` 
+                                : `<svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-semibold text-slate-100 truncate" title="${file.name}">${file.name}</div>
+                            <div class="flex items-center space-x-2 mt-0.5">
+                                <span class="text-[10px] text-slate-400 font-mono">${formatBytes(file.size)}</span>
+                                <span class="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5">
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                    Ready to upload
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" id="btn-clear-file" title="Remove file" class="text-slate-400 hover:text-rose-400 transition p-1 rounded-lg hover:bg-slate-900 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                `;
+
+                previewContainer.appendChild(card);
+                document.getElementById('btn-clear-file')?.addEventListener('click', clearSelectedFiles);
+
+                if (tagInput && !tagInput.value.trim()) {
+                    const cleanTag = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                    tagInput.placeholder = cleanTag;
                 }
-                fileNameDiv.classList.remove('hidden');
             } else {
-                fileNameDiv.classList.add('hidden');
+                let totalBytes = 0;
+                for (let i = 0; i < files.length; i++) totalBytes += files[i].size;
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 border border-indigo-500/40 rounded-xl p-3 flex items-center justify-between gap-3 shadow-lg shadow-indigo-500/5";
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden min-w-0">
+                        <div class="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0 text-indigo-400 font-bold text-xs">
+                            ${files.length}x
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-semibold text-slate-100">${files.length} files selected</div>
+                            <div class="flex items-center space-x-2 mt-0.5">
+                                <span class="text-[10px] text-slate-400 font-mono">${formatBytes(totalBytes)} total</span>
+                                <span class="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5">
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                    Ready
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" id="btn-clear-file" title="Remove all files" class="text-slate-400 hover:text-rose-400 transition p-1 rounded-lg hover:bg-slate-900 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                `;
+                previewContainer.appendChild(card);
+                document.getElementById('btn-clear-file')?.addEventListener('click', clearSelectedFiles);
             }
         });
     }

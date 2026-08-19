@@ -10,3 +10,8 @@ Options -Indexes
 <Files ".htaccess">
     Require all denied
 </Files>
+
+# Allow cross-origin asset requests for HTML5 Canvas rendering & PDF exports
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+</IfModule>

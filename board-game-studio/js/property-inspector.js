@@ -38,16 +38,28 @@
         // Alignment Buttons
         document.getElementById('btn-align-h').addEventListener('click', () => {
             if (!activeObj || !window.editorCanvas) return;
-            activeObj.set({ originX: 'center', left: window.editorCanvas.width / 2 });
-            document.getElementById('prop-left').value = Math.round(window.editorCanvas.width / 2);
-            window.editorCanvas.renderAll();
+            const canvas = window.editorCanvas;
+            if (activeObj.originX === 'center') {
+                activeObj.set('left', canvas.width / 2);
+            } else {
+                activeObj.centerH();
+            }
+            activeObj.setCoords();
+            document.getElementById('prop-left').value = Math.round(activeObj.left);
+            canvas.renderAll();
             window.editorCore.triggerAutoSave();
         });
         document.getElementById('btn-align-v').addEventListener('click', () => {
             if (!activeObj || !window.editorCanvas) return;
-            activeObj.set({ originY: 'center', top: window.editorCanvas.height / 2 });
-            document.getElementById('prop-top').value = Math.round(window.editorCanvas.height / 2);
-            window.editorCanvas.renderAll();
+            const canvas = window.editorCanvas;
+            if (activeObj.originY === 'center') {
+                activeObj.set('top', canvas.height / 2);
+            } else {
+                activeObj.centerV();
+            }
+            activeObj.setCoords();
+            document.getElementById('prop-top').value = Math.round(activeObj.top);
+            canvas.renderAll();
             window.editorCore.triggerAutoSave();
         });
 
@@ -258,25 +270,45 @@
         const btnFitContain = document.getElementById('btn-inspector-fit-contain');
         if (btnFitContain) {
             btnFitContain.addEventListener('click', () => {
-                if (!activeObj || activeObj.type !== 'image' || !window.editorCanvas) return;
-                
+                if (!activeObj || !window.editorCanvas) return;
+                const canvas = window.editorCanvas;
+
+                const rawEl = (typeof activeObj.getElement === 'function') ? activeObj.getElement() : null;
+                const rawW = (activeObj.width && activeObj.width > 0)
+                    ? activeObj.width
+                    : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (activeObj.getScaledWidth ? (activeObj.getScaledWidth() / (activeObj.scaleX || 1)) : 300));
+                const rawH = (activeObj.height && activeObj.height > 0)
+                    ? activeObj.height
+                    : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (activeObj.getScaledHeight ? (activeObj.getScaledHeight() / (activeObj.scaleY || 1)) : 300));
+
+                if (!activeObj.width || activeObj.width <= 0) activeObj.set('width', rawW);
+                if (!activeObj.height || activeObj.height <= 0) activeObj.set('height', rawH);
+
+                let scale = Math.min(canvas.width / rawW, canvas.height / rawH);
+                if (!isFinite(scale) || scale <= 0) scale = 1.0;
+
                 activeObj.set({
                     angle: 0,
                     originX: 'center',
                     originY: 'center',
-                    left: window.editorCanvas.width / 2,
-                    top: window.editorCanvas.height / 2
-                });
-                
-                const scale = Math.min(window.editorCanvas.width / activeObj.width, window.editorCanvas.height / activeObj.height);
-                activeObj.set({
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
                     scaleX: scale,
                     scaleY: scale
                 });
-                
+
                 activeObj.setCoords();
-                window.editorCanvas.renderAll();
+                activeObj.bringToFront();
+
+                if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                    window.guideRenderer.renderGuides();
+                }
+
+                canvas.renderAll();
                 window.editorCore.triggerAutoSave();
+                if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                    window.layerManager.renderLayersList();
+                }
                 inspect(activeObj);
             });
         }
@@ -284,25 +316,45 @@
         const btnFitCover = document.getElementById('btn-inspector-fit-cover');
         if (btnFitCover) {
             btnFitCover.addEventListener('click', () => {
-                if (!activeObj || activeObj.type !== 'image' || !window.editorCanvas) return;
-                
+                if (!activeObj || !window.editorCanvas) return;
+                const canvas = window.editorCanvas;
+
+                const rawEl = (typeof activeObj.getElement === 'function') ? activeObj.getElement() : null;
+                const rawW = (activeObj.width && activeObj.width > 0)
+                    ? activeObj.width
+                    : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (activeObj.getScaledWidth ? (activeObj.getScaledWidth() / (activeObj.scaleX || 1)) : 300));
+                const rawH = (activeObj.height && activeObj.height > 0)
+                    ? activeObj.height
+                    : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (activeObj.getScaledHeight ? (activeObj.getScaledHeight() / (activeObj.scaleY || 1)) : 300));
+
+                if (!activeObj.width || activeObj.width <= 0) activeObj.set('width', rawW);
+                if (!activeObj.height || activeObj.height <= 0) activeObj.set('height', rawH);
+
+                let scale = Math.max(canvas.width / rawW, canvas.height / rawH);
+                if (!isFinite(scale) || scale <= 0) scale = 1.0;
+
                 activeObj.set({
                     angle: 0,
                     originX: 'center',
                     originY: 'center',
-                    left: window.editorCanvas.width / 2,
-                    top: window.editorCanvas.height / 2
-                });
-                
-                const scale = Math.max(window.editorCanvas.width / activeObj.width, window.editorCanvas.height / activeObj.height);
-                activeObj.set({
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
                     scaleX: scale,
                     scaleY: scale
                 });
-                
+
                 activeObj.setCoords();
-                window.editorCanvas.renderAll();
+                activeObj.bringToFront();
+
+                if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                    window.guideRenderer.renderGuides();
+                }
+
+                canvas.renderAll();
                 window.editorCore.triggerAutoSave();
+                if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                    window.layerManager.renderLayersList();
+                }
                 inspect(activeObj);
             });
         }
@@ -371,14 +423,14 @@
     function updateActiveScaleWidth(width) {
         if (!activeObj || isUpdatingForm) return;
 
+        const rawW = (activeObj.width && activeObj.width > 0) ? activeObj.width : 1;
         if (activeObj.type === 'textbox') {
             activeObj.set({ width: width, scaleX: 1 });
         } else {
-            const scaleX = width / activeObj.width;
+            const scaleX = width / rawW;
             activeObj.set('scaleX', scaleX);
         }
-        window.editorCanvas.renderAll();
-        window.editorCore.triggerAutoSave();
+        activeObj.setCoords();
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
 
@@ -390,8 +442,10 @@
     function updateActiveScaleHeight(height) {
         if (!activeObj || isUpdatingForm) return;
 
-        const scaleY = height / activeObj.height;
+        const rawH = (activeObj.height && activeObj.height > 0) ? activeObj.height : 1;
+        const scaleY = height / rawH;
         activeObj.set('scaleY', scaleY);
+        activeObj.setCoords();
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
 

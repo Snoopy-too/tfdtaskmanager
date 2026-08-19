@@ -100,7 +100,7 @@ class BgAssetService
         // Copy .htaccess to protect uploads from execution if it does not exist
         $htaccessPath = $this->uploadDirBase . DIRECTORY_SEPARATOR . '.htaccess';
         if (!file_exists($htaccessPath)) {
-            $htaccessContent = "<FilesMatch \"\\.php$\">\n    Require all denied\n</FilesMatch>\n";
+            $htaccessContent = "# Disable directory listing\nOptions -Indexes\n\n# Prevent PHP execution\n<FilesMatch \"\\.php$\">\n    Require all denied\n</FilesMatch>\n\n# Protect .htaccess\n<Files \".htaccess\">\n    Require all denied\n</Files>\n\n# Allow cross-origin asset loading\n<IfModule mod_headers.c>\n    Header set Access-Control-Allow-Origin \"*\"\n</IfModule>\n";
             file_put_contents($htaccessPath, $htaccessContent);
         }
 

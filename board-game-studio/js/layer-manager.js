@@ -60,8 +60,16 @@
             name: 'Text Layer'
         });
         canvas.add(text);
+        text.bringToFront();
+        if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+            window.guideRenderer.renderGuides();
+        }
         canvas.setActiveObject(text);
         canvas.renderAll();
+        renderLayersList();
+        if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+            window.propertyInspector.inspect(text);
+        }
         window.editorCore.triggerAutoSave();
     }
 
@@ -80,8 +88,16 @@
             name: 'Rectangle Layer'
         });
         canvas.add(rect);
+        rect.bringToFront();
+        if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+            window.guideRenderer.renderGuides();
+        }
         canvas.setActiveObject(rect);
         canvas.renderAll();
+        renderLayersList();
+        if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+            window.propertyInspector.inspect(rect);
+        }
         window.editorCore.triggerAutoSave();
     }
 
@@ -99,8 +115,16 @@
             name: 'Circle Layer'
         });
         canvas.add(circle);
+        circle.bringToFront();
+        if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+            window.guideRenderer.renderGuides();
+        }
         canvas.setActiveObject(circle);
         canvas.renderAll();
+        renderLayersList();
+        if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+            window.propertyInspector.inspect(circle);
+        }
         window.editorCore.triggerAutoSave();
     }
 
@@ -121,8 +145,16 @@
             name: 'Line Layer'
         });
         canvas.add(line);
+        line.bringToFront();
+        if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+            window.guideRenderer.renderGuides();
+        }
         canvas.setActiveObject(line);
         canvas.renderAll();
+        renderLayersList();
+        if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+            window.propertyInspector.inspect(line);
+        }
         window.editorCore.triggerAutoSave();
     }
 
