@@ -22,4 +22,9 @@ interface BgAssetRepositoryInterface
      * @return BgAsset[]
      */
     public function findByTag(?int $projectId, string $tag): array;
+
+    /**
+     * @return string[]
+     */
+    public function findAllTags(): array;
 }

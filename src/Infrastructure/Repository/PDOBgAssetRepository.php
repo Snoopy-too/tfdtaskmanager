@@ -114,6 +114,19 @@ class PDOBgAssetRepository implements BgAssetRepositoryInterface
         return $assets;
     }
 
+    public function findAllTags(): array
+    {
+        $stmt = $this->pdo->query("SELECT DISTINCT tag FROM bg_assets WHERE tag IS NOT NULL");
+        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $tags = [];
+        foreach ($rows as $rawTag) {
+            if ($rawTag !== null && trim($rawTag) !== '') {
+                $tags[] = trim($rawTag, '[]');
+            }
+        }
+        return $tags;
+    }
+
     private function mapRowToEntity(array $row): BgAsset
     {
         return new BgAsset(

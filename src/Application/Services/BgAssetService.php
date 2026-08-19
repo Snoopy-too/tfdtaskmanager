@@ -65,18 +65,11 @@ class BgAssetService
 
         $srcIconsDir = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'icons';
 
-        $existingAssets = $this->assetRepository->findByProjectId(null, false);
-        $existingTags = [];
-        foreach ($existingAssets as $asset) {
-            if ($asset->getTag() !== null) {
-                $cleanTag = trim($asset->getTag(), '[]');
-                $existingTags[$cleanTag] = $asset;
-            }
-        }
+        $existingTags = array_flip($this->assetRepository->findAllTags());
 
         foreach ($defaultIcons as $tag => $filename) {
-            $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
             if (!isset($existingTags[$tag])) {
+                $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
                 if (file_exists($srcPath)) {
                     $storedName = uniqid() . '_' . $filename;
                     $destPath = $globalUploadDir . DIRECTORY_SEPARATOR . $storedName;
@@ -94,14 +87,7 @@ class BgAssetService
                             1
                         );
                         $this->assetRepository->save($asset);
-                    }
-                }
-            } else {
-                $asset = $existingTags[$tag];
-                $filePath = $globalUploadDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
-                if (file_exists($srcPath)) {
-                    if (!file_exists($filePath) || (filemtime($srcPath) > filemtime($filePath))) {
-                        copy($srcPath, $filePath);
+                        $existingTags[$tag] = true;
                     }
                 }
             }
