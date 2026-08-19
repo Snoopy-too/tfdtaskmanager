@@ -301,6 +301,7 @@ require_once __DIR__ . '/../templates/header.php';
                                     <span class="font-medium text-indigo-400 group-hover:text-indigo-300 transition">Click to upload files or ZIP</span> or drag and drop
                                 </div>
                                 <p class="text-[10px] text-slate-500">PNG, JPG, SVG, TTF, OTF or ZIP up to 10MB each</p>
+                            </div>
                         </div>
                         <div id="file_selected_preview" class="mt-3 hidden"></div>
                     </div>
