@@ -138,9 +138,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Load assets (loads global assets when activeProjectId is null)
 $assets = $assetService->getAssetsByProject($activeProjectId);
 
-// Filters
+// Filters & Sorting
 $searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
 $typeFilter = isset($_GET['type']) ? trim($_GET['type']) : 'all';
+$sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'date_desc';
 
 // Apply filters on assets list
 if ($searchQuery !== '' || $typeFilter !== 'all') {
@@ -170,6 +171,18 @@ if ($searchQuery !== '' || $typeFilter !== 'all') {
         }
     }
     $assets = $filteredAssets;
+}
+
+// Apply sorting (Alphabetical or Upload Date)
+if ($sort === 'name_asc') {
+    usort($assets, fn($a, $b) => strnatcasecmp($a->getOriginalFilename(), $b->getOriginalFilename()));
+} elseif ($sort === 'name_desc') {
+    usort($assets, fn($a, $b) => strnatcasecmp($b->getOriginalFilename(), $a->getOriginalFilename()));
+} elseif ($sort === 'date_asc') {
+    usort($assets, fn($a, $b) => strcmp($a->getCreatedAt(), $b->getCreatedAt()));
+} else {
+    // Default: date_desc (newest first)
+    usort($assets, fn($a, $b) => strcmp($b->getCreatedAt(), $a->getCreatedAt()));
 }
 
 require_once __DIR__ . '/../templates/header.php';
@@ -272,28 +285,40 @@ require_once __DIR__ . '/../templates/header.php';
         <div class="lg:col-span-3 space-y-6">
             <!-- Search and Filter Bar -->
             <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <form method="GET" class="flex flex-col md:flex-row md:items-center gap-4 m-0 w-full">
+                <form method="GET" class="flex flex-col md:flex-row md:items-center gap-3 m-0 w-full flex-wrap">
                     <input type="hidden" name="project_id" value="<?php echo $activeProjectId; ?>">
+                    <input type="hidden" name="type" value="<?php echo SecurityHelper::escape($typeFilter); ?>">
                     
                     <div class="relative w-full md:max-w-xs">
                         <input type="text" name="search" value="<?php echo SecurityHelper::escape($searchQuery); ?>" placeholder="Search filename or tag..." class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 pl-9 pr-4 py-2">
                         <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </div>
 
-                    <div class="flex items-center space-x-2">
-                        <a href="?project_id=<?php echo $activeProjectId; ?>&type=all&search=<?php echo urlencode($searchQuery); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'all' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
+                    <div class="flex items-center space-x-1.5">
+                        <a href="?project_id=<?php echo $activeProjectId; ?>&type=all&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'all' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
                             All Assets
                         </a>
-                        <a href="?project_id=<?php echo $activeProjectId; ?>&type=image&search=<?php echo urlencode($searchQuery); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'image' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
+                        <a href="?project_id=<?php echo $activeProjectId; ?>&type=image&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'image' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
                             Images
                         </a>
-                        <a href="?project_id=<?php echo $activeProjectId; ?>&type=font&search=<?php echo urlencode($searchQuery); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'font' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
+                        <a href="?project_id=<?php echo $activeProjectId; ?>&type=font&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'font' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
                             Fonts
                         </a>
                     </div>
+
+                    <!-- Sort Selector -->
+                    <div class="flex items-center space-x-1.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300">
+                        <label for="sort-select" class="text-slate-500 text-[11px] whitespace-nowrap">Sort:</label>
+                        <select id="sort-select" name="sort" onchange="this.form.submit()" class="bg-transparent border-0 text-slate-200 text-xs focus:ring-0 p-0 font-medium cursor-pointer">
+                            <option value="date_desc" <?php echo $sort === 'date_desc' ? 'selected' : ''; ?>>Newest First</option>
+                            <option value="date_asc" <?php echo $sort === 'date_asc' ? 'selected' : ''; ?>>Oldest First</option>
+                            <option value="name_asc" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>Name (A → Z)</option>
+                            <option value="name_desc" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Name (Z → A)</option>
+                        </select>
+                    </div>
                     
-                    <?php if ($searchQuery !== '' || $typeFilter !== 'all'): ?>
-                        <a href="?project_id=<?php echo $activeProjectId; ?>" class="text-xs text-slate-500 hover:text-slate-300 self-center md:ml-auto">Clear Filters</a>
+                    <?php if ($searchQuery !== '' || $typeFilter !== 'all' || $sort !== 'date_desc'): ?>
+                        <a href="?project_id=<?php echo $activeProjectId; ?>" class="text-xs text-slate-500 hover:text-slate-300 self-center md:ml-auto">Reset</a>
                     <?php endif; ?>
                 </form>
             </div>
