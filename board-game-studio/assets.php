@@ -19,9 +19,9 @@ $csrfToken = SecurityHelper::generateCsrfToken();
 
 // Projects dropdown
 $projects = $projectService->getAllProjects();
-$activeProjectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '') ? (int)$_GET['project_id'] : null;
+$activeProjectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '' && $_GET['project_id'] !== 'global') ? (int)$_GET['project_id'] : null;
 
-// Default to last project from session if not specified, otherwise default to first project
+// Default to last project from session if not specified in URL query at all
 if ($activeProjectId === null && !isset($_GET['project_id'])) {
     if (isset($_SESSION['last_project_id'])) {
         $activeProjectId = (int)$_SESSION['last_project_id'];
@@ -79,6 +79,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Project / Global Assignment Action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_asset_project') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $assetId = isset($_POST['asset_id']) ? (int)$_POST['asset_id'] : 0;
+        $targetProjectId = (isset($_POST['target_project_id']) && $_POST['target_project_id'] !== '' && $_POST['target_project_id'] !== 'global') ? (int)$_POST['target_project_id'] : null;
+        try {
+            $updated = $assetService->updateAssetProject($assetId, $targetProjectId);
+            if ($targetProjectId === null) {
+                $success = "Asset '" . SecurityHelper::escape($updated->getOriginalFilename()) . "' moved to Global Asset Library.";
+            } else {
+                $targetProj = $projectService->getProjectById($targetProjectId);
+                $projName = $targetProj ? $targetProj->getName() : "Project #{$targetProjectId}";
+                $success = "Asset '" . SecurityHelper::escape($updated->getOriginalFilename()) . "' assigned to {$projName}.";
+            }
+        } catch (\Exception $e) {
+            $error = "Failed to update asset assignment: " . $e->getMessage();
+        }
+    }
+}
+
 // Handle Delete Action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_asset') {
     $submittedToken = $_POST['csrf_token'] ?? '';
@@ -112,8 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Load assets
-$assets = $activeProjectId ? $assetService->getAssetsByProject($activeProjectId) : [];
+// Load assets (loads global assets when activeProjectId is null)
+$assets = $assetService->getAssetsByProject($activeProjectId);
 
 // Filters
 $searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -345,15 +368,30 @@ require_once __DIR__ . '/../templates/header.php';
                                     </button>
                                 </form>
 
-                                <!-- Delete button -->
-                                <div class="flex justify-end pt-1">
+                                <!-- Project Assignment & Delete Actions -->
+                                <div class="pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
+                                    <form action="" method="POST" class="m-0 flex items-center gap-1.5 flex-grow">
+                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                        <input type="hidden" name="action" value="update_asset_project">
+                                        <input type="hidden" name="asset_id" value="<?php echo $asset->getId(); ?>">
+                                        
+                                        <select name="target_project_id" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-300 text-[11px] rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer w-full" title="Change asset scope (Global or assign to a specific project)">
+                                            <option value="" <?php echo $asset->getProjectId() === null ? 'selected' : ''; ?>>🌐 Global</option>
+                                            <?php foreach ($projects as $p): ?>
+                                                <option value="<?php echo $p->getId(); ?>" <?php echo $asset->getProjectId() === $p->getId() ? 'selected' : ''; ?>>
+                                                    📁 <?php echo SecurityHelper::escape($p->getName()); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </form>
+
                                     <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this asset? This cannot be undone and may break canvas layers referencing this asset.', this);">
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="delete_asset">
                                         <input type="hidden" name="asset_id" value="<?php echo $asset->getId(); ?>">
                                         
-                                        <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/10 hover:border-rose-500/20 px-2.5 py-1 rounded-lg transition">
-                                            Delete File
+                                        <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/10 hover:border-rose-500/20 px-2 py-1 rounded-lg transition" title="Delete File">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
                                     </form>
                                 </div>

@@ -18,7 +18,7 @@ class PDOBgAssetRepository implements BgAssetRepositoryInterface
 
     public function findByProjectId(?int $projectId, bool $includeGlobal = true): array
     {
-        if ($projectId === null) {
+        if ($projectId === null || $projectId <= 0) {
             $stmt = $this->pdo->prepare("SELECT * FROM bg_assets WHERE project_id IS NULL ORDER BY created_at DESC");
             $stmt->execute();
         } else {
@@ -76,10 +76,11 @@ class PDOBgAssetRepository implements BgAssetRepositoryInterface
         } else {
             $stmt = $this->pdo->prepare("
                 UPDATE bg_assets
-                SET tag = :tag
+                SET project_id = :project_id, tag = :tag
                 WHERE id = :id
             ");
             $stmt->execute([
+                'project_id' => $asset->getProjectId(),
                 'tag' => $asset->getTag(),
                 'id' => $asset->getId()
             ]);

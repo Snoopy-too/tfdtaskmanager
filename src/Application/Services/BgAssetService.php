@@ -21,11 +21,11 @@ class BgAssetService
 
     public function getAssetsByProject(?int $projectId): array
     {
-        $this->ensureDefaultIconsPopulated($projectId);
+        $this->ensureDefaultIconsPopulated();
         return $this->assetRepository->findByProjectId($projectId);
     }
 
-    private function ensureDefaultIconsPopulated(?int $projectId): void
+    private function ensureDefaultIconsPopulated(): void
     {
         $defaultIcons = [
             'icon_speed' => 'icon_speed.svg',
@@ -58,15 +58,14 @@ class BgAssetService
             'icon_arms' => 'icon_arms.svg'
         ];
 
-        $folderName = ($projectId === null) ? 'global' : (string)$projectId;
-        $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $folderName;
-        if (!is_dir($projectUploadDir)) {
-            mkdir($projectUploadDir, 0755, true);
+        $globalUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . 'global';
+        if (!is_dir($globalUploadDir)) {
+            mkdir($globalUploadDir, 0755, true);
         }
 
         $srcIconsDir = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'icons';
 
-        $existingAssets = $this->assetRepository->findByProjectId($projectId, false);
+        $existingAssets = $this->assetRepository->findByProjectId(null, false);
         $existingTags = [];
         foreach ($existingAssets as $asset) {
             if ($asset->getTag() !== null) {
@@ -80,13 +79,13 @@ class BgAssetService
             if (!isset($existingTags[$tag])) {
                 if (file_exists($srcPath)) {
                     $storedName = uniqid() . '_' . $filename;
-                    $destPath = $projectUploadDir . DIRECTORY_SEPARATOR . $storedName;
+                    $destPath = $globalUploadDir . DIRECTORY_SEPARATOR . $storedName;
                     
                     if (copy($srcPath, $destPath)) {
                         $size = filesize($destPath);
                         $asset = new BgAsset(
                             null,
-                            $projectId,
+                            null,
                             $filename,
                             $storedName,
                             'image/svg+xml',
@@ -99,7 +98,7 @@ class BgAssetService
                 }
             } else {
                 $asset = $existingTags[$tag];
-                $filePath = $projectUploadDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+                $filePath = $globalUploadDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
                 if (file_exists($srcPath)) {
                     if (!file_exists($filePath) || (filemtime($srcPath) > filemtime($filePath))) {
                         copy($srcPath, $filePath);
@@ -248,6 +247,48 @@ class BgAssetService
             $asset->getMimeType(),
             $asset->getFileSizeBytes(),
             $cleanTag,
+            $asset->getUploadedBy(),
+            $asset->getCreatedAt()
+        );
+
+        return $this->assetRepository->save($updatedAsset);
+    }
+
+    public function updateAssetProject(int $id, ?int $newProjectId): BgAsset
+    {
+        $asset = $this->assetRepository->findById($id);
+        if (!$asset) {
+            throw new ValidationException("Asset not found.");
+        }
+
+        $oldProjectId = $asset->getProjectId();
+        if ($oldProjectId === $newProjectId) {
+            return $asset;
+        }
+
+        $oldFolder = ($oldProjectId === null) ? 'global' : (string)$oldProjectId;
+        $newFolder = ($newProjectId === null) ? 'global' : (string)$newProjectId;
+
+        $oldPath = $this->uploadDirBase . DIRECTORY_SEPARATOR . $oldFolder . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+        $newDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $newFolder;
+        $newPath = $newDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+
+        if (!is_dir($newDir)) {
+            mkdir($newDir, 0755, true);
+        }
+
+        if (file_exists($oldPath)) {
+            rename($oldPath, $newPath);
+        }
+
+        $updatedAsset = new BgAsset(
+            $asset->getId(),
+            $newProjectId,
+            $asset->getOriginalFilename(),
+            $asset->getStoredFilename(),
+            $asset->getMimeType(),
+            $asset->getFileSizeBytes(),
+            $asset->getTag(),
             $asset->getUploadedBy(),
             $asset->getCreatedAt()
         );
