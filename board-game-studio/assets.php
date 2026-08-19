@@ -307,13 +307,13 @@ require_once __DIR__ . '/../templates/header.php';
                     </div>
 
                     <!-- Sort Selector -->
-                    <div class="flex items-center space-x-1.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300">
-                        <label for="sort-select" class="text-slate-500 text-[11px] whitespace-nowrap">Sort:</label>
-                        <select id="sort-select" name="sort" onchange="this.form.submit()" class="bg-transparent border-0 text-slate-200 text-xs focus:ring-0 p-0 font-medium cursor-pointer">
-                            <option value="date_desc" <?php echo $sort === 'date_desc' ? 'selected' : ''; ?>>Newest First</option>
-                            <option value="date_asc" <?php echo $sort === 'date_asc' ? 'selected' : ''; ?>>Oldest First</option>
-                            <option value="name_asc" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>Name (A → Z)</option>
-                            <option value="name_desc" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Name (Z → A)</option>
+                    <div class="flex items-center space-x-1.5">
+                        <label for="sort-select" class="text-slate-400 text-xs font-medium whitespace-nowrap">Sort:</label>
+                        <select id="sort-select" name="sort" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-1 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
+                            <option value="date_desc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'date_desc' ? 'selected' : ''; ?>>Newest First</option>
+                            <option value="date_asc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'date_asc' ? 'selected' : ''; ?>>Oldest First</option>
+                            <option value="name_asc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>Name (A → Z)</option>
+                            <option value="name_desc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Name (Z → A)</option>
                         </select>
                     </div>
                     
