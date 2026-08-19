@@ -506,7 +506,7 @@ require_once __DIR__ . '/../templates/header.php';
                                         </select>
                                     </form>
 
-                                    <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this asset? This cannot be undone and may break canvas layers referencing this asset.', this);">
+                                    <form action="" method="POST" class="m-0" onsubmit="return showCustomConfirm('Are you sure you want to delete this asset? This cannot be undone and may break canvas layers referencing this asset.', this, 'Delete', 'Delete Asset');">
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="delete_asset">
                                         <input type="hidden" name="asset_id" value="<?php echo $asset->getId(); ?>">
@@ -521,28 +521,6 @@ require_once __DIR__ . '/../templates/header.php';
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-        </div>
-    </div>
-</div>
-
-<!-- Custom Confirmation Modal -->
-<div id="custom-confirm-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-sm space-y-4 shadow-2xl">
-        <div class="flex items-center space-x-3">
-            <div id="confirm-modal-icon-container" class="p-2.5 rounded-xl bg-rose-500/10 text-rose-400">
-                <svg id="confirm-modal-icon" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-            </div>
-            <div>
-                <h3 id="custom-confirm-title" class="text-base font-bold text-slate-100">Confirm Action</h3>
-                <p class="text-[11px] text-slate-500 font-medium">Please confirm to proceed</p>
-            </div>
-        </div>
-        <p id="custom-confirm-message" class="text-xs text-slate-300 leading-relaxed pl-1">Are you sure you want to proceed?</p>
-        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800/60">
-            <button type="button" id="btn-confirm-cancel" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition duration-150">Cancel</button>
-            <button type="button" id="btn-confirm-ok" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/20 transition duration-150">Confirm</button>
         </div>
     </div>
 </div>
@@ -612,64 +590,6 @@ require_once __DIR__ . '/../templates/header.php';
         return true;
     }
 
-    // Custom Confirmation Dialog
-    let activeConfirmCallback = null;
-
-    function closeCustomConfirm() {
-        const modal = document.getElementById('custom-confirm-modal');
-        if (modal) modal.classList.add('hidden');
-        activeConfirmCallback = null;
-    }
-
-    function showCustomConfirm(message, onConfirm, options = {}) {
-        const modal = document.getElementById('custom-confirm-modal');
-        const msgEl = document.getElementById('custom-confirm-message');
-        const titleEl = document.getElementById('custom-confirm-title');
-        const btnOk = document.getElementById('btn-confirm-ok');
-        const iconContainer = document.getElementById('confirm-modal-icon-container');
-
-        if (!modal || !msgEl) {
-            if (confirm(message)) {
-                if (typeof onConfirm === 'function') onConfirm();
-                else if (onConfirm && onConfirm.submit) onConfirm.submit();
-            }
-            return false;
-        }
-
-        msgEl.textContent = message;
-        if (titleEl) titleEl.textContent = options.title || 'Confirm Action';
-        
-        if (btnOk) {
-            btnOk.textContent = options.confirmText || 'Confirm';
-            if (options.variant === 'indigo') {
-                btnOk.className = 'px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition duration-150';
-                if (iconContainer) iconContainer.className = 'p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400';
-            } else {
-                btnOk.className = 'px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/20 transition duration-150';
-                if (iconContainer) iconContainer.className = 'p-2.5 rounded-xl bg-rose-500/10 text-rose-400';
-            }
-        }
-
-        activeConfirmCallback = typeof onConfirm === 'function' ? onConfirm : () => onConfirm.submit();
-        modal.classList.remove('hidden');
-        return false;
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const btnOk = document.getElementById('btn-confirm-ok');
-        const btnCancel = document.getElementById('btn-confirm-cancel');
-        if (btnOk) {
-            btnOk.addEventListener('click', () => {
-                const cb = activeConfirmCallback;
-                closeCustomConfirm();
-                if (cb) cb();
-            });
-        }
-        if (btnCancel) {
-            btnCancel.addEventListener('click', closeCustomConfirm);
-        }
-    });
-
     // Batch Action Operations
     function getSelectedAssetIds() {
         const checkboxes = document.querySelectorAll('.asset-item-checkbox:checked');
@@ -725,14 +645,12 @@ require_once __DIR__ . '/../templates/header.php';
         const selectEl = document.getElementById('batch-target-project');
         const targetText = selectEl.options[selectEl.selectedIndex].text.trim();
         
-        showCustomConfirm(
-            `Move ${selected.length} selected asset(s) to "${targetText}"?`,
-            () => {
+        window.studioConfirm(`Move ${selected.length} selected asset(s) to "${targetText}"?`, 'Move', 'Move Assets').then(confirmed => {
+            if (confirmed) {
                 document.getElementById('batch-move-ids').value = selected.join(',');
                 form.submit();
-            },
-            { title: 'Move Assets', confirmText: 'Move Assets', variant: 'indigo' }
-        );
+            }
+        });
         return false;
     }
 
@@ -740,14 +658,12 @@ require_once __DIR__ . '/../templates/header.php';
         const selected = getSelectedAssetIds();
         if (selected.length === 0) return false;
 
-        showCustomConfirm(
-            `Are you sure you want to permanently delete ${selected.length} selected asset(s)? This action cannot be undone.`,
-            () => {
+        window.studioConfirm(`Are you sure you want to permanently delete ${selected.length} selected asset(s)? This action cannot be undone.`, 'Delete', 'Delete Assets').then(confirmed => {
+            if (confirmed) {
                 document.getElementById('batch-delete-ids').value = selected.join(',');
                 form.submit();
-            },
-            { title: 'Delete Assets', confirmText: 'Delete Permanently', variant: 'rose' }
-        );
+            }
+        });
         return false;
     }
 </script>

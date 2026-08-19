@@ -89,12 +89,16 @@ declare(strict_types=1);
         }
 
         window.studioConfirm = function(message, buttonText = 'Delete', titleText = 'Confirm Action') {
+            const btnStr = (typeof buttonText === 'string') ? buttonText : 'Confirm';
+            const titleStr = (typeof titleText === 'string') ? titleText : 'Confirm Action';
+            const isDanger = btnStr.toLowerCase() === 'delete' || btnStr.toLowerCase() === 'remove';
+
             return _openModal('global_confirm_modal', (modal, close) => {
                 document.getElementById('global_confirm_message').innerText = message;
-                document.getElementById('global_confirm_title').innerText = titleText;
+                document.getElementById('global_confirm_title').innerText = titleStr;
                 const okBtn = document.getElementById('global_confirm_ok_btn');
-                okBtn.innerText = buttonText;
-                okBtn.className = (buttonText.toLowerCase() === 'delete' || buttonText.toLowerCase() === 'remove')
+                okBtn.innerText = btnStr;
+                okBtn.className = isDanger
                     ? "px-4 py-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200"
                     : "px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-md transition duration-200";
 
