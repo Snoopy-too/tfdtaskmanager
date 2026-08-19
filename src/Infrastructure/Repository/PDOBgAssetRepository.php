@@ -16,7 +16,7 @@ class PDOBgAssetRepository implements BgAssetRepositoryInterface
         $this->pdo = $pdo;
     }
 
-    public function findByProjectId(?int $projectId, bool $includeGlobal = true): array
+    public function findByProjectId(?int $projectId, bool $includeGlobal = false): array
     {
         if ($projectId === null || $projectId <= 0) {
             $stmt = $this->pdo->prepare("SELECT * FROM bg_assets WHERE project_id IS NULL ORDER BY created_at DESC");

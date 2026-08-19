@@ -19,79 +19,9 @@ class BgAssetService
         $this->uploadDirBase = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'board-game-studio';
     }
 
-    public function getAssetsByProject(?int $projectId): array
+    public function getAssetsByProject(?int $projectId, bool $includeGlobal = false): array
     {
-        $this->ensureDefaultIconsPopulated();
-        return $this->assetRepository->findByProjectId($projectId);
-    }
-
-    private function ensureDefaultIconsPopulated(): void
-    {
-        $defaultIcons = [
-            'icon_speed' => 'icon_speed.svg',
-            'icon_power' => 'icon_power.svg',
-            'icon_appeal' => 'icon_appeal.svg',
-            'icon_chin' => 'icon_chin.svg',
-            'icon_stamina' => 'icon_stamina.svg',
-            'icon_oil' => 'icon_oil.svg',
-            'icon_oil_barrel' => 'icon_oil_barrel.svg',
-            'icon_gold' => 'icon_gold.svg',
-            'icon_take_revenue' => 'icon_take_revenue.svg',
-            'icon_rare_metals' => 'icon_rare_metals.svg',
-            'icon_food' => 'icon_food.svg',
-            'icon_wheat' => 'icon_wheat.svg',
-            'icon_taxes' => 'icon_taxes.svg',
-            'icon_build_foundation' => 'icon_build_foundation.svg',
-            'icon_crane' => 'icon_crane.svg',
-            'icon_build_rebuild' => 'icon_build_rebuild.svg',
-            'icon_factory' => 'icon_factory.svg',
-            'icon_repair_fortify' => 'icon_repair_fortify.svg',
-            'icon_tools' => 'icon_tools.svg',
-            'icon_notice' => 'icon_notice.svg',
-            'icon_notice_board' => 'icon_notice_board.svg',
-            'icon_restriction' => 'icon_restriction.svg',
-            'icon_decree' => 'icon_decree.svg',
-            'icon_embargo' => 'icon_embargo.svg',
-            'icon_drone' => 'icon_drone.svg',
-            'icon_uav' => 'icon_uav.svg',
-            'icon_weapons' => 'icon_weapons.svg',
-            'icon_arms' => 'icon_arms.svg'
-        ];
-
-        $globalUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . 'global';
-        if (!is_dir($globalUploadDir)) {
-            mkdir($globalUploadDir, 0755, true);
-        }
-
-        $srcIconsDir = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'icons';
-
-        $existingTags = array_flip($this->assetRepository->findAllTags());
-
-        foreach ($defaultIcons as $tag => $filename) {
-            if (!isset($existingTags[$tag])) {
-                $srcPath = $srcIconsDir . DIRECTORY_SEPARATOR . $filename;
-                if (file_exists($srcPath)) {
-                    $storedName = uniqid() . '_' . $filename;
-                    $destPath = $globalUploadDir . DIRECTORY_SEPARATOR . $storedName;
-                    
-                    if (copy($srcPath, $destPath)) {
-                        $size = filesize($destPath);
-                        $asset = new BgAsset(
-                            null,
-                            null,
-                            $filename,
-                            $storedName,
-                            'image/svg+xml',
-                            $size,
-                            '[' . $tag . ']',
-                            1
-                        );
-                        $this->assetRepository->save($asset);
-                        $existingTags[$tag] = true;
-                    }
-                }
-            }
-        }
+        return $this->assetRepository->findByProjectId($projectId, $includeGlobal);
     }
 
     public function getAssetById(int $id): ?BgAsset

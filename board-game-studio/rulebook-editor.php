@@ -47,7 +47,7 @@ $csrfToken = SecurityHelper::generateCsrfToken();
 
 // Fetch templates and assets for dynamic insertions
 $templates = $templateService->getTemplatesByProject($rulebook->getProjectId());
-$assets = $assetService->getAssetsByProject($rulebook->getProjectId());
+$assets = $assetService->getAssetsByProject($rulebook->getProjectId(), true);
 $glossary = $rulebookService->getGlossaryByProject($rulebook->getProjectId());
 
 require_once __DIR__ . '/../templates/header.php';

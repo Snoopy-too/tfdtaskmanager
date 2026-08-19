@@ -10,7 +10,7 @@ interface BgAssetRepositoryInterface
     /**
      * @return BgAsset[]
      */
-    public function findByProjectId(?int $projectId, bool $includeGlobal = true): array;
+    public function findByProjectId(?int $projectId, bool $includeGlobal = false): array;
 
     public function findById(int $id): ?BgAsset;
 
