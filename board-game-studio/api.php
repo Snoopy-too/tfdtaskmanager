@@ -503,6 +503,62 @@ try {
             ]);
             break;
 
+        case 'resize_template':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
+                http_response_code(423);
+                echo json_encode(['error' => 'Template is currently locked by another user.']);
+                exit;
+            }
+
+            $widthPx = isset($_POST['width_px']) ? (int)$_POST['width_px'] : 0;
+            $heightPx = isset($_POST['height_px']) ? (int)$_POST['height_px'] : 0;
+
+            if ($widthPx <= 0 && isset($_POST['width_mm'])) {
+                $widthPx = \App\Domain\Entities\BgTemplate::mmToPx((float)$_POST['width_mm']);
+            }
+            if ($heightPx <= 0 && isset($_POST['height_mm'])) {
+                $heightPx = \App\Domain\Entities\BgTemplate::mmToPx((float)$_POST['height_mm']);
+            }
+
+            if ($widthPx <= 0 || $heightPx <= 0) {
+                http_response_code(422);
+                echo json_encode(['error' => 'Width and height must be positive numbers.']);
+                exit;
+            }
+
+            $updatedTemplate = $templateService->updateTemplateDimensions($templateId, $widthPx, $heightPx);
+
+            echo json_encode([
+                'success' => true,
+                'id' => $updatedTemplate->getId(),
+                'canvasWidth' => $updatedTemplate->getCanvasWidthPx(),
+                'canvasHeight' => $updatedTemplate->getCanvasHeightPx(),
+                'widthMm' => round(\App\Domain\Entities\BgTemplate::pxToMm($updatedTemplate->getCanvasWidthPx()), 1),
+                'heightMm' => round(\App\Domain\Entities\BgTemplate::pxToMm($updatedTemplate->getCanvasHeightPx()), 1),
+                'orientation' => ($updatedTemplate->getCanvasWidthPx() > $updatedTemplate->getCanvasHeightPx()) ? 'landscape' : 'portrait'
+            ]);
+            break;
+
         case 'update_dataset_cell':
             if ($method !== 'POST') {
                 throw new \InvalidArgumentException('Method not allowed.');

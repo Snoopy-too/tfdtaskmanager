@@ -183,3 +183,164 @@ function toggleSidebar(panelId) {
         if (fitBtn) fitBtn.click();
     }, 150);
 }
+
+// ponytail: lightweight modal controls for resizing canvas template
+function openChangeSizeModal() {
+    const modal = document.getElementById('modal-change-size');
+    if (!modal) return;
+    updateResizePreview();
+    modal.classList.remove('hidden');
+}
+
+function closeChangeSizeModal() {
+    const modal = document.getElementById('modal-change-size');
+    if (!modal) return;
+    modal.classList.add('hidden');
+}
+
+function handleResizePresetChange(selectEl) {
+    const selected = selectEl.options[selectEl.selectedIndex];
+    if (!selected || selected.value === 'custom') return;
+    const w = parseFloat(selected.getAttribute('data-width')) || 0;
+    const h = parseFloat(selected.getAttribute('data-height')) || 0;
+    if (w > 0 && h > 0) {
+        document.getElementById('resize-width-mm').value = w;
+        document.getElementById('resize-height-mm').value = h;
+        updateResizePreview();
+    }
+}
+
+function updateResizePreview() {
+    const wMm = parseFloat(document.getElementById('resize-width-mm')?.value) || 0;
+    const hMm = parseFloat(document.getElementById('resize-height-mm')?.value) || 0;
+    const wPx = Math.round((wMm / 25.4) * 300);
+    const hPx = Math.round((hMm / 25.4) * 300);
+    const preview = document.getElementById('resize-px-preview');
+    if (preview) {
+        preview.textContent = `${wPx} × ${hPx} px`;
+    }
+}
+
+function applyCanvasResize() {
+    const wMm = parseFloat(document.getElementById('resize-width-mm')?.value) || 0;
+    const hMm = parseFloat(document.getElementById('resize-height-mm')?.value) || 0;
+
+    if (wMm <= 0 || hMm <= 0) {
+        alert('Please enter positive numbers for width and height.');
+        return;
+    }
+
+    const wPx = Math.round((wMm / 25.4) * 300);
+    const hPx = Math.round((hMm / 25.4) * 300);
+
+    const btn = document.getElementById('btn-confirm-resize');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+    }
+
+    const formData = new FormData();
+    formData.append('csrf_token', window.studioConfig.csrfToken);
+    formData.append('template_id', window.studioConfig.templateId);
+    formData.append('width_px', wPx);
+    formData.append('height_px', hPx);
+    formData.append('width_mm', wMm);
+    formData.append('height_mm', hMm);
+
+    fetch('api.php?action=resize_template', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': window.studioConfig.csrfToken
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Update Size';
+        }
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        closeChangeSizeModal();
+
+        // Update studio configuration
+        window.studioConfig.canvasWidth = data.canvasWidth;
+        window.studioConfig.canvasHeight = data.canvasHeight;
+        window.studioConfig.orientation = data.orientation;
+
+        // Resize Fabric canvas and wrapper
+        const canvas = window.editorCanvas;
+        if (canvas) {
+            canvas.setWidth(data.canvasWidth);
+            canvas.setHeight(data.canvasHeight);
+        }
+
+        const wrapper = document.getElementById('canvas-container-wrapper');
+        if (wrapper) {
+            wrapper.style.width = data.canvasWidth + 'px';
+            wrapper.style.height = data.canvasHeight + 'px';
+        }
+
+        // Re-render guidelines
+        if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+            window.guideRenderer.renderGuides();
+        }
+
+        // Update UI elements in header
+        const badge = document.getElementById('template-orientation-badge');
+        if (badge) {
+            if (data.orientation === 'landscape') {
+                badge.textContent = 'Landscape';
+                badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20';
+            } else {
+                badge.textContent = 'Portrait';
+                badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700';
+            }
+        }
+
+        const btnText = document.getElementById('orient-btn-text');
+        if (btnText) {
+            btnText.textContent = data.orientation === 'landscape' ? 'Switch to Portrait' : 'Switch to Landscape';
+        }
+
+        const sizeDisplay = document.getElementById('template-size-display');
+        if (sizeDisplay) {
+            sizeDisplay.textContent = `${data.widthMm}x${data.heightMm} mm (${data.canvasWidth}x${data.canvasHeight} px)`;
+        }
+
+        // Re-fit canvas to view
+        const viewport = document.getElementById('canvas-viewport');
+        if (viewport && wrapper) {
+            const containerWidth = viewport.clientWidth - 64;
+            const containerHeight = viewport.clientHeight - 64;
+            const widthScale = containerWidth / data.canvasWidth;
+            const heightScale = containerHeight / data.canvasHeight;
+            const zoomLevel = Math.min(widthScale, heightScale, 1.0);
+            const zoomValElem = document.getElementById('zoom-value');
+            if (zoomValElem) zoomValElem.value = Math.round(zoomLevel * 100) + '%';
+            wrapper.style.transform = `scale(${zoomLevel})`;
+        }
+
+        if (canvas) canvas.renderAll();
+        if (window.editorCore) {
+            if (typeof window.editorCore.pushState === 'function') window.editorCore.pushState();
+            if (typeof window.editorCore.triggerAutoSave === 'function') window.editorCore.triggerAutoSave();
+            if (typeof window.editorCore.setSaveStatus === 'function') {
+                window.editorCore.setSaveStatus('Template size updated', 'saved');
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Error updating template size:', err);
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Update Size';
+        }
+        alert('Failed to update template size. Please try again.');
+    });
+}
