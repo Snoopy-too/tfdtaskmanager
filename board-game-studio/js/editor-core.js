@@ -87,6 +87,60 @@
 
         window.editorCanvas = canvas;
 
+        // ponytail: dynamically compute control handle size, touch radius, and border thickness so handles remain a constant visible size on screen at any canvas zoom level
+        function syncControlAppearance() {
+            if (!fabric || !fabric.Object) return;
+
+            const effectiveZoom = zoomLevel || 1.0;
+            // Target 15 CSS px on-screen handles, 26 CSS px touch targets, 2 CSS px border
+            const cSize = Math.max(12, Math.round(15 / effectiveZoom));
+            const touchSize = Math.max(20, Math.round(26 / effectiveZoom));
+            const bScale = Math.max(1, Math.round(2 / effectiveZoom));
+            const pad = Math.max(2, Math.round(5 / effectiveZoom));
+
+            fabric.Object.prototype.cornerSize = cSize;
+            fabric.Object.prototype.touchCornerSize = touchSize;
+            fabric.Object.prototype.borderScaleFactor = bScale;
+            fabric.Object.prototype.padding = pad;
+            fabric.Object.prototype.transparentCorners = false;
+            fabric.Object.prototype.cornerColor = '#ffffff';
+            fabric.Object.prototype.cornerStrokeColor = '#4f46e5';
+            fabric.Object.prototype.borderColor = '#6366f1';
+            fabric.Object.prototype.cornerStyle = 'rect';
+
+            if (fabric.Object.prototype.setControlVisible) {
+                fabric.Object.prototype.setControlVisible('tl', true);
+                fabric.Object.prototype.setControlVisible('tr', true);
+                fabric.Object.prototype.setControlVisible('bl', true);
+                fabric.Object.prototype.setControlVisible('br', true);
+                fabric.Object.prototype.setControlVisible('ml', true);
+                fabric.Object.prototype.setControlVisible('mr', true);
+                fabric.Object.prototype.setControlVisible('mt', true);
+                fabric.Object.prototype.setControlVisible('mb', true);
+                fabric.Object.prototype.setControlVisible('mtr', true);
+            }
+
+            if (canvas) {
+                canvas.getObjects().forEach(obj => {
+                    if (obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') return;
+                    obj.cornerSize = cSize;
+                    obj.touchCornerSize = touchSize;
+                    obj.borderScaleFactor = bScale;
+                    obj.padding = pad;
+                    obj.transparentCorners = false;
+                    obj.cornerColor = '#ffffff';
+                    obj.cornerStrokeColor = '#4f46e5';
+                    obj.borderColor = '#6366f1';
+                    obj.cornerStyle = 'rect';
+                    obj.setCoords();
+                });
+                canvas.requestRenderAll();
+            }
+        }
+        window.editorCoreSyncControls = syncControlAppearance;
+
+        syncControlAppearance();
+
         if (window.studioConfig.isViewMode) {
             document.body.classList.add('view-only-mode');
             canvas.selection = false;
@@ -121,15 +175,38 @@
                 });
             });
         } else {
+            // Apply zoom-scaled control styles to newly added objects
+            canvas.on('object:added', function(e) {
+                const obj = e.target;
+                if (obj && obj.id !== 'safe-zone-guide' && obj.id !== 'bleed-zone-guide') {
+                    const effectiveZoom = zoomLevel || 1.0;
+                    obj.cornerSize = Math.max(12, Math.round(15 / effectiveZoom));
+                    obj.touchCornerSize = Math.max(20, Math.round(26 / effectiveZoom));
+                    obj.borderScaleFactor = Math.max(1, Math.round(2 / effectiveZoom));
+                    obj.padding = Math.max(2, Math.round(5 / effectiveZoom));
+                    obj.transparentCorners = false;
+                    obj.cornerColor = '#ffffff';
+                    obj.cornerStrokeColor = '#4f46e5';
+                    obj.borderColor = '#6366f1';
+                    obj.cornerStyle = 'rect';
+                    obj.setCoords();
+                }
+                triggerAutoSave();
+            });
             // Auto-save on modify
             canvas.on('object:modified', triggerAutoSave);
-            canvas.on('object:added', triggerAutoSave);
             canvas.on('object:removed', triggerAutoSave);
         }
         
         // Listen to selection changes for Property Inspector
-        canvas.on('selection:created', onSelectionChanged);
-        canvas.on('selection:updated', onSelectionChanged);
+        canvas.on('selection:created', (e) => {
+            syncControlAppearance();
+            onSelectionChanged(e);
+        });
+        canvas.on('selection:updated', (e) => {
+            syncControlAppearance();
+            onSelectionChanged(e);
+        });
         canvas.on('selection:cleared', onSelectionCleared);
 
         // Hidden textarea focus is now handled by the HTMLTextAreaElement.prototype.focus override.
@@ -317,6 +394,10 @@
                     // Recalculate dimensions of all text objects once fonts are ready
                     refreshCanvasTextLayers();
 
+                    if (typeof syncControlAppearance === 'function') {
+                        syncControlAppearance();
+                    }
+
                     canvas.renderAll();
                     setSaveStatus('All changes saved', 'saved');
                     
@@ -418,6 +499,10 @@
             wrapper.style.transformOrigin = '0 0';
             if (zoomInput) {
                 zoomInput.value = Math.round(zoomLevel * 100) + '%';
+            }
+
+            if (typeof syncControlAppearance === 'function') {
+                syncControlAppearance();
             }
         }
 
