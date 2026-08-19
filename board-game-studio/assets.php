@@ -135,8 +135,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Batch Actions (Batch Move / Batch Delete)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['batch_update_project', 'batch_delete'], true)) {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $rawIds = $_POST['selected_ids'] ?? '';
+        $idList = is_array($rawIds) ? $rawIds : explode(',', (string)$rawIds);
+        $selectedIds = array_filter(array_map('intval', $idList), fn($id) => $id > 0);
+
+        if (empty($selectedIds)) {
+            $error = 'No assets selected.';
+        } elseif ($_POST['action'] === 'batch_update_project') {
+            $targetProjectId = (isset($_POST['target_project_id']) && $_POST['target_project_id'] !== '' && $_POST['target_project_id'] !== 'global') ? (int)$_POST['target_project_id'] : null;
+            $count = 0;
+            foreach ($selectedIds as $assetId) {
+                try {
+                    $assetService->updateAssetProject($assetId, $targetProjectId);
+                    $count++;
+                } catch (\Exception $e) {
+                    // ignore individual failure
+                }
+            }
+            if ($targetProjectId === null) {
+                $success = "{$count} asset(s) moved to Global Asset Library.";
+            } else {
+                $targetProj = $projectService->getProjectById($targetProjectId);
+                $projName = $targetProj ? $targetProj->getName() : "Project #{$targetProjectId}";
+                $success = "{$count} asset(s) assigned to {$projName}.";
+            }
+        } elseif ($_POST['action'] === 'batch_delete') {
+            $count = 0;
+            foreach ($selectedIds as $assetId) {
+                try {
+                    $assetService->deleteAsset($assetId);
+                    $count++;
+                } catch (\Exception $e) {
+                    // ignore individual failure
+                }
+            }
+            $success = "{$count} asset(s) deleted successfully.";
+        }
+    }
+}
+
 // Load assets (loads global assets when activeProjectId is null)
-$assets = $assetService->getAssetsByProject($activeProjectId);
+$assets = $assetService->getAssetsByProject($activeProjectId, false);
 
 // Filters & Sorting
 $searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -323,6 +368,52 @@ require_once __DIR__ . '/../templates/header.php';
                 </form>
             </div>
 
+            <!-- Batch Selection & Action Bar -->
+            <?php if (!empty($assets)): ?>
+                <div id="batch-action-bar" class="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 transition">
+                    <div class="flex items-center space-x-3">
+                        <label class="flex items-center space-x-2 text-xs font-semibold text-slate-200 cursor-pointer select-none">
+                            <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAllAssets(this)" class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
+                            <span>Select All (<span id="selected-count" class="text-indigo-400 font-bold">0</span> / <?php echo count($assets); ?>)</span>
+                        </label>
+                        <button type="button" onclick="clearAssetSelection()" class="text-[11px] text-slate-400 hover:text-slate-200 underline">Clear</button>
+                    </div>
+
+                    <div class="flex items-center space-x-2 flex-wrap">
+                        <!-- Batch Move / Assign -->
+                        <form id="batch-move-form" action="" method="POST" class="m-0 flex items-center space-x-1.5" onsubmit="return handleBatchMoveSubmit(this);">
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                            <input type="hidden" name="action" value="batch_update_project">
+                            <input type="hidden" name="selected_ids" id="batch-move-ids" value="">
+                            
+                            <select name="target_project_id" id="batch-target-project" class="bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-1 focus:ring-indigo-500 py-1.5 pl-2.5 pr-7 font-medium cursor-pointer">
+                                <option value="" class="bg-slate-950 text-slate-100">🌐 Move to Global</option>
+                                <?php foreach ($projects as $p): ?>
+                                    <option value="<?php echo $p->getId(); ?>" class="bg-slate-950 text-slate-100" <?php echo ($activeProjectId === $p->getId()) ? 'disabled' : ''; ?>>
+                                        📁 Assign to <?php echo SecurityHelper::escape($p->getName()); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <button type="submit" id="btn-batch-move" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                                Move Selected
+                            </button>
+                        </form>
+
+                        <!-- Batch Delete -->
+                        <form id="batch-delete-form" action="" method="POST" class="m-0" onsubmit="return handleBatchDeleteSubmit(this);">
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                            <input type="hidden" name="action" value="batch_delete">
+                            <input type="hidden" name="selected_ids" id="batch-delete-ids" value="">
+                            
+                            <button type="submit" id="btn-batch-delete" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-xs font-semibold rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                                Delete Selected
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <!-- Grid -->
             <?php if (empty($assets)): ?>
                 <div class="p-16 text-center bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl">
@@ -342,7 +433,12 @@ require_once __DIR__ . '/../templates/header.php';
                         $folderName = ($asset->getProjectId() === null) ? 'global' : $asset->getProjectId();
                         $fileUrl = '../uploads/board-game-studio/' . $folderName . '/' . $asset->getStoredFilename();
                         ?>
-                        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-slate-700 hover:shadow-lg transition group">
+                        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-slate-700 hover:shadow-lg transition group relative" id="asset-card-<?php echo $asset->getId(); ?>">
+                            <!-- Checkbox selector -->
+                            <label class="absolute top-2.5 left-2.5 z-20 flex items-center justify-center cursor-pointer p-1 rounded-lg bg-slate-900/90 hover:bg-slate-900 border border-slate-700/80 transition shadow select-none" title="Select asset">
+                                <input type="checkbox" name="asset_select" value="<?php echo $asset->getId(); ?>" class="asset-item-checkbox rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer" onchange="updateBatchActionBar()">
+                            </label>
+
                             <!-- Preview Box -->
                             <div class="bg-slate-950 h-44 flex items-center justify-center relative overflow-hidden p-4 border-b border-slate-800/60">
                                 <?php if ($isImage): ?>
@@ -366,7 +462,7 @@ require_once __DIR__ . '/../templates/header.php';
                             <div class="p-4 space-y-3">
                                 <div>
                                     <div class="flex items-center justify-between">
-                                        <h4 class="text-sm font-bold text-slate-200 truncate pr-2" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>">
+                                        <h4 class="text-sm font-bold text-slate-200 truncate pr-2 pl-1" title="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>">
                                             <?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>
                                         </h4>
                                         <?php if ($asset->getProjectId() === null): ?>
@@ -491,6 +587,83 @@ require_once __DIR__ . '/../templates/header.php';
                 submitBtn.textContent = 'Processing Upload...';
             }
         }
+        return true;
+    }
+
+    // Batch Action Operations
+    function getSelectedAssetIds() {
+        const checkboxes = document.querySelectorAll('.asset-item-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    function updateBatchActionBar() {
+        const selected = getSelectedAssetIds();
+        const count = selected.length;
+        const countSpan = document.getElementById('selected-count');
+        if (countSpan) countSpan.textContent = count;
+
+        const allCheckboxes = document.querySelectorAll('.asset-item-checkbox');
+        const selectAll = document.getElementById('select-all-checkbox');
+        if (selectAll) {
+            selectAll.checked = allCheckboxes.length > 0 && count === allCheckboxes.length;
+            selectAll.indeterminate = count > 0 && count < allCheckboxes.length;
+        }
+
+        const btnMove = document.getElementById('btn-batch-move');
+        const btnDelete = document.getElementById('btn-batch-delete');
+        if (btnMove) btnMove.disabled = count === 0;
+        if (btnDelete) btnDelete.disabled = count === 0;
+
+        // Card ring highlight
+        allCheckboxes.forEach(cb => {
+            const card = document.getElementById(`asset-card-${cb.value}`);
+            if (card) {
+                if (cb.checked) {
+                    card.classList.add('ring-2', 'ring-indigo-500');
+                } else {
+                    card.classList.remove('ring-2', 'ring-indigo-500');
+                }
+            }
+        });
+    }
+
+    function toggleSelectAllAssets(master) {
+        const checkboxes = document.querySelectorAll('.asset-item-checkbox');
+        checkboxes.forEach(cb => { cb.checked = master.checked; });
+        updateBatchActionBar();
+    }
+
+    function clearAssetSelection() {
+        const checkboxes = document.querySelectorAll('.asset-item-checkbox');
+        checkboxes.forEach(cb => { cb.checked = false; });
+        updateBatchActionBar();
+    }
+
+    function handleBatchMoveSubmit(form) {
+        const selected = getSelectedAssetIds();
+        if (selected.length === 0) {
+            alert('Please select at least one asset to move.');
+            return false;
+        }
+        const selectEl = document.getElementById('batch-target-project');
+        const targetText = selectEl.options[selectEl.selectedIndex].text.trim();
+        if (!confirm(`Move ${selected.length} selected asset(s) to "${targetText}"?`)) {
+            return false;
+        }
+        document.getElementById('batch-move-ids').value = selected.join(',');
+        return true;
+    }
+
+    function handleBatchDeleteSubmit(form) {
+        const selected = getSelectedAssetIds();
+        if (selected.length === 0) {
+            alert('Please select at least one asset to delete.');
+            return false;
+        }
+        if (!confirm(`Are you sure you want to permanently delete ${selected.length} selected asset(s)? This action cannot be undone.`)) {
+            return false;
+        }
+        document.getElementById('batch-delete-ids').value = selected.join(',');
         return true;
     }
 </script>
