@@ -544,73 +544,92 @@
                 
                 applyStyledTextToObject(obj, subText !== undefined && subText !== null ? subText : '');
             } else if (obj.type === 'image' && obj.variable_binding) {
-                                // Substitute image source for bound image layers
-                                const filename = getRowValue(row, obj.variable_binding);
+                // Substitute image source for bound image layers
+                const filename = getRowValue(row, obj.variable_binding);
 
-                                if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
-                                    const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
-                                    if (assetUrl) {
-                                        const swapPromise = new Promise((imgResolve) => {
-                                            obj.setSrc(assetUrl, () => {
-                                                obj.setCoords();
-                                                imgResolve();
-                                            }, { crossOrigin: 'anonymous' });
-                                        });
-                                        imageSwapPromises.push(swapPromise);
-                                    }
+                if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                    const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
+                    if (assetUrl) {
+                        const targetWidth = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
+                        const targetHeight = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
+
+                        const swapPromise = new Promise((imgResolve) => {
+                            obj.setSrc(assetUrl, () => {
+                                if (targetWidth > 0 && obj.width > 0) {
+                                    obj.set('scaleX', targetWidth / obj.width);
                                 }
-                            } else if (obj.variable_binding) {
-                                // Shape / Generic object dataset visibility or image binding
-                                const rawVal = getRowValue(row, obj.variable_binding);
-                                if (rawVal !== undefined && rawVal !== null) {
-                                    const val = String(rawVal).trim();
+                                if (targetHeight > 0 && obj.height > 0) {
+                                    obj.set('scaleY', targetHeight / obj.height);
+                                }
+                                obj.setCoords();
+                                imgResolve();
+                            }, { crossOrigin: 'anonymous' });
+                        });
+                        imageSwapPromises.push(swapPromise);
+                    }
+                }
+            } else if (obj.variable_binding) {
+                // Shape / Generic object dataset visibility or image binding
+                const rawVal = getRowValue(row, obj.variable_binding);
+                if (rawVal !== undefined && rawVal !== null) {
+                    const val = String(rawVal).trim();
 
-                                    // Check if value is an image/SVG asset filename
-                                    if (val && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
-                                        const assetUrl = window.assetPicker.getAssetUrlByFilename(val);
-                                        if (assetUrl) {
-                                            if (obj.setSrc && typeof obj.setSrc === 'function') {
-                                                const swapPromise = new Promise((imgResolve) => {
-                                                    obj.setSrc(assetUrl, () => {
-                                                        obj.setCoords();
-                                                        imgResolve();
-                                                    }, { crossOrigin: 'anonymous' });
-                                                });
-                                                imageSwapPromises.push(swapPromise);
-                                            } else {
-                                                const swapPromise = new Promise((imgResolve) => {
-                                                    fabric.Image.fromURL(assetUrl, (newImg) => {
-                                                        if (!newImg) return imgResolve();
-                                                        newImg.set({
-                                                            left: obj.left,
-                                                            top: obj.top,
-                                                            originX: obj.originX || 'center',
-                                                            originY: obj.originY || 'center',
-                                                            scaleX: obj.scaleX,
-                                                            scaleY: obj.scaleY,
-                                                            angle: obj.angle || 0,
-                                                            opacity: obj.opacity !== undefined ? obj.opacity : 1,
-                                                            name: val,
-                                                            variable_binding: obj.variable_binding,
-                                                            id: obj.id,
-                                                            original_filename: val
-                                                        });
-                                                        const idx = cardCanvas.getObjects().indexOf(obj);
-                                                        cardCanvas.remove(obj);
-                                                        if (idx >= 0) {
-                                                            cardCanvas.insertAt(newImg, idx);
-                                                        } else {
-                                                            cardCanvas.add(newImg);
-                                                        }
-                                                        newImg.setCoords();
-                                                        imgResolve();
-                                                    }, { crossOrigin: 'anonymous' });
-                                                });
-                                                imageSwapPromises.push(swapPromise);
-                                            }
-                                            return;
+                    // Check if value is an image/SVG asset filename
+                    if (val && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                        const assetUrl = window.assetPicker.getAssetUrlByFilename(val);
+                        if (assetUrl) {
+                            const targetWidth = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
+                            const targetHeight = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
+                            if (obj.setSrc && typeof obj.setSrc === 'function') {
+                                const swapPromise = new Promise((imgResolve) => {
+                                    obj.setSrc(assetUrl, () => {
+                                        if (targetWidth > 0 && obj.width > 0) {
+                                            obj.set('scaleX', targetWidth / obj.width);
                                         }
-                                    }
+                                        if (targetHeight > 0 && obj.height > 0) {
+                                            obj.set('scaleY', targetHeight / obj.height);
+                                        }
+                                        obj.setCoords();
+                                        imgResolve();
+                                    }, { crossOrigin: 'anonymous' });
+                                });
+                                imageSwapPromises.push(swapPromise);
+                            } else {
+                                const swapPromise = new Promise((imgResolve) => {
+                                    fabric.Image.fromURL(assetUrl, (newImg) => {
+                                        if (!newImg) return imgResolve();
+                                        const scaleX = (targetWidth > 0 && newImg.width > 0) ? (targetWidth / newImg.width) : (obj.scaleX || 1);
+                                        const scaleY = (targetHeight > 0 && newImg.height > 0) ? (targetHeight / newImg.height) : (obj.scaleY || 1);
+                                        newImg.set({
+                                            left: obj.left,
+                                            top: obj.top,
+                                            originX: obj.originX || 'center',
+                                            originY: obj.originY || 'center',
+                                            scaleX: scaleX,
+                                            scaleY: scaleY,
+                                            angle: obj.angle || 0,
+                                            opacity: obj.opacity !== undefined ? obj.opacity : 1,
+                                            name: val,
+                                            variable_binding: obj.variable_binding,
+                                            id: obj.id,
+                                            original_filename: val
+                                        });
+                                        const idx = cardCanvas.getObjects().indexOf(obj);
+                                        cardCanvas.remove(obj);
+                                        if (idx >= 0) {
+                                            cardCanvas.insertAt(newImg, idx);
+                                        } else {
+                                            cardCanvas.add(newImg);
+                                        }
+                                        newImg.setCoords();
+                                        imgResolve();
+                                    }, { crossOrigin: 'anonymous' });
+                                });
+                                imageSwapPromises.push(swapPromise);
+                            }
+                            return;
+                        }
+                    }
 
                                     const lowerVal = val.toLowerCase();
                                     const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide'];

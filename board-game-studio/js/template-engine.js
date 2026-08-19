@@ -394,11 +394,17 @@
             } else if (obj.type === 'image' && obj.variable_binding) {
                 // Image binding: swap image src based on dataset column value
                 if (!imageOriginalSrcs.has(obj)) {
-                    imageOriginalSrcs.set(obj, obj.getSrc ? obj.getSrc() : (obj._element ? obj._element.src : ''));
+                    imageOriginalSrcs.set(obj, {
+                        src: obj.getSrc ? obj.getSrc() : (obj._element ? obj._element.src : ''),
+                        scaleX: obj.scaleX,
+                        scaleY: obj.scaleY,
+                        width: obj.width,
+                        height: obj.height
+                    });
                 }
 
                 if (row) {
-                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
                     const filename = row[colName];
 
                     if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
@@ -407,8 +413,17 @@
                             const currentSrc = obj.getSrc ? obj.getSrc() : '';
                             // Only swap if URL actually changed to avoid unnecessary reloads
                             if (!currentSrc.endsWith(assetUrl) && currentSrc !== assetUrl) {
+                                const targetWidth = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
+                                const targetHeight = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
+
                                 const swapPromise = new Promise((resolve) => {
                                     obj.setSrc(assetUrl, () => {
+                                        if (targetWidth > 0 && obj.width > 0) {
+                                            obj.set('scaleX', targetWidth / obj.width);
+                                        }
+                                        if (targetHeight > 0 && obj.height > 0) {
+                                            obj.set('scaleY', targetHeight / obj.height);
+                                        }
                                         obj.setCoords();
                                         resolve();
                                     }, { crossOrigin: 'anonymous' });
@@ -418,21 +433,50 @@
                         }
                     }
                 }
+            } else if (obj.type === 'image' && !obj.variable_binding && imageOriginalSrcs.has(obj)) {
+                const orig = imageOriginalSrcs.get(obj);
+                const origSrc = (typeof orig === 'string') ? orig : (orig ? orig.src : '');
+                imageOriginalSrcs.delete(obj);
+                if (origSrc) {
+                    const targetWidth = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
+                    const targetHeight = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
+                    const swapPromise = new Promise((resolve) => {
+                        obj.setSrc(origSrc, () => {
+                            if (targetWidth > 0 && obj.width > 0) {
+                                obj.set('scaleX', targetWidth / obj.width);
+                            }
+                            if (targetHeight > 0 && obj.height > 0) {
+                                obj.set('scaleY', targetHeight / obj.height);
+                            }
+                            obj.setCoords();
+                            resolve();
+                        }, { crossOrigin: 'anonymous' });
+                    });
+                    imageSwapPromises.push(swapPromise);
+                }
             } else if (obj.variable_binding) {
                 // Shape / Object visibility and dataset binding (including SVG layer substitution)
                 if (row) {
-                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '');
+                    const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
                     const val = row[colName] !== undefined ? String(row[colName]).trim() : '';
 
                     // Check if value is an image/SVG asset filename
                     if (val && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
                         const assetUrl = window.assetPicker.getAssetUrlByFilename(val);
                         if (assetUrl) {
+                            const targetWidth = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
+                            const targetHeight = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
                             if (obj.setSrc && typeof obj.setSrc === 'function') {
                                 const currentSrc = obj.getSrc ? obj.getSrc() : '';
                                 if (!currentSrc.endsWith(assetUrl) && currentSrc !== assetUrl) {
                                     const swapPromise = new Promise((resolve) => {
                                         obj.setSrc(assetUrl, () => {
+                                            if (targetWidth > 0 && obj.width > 0) {
+                                                obj.set('scaleX', targetWidth / obj.width);
+                                            }
+                                            if (targetHeight > 0 && obj.height > 0) {
+                                                obj.set('scaleY', targetHeight / obj.height);
+                                            }
                                             obj.setCoords();
                                             resolve();
                                         }, { crossOrigin: 'anonymous' });
@@ -444,13 +488,15 @@
                                 const swapPromise = new Promise((resolve) => {
                                     fabric.Image.fromURL(assetUrl, (newImg) => {
                                         if (!newImg) return resolve();
+                                        const scaleX = (targetWidth > 0 && newImg.width > 0) ? (targetWidth / newImg.width) : (obj.scaleX || 1);
+                                        const scaleY = (targetHeight > 0 && newImg.height > 0) ? (targetHeight / newImg.height) : (obj.scaleY || 1);
                                         newImg.set({
                                             left: obj.left,
                                             top: obj.top,
                                             originX: obj.originX || 'center',
                                             originY: obj.originY || 'center',
-                                            scaleX: obj.scaleX,
-                                            scaleY: obj.scaleY,
+                                            scaleX: scaleX,
+                                            scaleY: scaleY,
                                             angle: obj.angle || 0,
                                             opacity: obj.opacity !== undefined ? obj.opacity : 1,
                                             name: val,
