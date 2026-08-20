@@ -28,17 +28,17 @@ class BgAssetService
      * Synchronizes all built-in SVG icons from board-game-studio/icons into the
      * global assets database (project_id IS NULL) and the uploads/board-game-studio/global folder.
      */
-    public function syncBuiltinGlobalIcons(int $uploadedByUserId = 1): void
+    public function syncBuiltinGlobalIcons(int $uploadedByUserId = 1): int
     {
         $iconsDir = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'icons';
         if (!is_dir($iconsDir)) {
-            return;
+            return 0;
         }
 
         $globalUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . 'global';
         if (!is_dir($globalUploadDir)) {
             if (!mkdir($globalUploadDir, 0755, true) && !is_dir($globalUploadDir)) {
-                return;
+                return 0;
             }
         }
 
@@ -57,9 +57,10 @@ class BgAssetService
 
         $files = scandir($iconsDir);
         if ($files === false) {
-            return;
+            return 0;
         }
 
+        $syncedCount = 0;
         foreach ($files as $file) {
             if ($file === '.' || $file === '..' || !str_ends_with(strtolower($file), '.svg')) {
                 continue;
@@ -81,6 +82,7 @@ class BgAssetService
                         $this->normalizeSvgFile($targetPath);
                     }
                 }
+                $syncedCount++;
                 continue;
             }
 
@@ -101,8 +103,10 @@ class BgAssetService
                     $uploadedByUserId
                 );
                 $this->assetRepository->save($newAsset);
+                $syncedCount++;
             }
         }
+        return $syncedCount;
     }
 
     public function normalizeAllProjectSvgs(?int $projectId): void

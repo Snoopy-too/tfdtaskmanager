@@ -47,4 +47,23 @@ use App\Infrastructure\Security\SecurityHelper;
             </button>
         </form>
     </div>
+
+    <!-- Built-in System Icons Card -->
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-200">System Icon Library</h3>
+            <span class="text-[10px] font-semibold uppercase text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">Repository</span>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">
+            Synchronize built-in SVG icons (boxing attributes, knockout icons, resources, and symbols) from the repository into your Global Asset Library.
+        </p>
+        <form action="" method="POST" class="m-0">
+            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+            <input type="hidden" name="action" value="sync_builtin_icons">
+            <button type="submit" class="w-full bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 font-medium text-xs rounded-xl py-2.5 px-4 transition flex items-center justify-center space-x-2 cursor-pointer shadow">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Sync / Import Built-in Icons</span>
+            </button>
+        </form>
+    </div>
 </div>

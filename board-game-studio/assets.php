@@ -48,10 +48,6 @@ if ($activeProjectId && !$activeProject) {
 require_once __DIR__ . '/asset-actions.php';
 
 
-// Auto-sync built-in global SVG icons from repository
-$currentUserId = (int)($_SESSION['user_id'] ?? 1);
-$assetService->syncBuiltinGlobalIcons($currentUserId);
-
 // Load assets (loads global assets when activeProjectId is null)
 $assets = $assetService->getAssetsByProject($activeProjectId, false);
 

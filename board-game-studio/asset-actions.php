@@ -139,3 +139,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
         }
     }
 }
+
+// Handle Sync Built-in System Icons Action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sync_builtin_icons') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $currentUserId = (int)($_SESSION['user_id'] ?? 1);
+        try {
+            $count = $assetService->syncBuiltinGlobalIcons($currentUserId);
+            $success = "{$count} built-in repository icon(s) synchronized into Global Asset Library.";
+        } catch (\Exception $e) {
+            $error = "Failed to synchronize built-in icons: " . $e->getMessage();
+        }
+    }
+}
