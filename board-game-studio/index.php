@@ -420,26 +420,26 @@ require_once __DIR__ . '/../templates/header.php';
                             }
                             ?>
                             <div class="bg-slate-900 border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between hover:border-slate-700/80 hover:shadow-lg transition">
-                                <div class="space-y-1">
-                                    <div class="flex justify-between items-start">
-                                        <div class="space-y-1 min-w-0 flex-grow">
-                                            <h3 class="font-bold text-slate-200 truncate pr-2"><?php echo SecurityHelper::escape($tmpl->getName()); ?></h3>
-                                            <?php if ($isLocked): ?>
-                                                <div class="flex items-center space-x-1 text-[10px] text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded w-fit">
-                                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                                    <span>Locked by <?php echo SecurityHelper::escape($lockUser ? $lockUser->getName() : 'Other User'); ?></span>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <?php $isLandscape = $tmpl->getCanvasWidthPx() > $tmpl->getCanvasHeightPx(); ?>
-                                        <div class="flex items-center space-x-1.5 flex-shrink-0">
-                                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded <?php echo $isLandscape ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700'; ?>">
-                                                <?php echo $isLandscape ? 'Landscape' : 'Portrait'; ?>
-                                            </span>
-                                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                                <?php echo $cType ? SecurityHelper::escape($cType->getName()) : 'Component'; ?>
-                                            </span>
-                                        </div>
+                                <div class="space-y-2">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <h3 class="font-bold text-slate-200 text-sm leading-snug line-clamp-2 flex-grow" title="<?php echo SecurityHelper::escape($tmpl->getName()); ?>">
+                                            <?php echo SecurityHelper::escape($tmpl->getName()); ?>
+                                        </h3>
+                                        <?php if ($isLocked): ?>
+                                            <div class="flex items-center space-x-1 text-[10px] text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded flex-shrink-0" title="Locked by <?php echo SecurityHelper::escape($lockUser ? $lockUser->getName() : 'Other User'); ?>">
+                                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                <span>Locked</span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php $isLandscape = $tmpl->getCanvasWidthPx() > $tmpl->getCanvasHeightPx(); ?>
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded <?php echo $isLandscape ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700'; ?>">
+                                            <?php echo $isLandscape ? 'Landscape' : 'Portrait'; ?>
+                                        </span>
+                                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                            <?php echo $cType ? SecurityHelper::escape($cType->getName()) : 'Component'; ?>
+                                        </span>
                                     </div>
                                     <p class="text-xs text-slate-400">
                                         Dimensions: <?php echo round(\App\Domain\Entities\BgTemplate::pxToMm($tmpl->getCanvasWidthPx(), 300), 1); ?>x<?php echo round(\App\Domain\Entities\BgTemplate::pxToMm($tmpl->getCanvasHeightPx(), 300), 1); ?>mm (<?php echo $tmpl->getCanvasWidthPx(); ?>x<?php echo $tmpl->getCanvasHeightPx(); ?>px)
