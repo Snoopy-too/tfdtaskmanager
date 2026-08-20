@@ -155,11 +155,28 @@
         }, 1500);
     }
 
+    if (typeof fabric !== 'undefined' && fabric.Image) {
+        const origImageToObject = fabric.Image.prototype.toObject;
+        fabric.Image.prototype.toObject = function(propertiesToInclude) {
+            const obj = origImageToObject.call(this, propertiesToInclude);
+            if (this.asset_url) {
+                obj.src = this.asset_url;
+            } else if (this.stored_filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                const canonicalUrl = window.assetPicker.getAssetUrlByFilename(this.stored_filename);
+                if (canonicalUrl) obj.src = canonicalUrl;
+            } else if (obj.src && obj.src.startsWith('blob:') && this.original_filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
+                const canonicalUrl = window.assetPicker.getAssetUrlByFilename(this.original_filename);
+                if (canonicalUrl) obj.src = canonicalUrl;
+            }
+            return obj;
+        };
+    }
+
     function saveCanvas() {
         if (isSaving || !canvas) return Promise.resolve();
         isSaving = true;
 
-        const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
+        const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'original_filename', 'stored_filename', 'asset_url']));
         
         const layers = [];
         canvas.getObjects().forEach((obj, index) => {
@@ -286,6 +303,38 @@
         });
     }
 
+    function upgradeSvgImageLayers() {
+        if (!canvas) return;
+        const imgObjects = canvas.getObjects().filter(obj => obj.type === 'image');
+        imgObjects.forEach(obj => {
+            const rawSrc = obj.asset_url || (obj.getSrc ? obj.getSrc() : (obj._element ? obj._element.src : ''));
+            if (rawSrc && (rawSrc.toLowerCase().includes('.svg') || rawSrc.startsWith('data:image/svg+xml'))) {
+                // If it's a blob url already, skip
+                if (rawSrc.startsWith('blob:')) return;
+                
+                const targetW = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
+                const targetH = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
+                
+                const prepPromise = window.prepareSvgSource ? window.prepareSvgSource(rawSrc) : Promise.resolve(rawSrc);
+                prepPromise.then(blobUrl => {
+                    if (blobUrl && blobUrl !== (obj.getSrc ? obj.getSrc() : '')) {
+                        obj.setSrc(blobUrl, () => {
+                            obj.asset_url = rawSrc;
+                            if (targetW > 0 && obj.width > 0) {
+                                obj.set('scaleX', targetW / obj.width);
+                            }
+                            if (targetH > 0 && obj.height > 0) {
+                                obj.set('scaleY', targetH / obj.height);
+                            }
+                            obj.setCoords();
+                            canvas.requestRenderAll();
+                        }, { crossOrigin: 'anonymous' });
+                    }
+                });
+            }
+        });
+    }
+
     function loadCanvas() {
         if (!canvas) return;
         setSaveStatus('Loading canvas...', 'pulse');
@@ -296,6 +345,7 @@
             if (data.canvas_json) {
                 canvas.loadFromJSON(data.canvas_json, () => {
                     upgradeLegacyTextLayers();
+                    upgradeSvgImageLayers();
 
                     if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                         window.guideRenderer.renderGuides();

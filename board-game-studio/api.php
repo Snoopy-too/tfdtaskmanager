@@ -157,6 +157,7 @@ try {
                 throw new \InvalidArgumentException('Method not allowed.');
             }
             $projectId = isset($_GET['project_id']) && (int)$_GET['project_id'] > 0 ? (int)$_GET['project_id'] : null;
+            $assetService->normalizeAllProjectSvgs($projectId);
             $assets = $assetService->getAssetsByProject($projectId, true);
             
             $formatted = [];

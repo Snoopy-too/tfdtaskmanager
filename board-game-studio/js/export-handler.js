@@ -281,17 +281,20 @@
                         const targetWidth = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
                         const targetHeight = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
 
-                        const swapPromise = new Promise((imgResolve) => {
-                            obj.setSrc(assetUrl, () => {
-                                if (targetWidth > 0 && obj.width > 0) {
-                                    obj.set('scaleX', targetWidth / obj.width);
-                                }
-                                if (targetHeight > 0 && obj.height > 0) {
-                                    obj.set('scaleY', targetHeight / obj.height);
-                                }
-                                obj.setCoords();
-                                imgResolve();
-                            }, { crossOrigin: 'anonymous' });
+                        const prepPromise = window.prepareSvgSource ? window.prepareSvgSource(assetUrl) : Promise.resolve(assetUrl);
+                        const swapPromise = prepPromise.then(resolvedUrl => {
+                            return new Promise((imgResolve) => {
+                                obj.setSrc(resolvedUrl, () => {
+                                    if (targetWidth > 0 && obj.width > 0) {
+                                        obj.set('scaleX', targetWidth / obj.width);
+                                    }
+                                    if (targetHeight > 0 && obj.height > 0) {
+                                        obj.set('scaleY', targetHeight / obj.height);
+                                    }
+                                    obj.setCoords();
+                                    imgResolve();
+                                }, { crossOrigin: 'anonymous' });
+                            });
                         });
                         imageSwapPromises.push(swapPromise);
                     }
@@ -309,39 +312,44 @@
                             const targetWidth = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
                             const targetHeight = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
                             if (obj.setSrc && typeof obj.setSrc === 'function') {
-                                const swapPromise = new Promise((imgResolve) => {
-                                    obj.setSrc(assetUrl, () => {
-                                        if (targetWidth > 0 && obj.width > 0) {
-                                            obj.set('scaleX', targetWidth / obj.width);
-                                        }
-                                        if (targetHeight > 0 && obj.height > 0) {
-                                            obj.set('scaleY', targetHeight / obj.height);
-                                        }
-                                        obj.setCoords();
-                                        imgResolve();
-                                    }, { crossOrigin: 'anonymous' });
+                                const prepPromise = window.prepareSvgSource ? window.prepareSvgSource(assetUrl) : Promise.resolve(assetUrl);
+                                const swapPromise = prepPromise.then(resolvedUrl => {
+                                    return new Promise((imgResolve) => {
+                                        obj.setSrc(resolvedUrl, () => {
+                                            if (targetWidth > 0 && obj.width > 0) {
+                                                obj.set('scaleX', targetWidth / obj.width);
+                                            }
+                                            if (targetHeight > 0 && obj.height > 0) {
+                                                obj.set('scaleY', targetHeight / obj.height);
+                                            }
+                                            obj.setCoords();
+                                            imgResolve();
+                                        }, { crossOrigin: 'anonymous' });
+                                    });
                                 });
                                 imageSwapPromises.push(swapPromise);
                             } else {
-                                const swapPromise = new Promise((imgResolve) => {
-                                    fabric.Image.fromURL(assetUrl, (newImg) => {
-                                        if (!newImg) return imgResolve();
-                                        const scaleX = (targetWidth > 0 && newImg.width > 0) ? (targetWidth / newImg.width) : (obj.scaleX || 1);
-                                        const scaleY = (targetHeight > 0 && newImg.height > 0) ? (targetHeight / newImg.height) : (obj.scaleY || 1);
-                                        newImg.set({
-                                            left: obj.left,
-                                            top: obj.top,
-                                            originX: obj.originX || 'center',
-                                            originY: obj.originY || 'center',
-                                            scaleX: scaleX,
-                                            scaleY: scaleY,
-                                            angle: obj.angle || 0,
-                                            opacity: obj.opacity !== undefined ? obj.opacity : 1,
-                                            name: val,
-                                            variable_binding: obj.variable_binding,
-                                            id: obj.id,
-                                            original_filename: val
-                                        });
+                                const prepPromise = window.prepareSvgSource ? window.prepareSvgSource(assetUrl) : Promise.resolve(assetUrl);
+                                const swapPromise = prepPromise.then(resolvedUrl => {
+                                    return new Promise((imgResolve) => {
+                                        fabric.Image.fromURL(resolvedUrl, (newImg) => {
+                                            if (!newImg) return imgResolve();
+                                            const scaleX = (targetWidth > 0 && newImg.width > 0) ? (targetWidth / newImg.width) : (obj.scaleX || 1);
+                                            const scaleY = (targetHeight > 0 && newImg.height > 0) ? (targetHeight / newImg.height) : (obj.scaleY || 1);
+                                            newImg.set({
+                                                left: obj.left,
+                                                top: obj.top,
+                                                originX: obj.originX || 'center',
+                                                originY: obj.originY || 'center',
+                                                scaleX: scaleX,
+                                                scaleY: scaleY,
+                                                angle: obj.angle || 0,
+                                                opacity: obj.opacity !== undefined ? obj.opacity : 1,
+                                                name: val,
+                                                variable_binding: obj.variable_binding,
+                                                id: obj.id,
+                                                original_filename: val
+                                            });
                                         const idx = cardCanvas.getObjects().indexOf(obj);
                                         cardCanvas.remove(obj);
                                         if (idx >= 0) {

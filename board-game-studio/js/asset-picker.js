@@ -163,32 +163,99 @@
         return fontName;
     }
 
-    // Helper to resolve SVG dimensions (viewBox fallback) to prevent HTML5 canvas coordinate clipping
-    function resolveSvgDimensions(assetUrl) {
-        return fetch(assetUrl)
-            .then(res => res.text())
+    const svgBlobCache = new Map();
+
+    /**
+     * Prepares any SVG URL into an in-memory high-resolution normalized Blob URL.
+     * 1. Explicit width & height matching viewBox scaled to at least 512px (prevents 9-arg drawImage clipping)
+     * 2. currentColor converted to #000000 (prevents dark mode / isolated context white-on-white invisibility)
+     * 3. Seamless in-memory caching to prevent duplicate network fetches
+     */
+    function prepareSvgSource(url) {
+        if (!url || typeof url !== 'string') return Promise.resolve(url);
+        
+        const isSvg = url.toLowerCase().includes('.svg') || url.startsWith('data:image/svg+xml');
+        if (!isSvg) {
+            return Promise.resolve(url);
+        }
+
+        if (svgBlobCache.has(url)) {
+            return Promise.resolve(svgBlobCache.get(url));
+        }
+
+        return fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.text();
+            })
             .then(svgText => {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(svgText, 'image/svg+xml');
                 const svg = doc.querySelector('svg');
-                if (!svg) return null;
-                let w = parseFloat(svg.getAttribute('width'));
-                let h = parseFloat(svg.getAttribute('height'));
-                if ((!w || !h || isNaN(w) || isNaN(h)) && svg.getAttribute('viewBox')) {
-                    const vb = svg.getAttribute('viewBox').trim().split(/[\s,]+/);
-                    if (vb.length === 4) {
-                        w = parseFloat(vb[2]);
-                        h = parseFloat(vb[3]);
+                if (!svg) return url;
+
+                // 1. Extract or determine viewBox dimensions
+                let minX = 0, minY = 0, vbW = 0, vbH = 0;
+                const vbAttr = svg.getAttribute('viewBox');
+                if (vbAttr) {
+                    const parts = vbAttr.trim().split(/[\s,]+/).map(parseFloat);
+                    if (parts.length === 4 && !isNaN(parts[2]) && !isNaN(parts[3]) && parts[2] > 0 && parts[3] > 0) {
+                        minX = parts[0];
+                        minY = parts[1];
+                        vbW = parts[2];
+                        vbH = parts[3];
                     }
                 }
-                if (w > 0 && h > 0) {
-                    const maxDim = Math.max(w, h);
-                    const scale = (maxDim < 512) ? (512 / maxDim) : 1.0;
-                    return { width: Math.round(w * scale), height: Math.round(h * scale) };
+
+                if (vbW <= 0 || vbH <= 0) {
+                    const rawW = parseFloat(svg.getAttribute('width'));
+                    const rawH = parseFloat(svg.getAttribute('height'));
+                    if (rawW > 0 && rawH > 0) {
+                        vbW = rawW;
+                        vbH = rawH;
+                    } else {
+                        vbW = 512;
+                        vbH = 512;
+                    }
                 }
-                return null;
+
+                // 2. Scale viewBox to crisp high-res raster buffer (min 512px)
+                const maxDim = Math.max(vbW, vbH);
+                const scale = (maxDim < 512) ? (512 / maxDim) : 1.0;
+                const targetW = Math.round(vbW * scale);
+                const targetH = Math.round(vbH * scale);
+
+                svg.setAttribute('width', String(targetW));
+                svg.setAttribute('height', String(targetH));
+                svg.setAttribute('viewBox', `${minX} ${minY} ${vbW} ${vbH}`);
+
+                // 3. Normalize currentColor and text styling
+                svg.style.color = '#000000';
+                const allElements = svg.querySelectorAll('*');
+                allElements.forEach(el => {
+                    ['stroke', 'fill'].forEach(attr => {
+                        const val = el.getAttribute(attr);
+                        if (val && val.toLowerCase() === 'currentcolor') {
+                            el.setAttribute(attr, '#000000');
+                        }
+                    });
+                    const inlineStyle = el.getAttribute('style');
+                    if (inlineStyle && inlineStyle.toLowerCase().includes('currentcolor')) {
+                        el.setAttribute('style', inlineStyle.replace(/currentcolor/gi, '#000000'));
+                    }
+                });
+
+                const serializer = new XMLSerializer();
+                const cleanXml = serializer.serializeToString(svg);
+                const blob = new Blob([cleanXml], { type: 'image/svg+xml;charset=utf-8' });
+                const blobUrl = URL.createObjectURL(blob);
+                svgBlobCache.set(url, blobUrl);
+                return blobUrl;
             })
-            .catch(() => null);
+            .catch(err => {
+                console.warn('[prepareSvgSource] Failed to process SVG:', url, err);
+                return url;
+            });
     }
 
     // Add Image or SVG to Canvas
@@ -198,26 +265,13 @@
 
         const posX = (typeof left === 'number') ? left : (canvas.width / 2);
         const posY = (typeof top === 'number') ? top : (canvas.height / 2);
-        const isSvg = (asset.original_filename && asset.original_filename.toLowerCase().endsWith('.svg')) ||
-                      (asset.mime_type && asset.mime_type.includes('svg')) ||
-                      (asset.url && asset.url.toLowerCase().includes('.svg'));
 
-        const dimPromise = isSvg ? resolveSvgDimensions(asset.url) : Promise.resolve(null);
-
-        dimPromise.then(svgDim => {
-            fabric.Image.fromURL(asset.url, (img) => {
+        prepareSvgSource(asset.url).then(resolvedUrl => {
+            fabric.Image.fromURL(resolvedUrl, (img) => {
                 if (!img) return;
 
-                // Ensure natural dimensions are resolved (especially for SVGs)
-                const rawEl = (typeof img.getElement === 'function') ? img.getElement() : null;
-                let naturalW = (svgDim && svgDim.width > 0) ? svgDim.width : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (img.width || 512));
-                let naturalH = (svgDim && svgDim.height > 0) ? svgDim.height : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (img.height || 512));
-
-                img.set('width', naturalW);
-                img.set('height', naturalH);
-
-                const imgW = img.width || naturalW || 1;
-                const imgH = img.height || naturalH || 1;
+                const imgW = img.width || 512;
+                const imgH = img.height || 512;
 
                 // Target a visible, balanced proportion: ~40-50% of the canvas workspace, bounded between 20% and 75%
                 const targetWidth = canvas.width * 0.45;
@@ -246,7 +300,8 @@
                     scaleY: scale,
                     name: asset.original_filename,
                     original_filename: asset.original_filename,
-                    stored_filename: asset.stored_filename
+                    stored_filename: asset.stored_filename,
+                    asset_url: asset.url
                 });
 
                 img.setCoords();
@@ -457,10 +512,13 @@
         return match ? match.url : null;
     }
 
+    window.prepareSvgSource = prepareSvgSource;
+
     window.assetPicker = {
         loadAssets: loadAssets,
         loadFontFace: loadFontFace,
         getAssetUrlByFilename: getAssetUrlByFilename,
+        prepareSvgSource: prepareSvgSource,
         getCachedAssets: () => cachedAssets
     };
 

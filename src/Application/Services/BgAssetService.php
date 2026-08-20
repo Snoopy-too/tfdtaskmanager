@@ -24,6 +24,21 @@ class BgAssetService
         return $this->assetRepository->findByProjectId($projectId, $includeGlobal);
     }
 
+    public function normalizeAllProjectSvgs(?int $projectId): void
+    {
+        $assets = $this->assetRepository->findByProjectId($projectId, true);
+        foreach ($assets as $asset) {
+            $ext = strtolower(pathinfo($asset->getOriginalFilename(), PATHINFO_EXTENSION));
+            if ($ext === 'svg' || $asset->getMimeType() === 'image/svg+xml') {
+                $folderName = ($asset->getProjectId() === null) ? 'global' : (string)$asset->getProjectId();
+                $filePath = $this->uploadDirBase . DIRECTORY_SEPARATOR . $folderName . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+                if (file_exists($filePath)) {
+                    $this->normalizeSvgFile($filePath);
+                }
+            }
+        }
+    }
+
     public function getAssetById(int $id): ?BgAsset
     {
         return $this->assetRepository->findById($id);
