@@ -163,6 +163,30 @@
         return fontName;
     }
 
+    // Helper to resolve SVG dimensions (viewBox fallback) to prevent HTML5 canvas coordinate clipping
+    function resolveSvgDimensions(assetUrl) {
+        return fetch(assetUrl)
+            .then(res => res.text())
+            .then(svgText => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svgText, 'image/svg+xml');
+                const svg = doc.querySelector('svg');
+                if (!svg) return null;
+                let w = parseFloat(svg.getAttribute('width'));
+                let h = parseFloat(svg.getAttribute('height'));
+                if ((!w || !h || isNaN(w) || isNaN(h)) && svg.getAttribute('viewBox')) {
+                    const vb = svg.getAttribute('viewBox').trim().split(/[\s,]+/);
+                    if (vb.length === 4) {
+                        w = parseFloat(vb[2]);
+                        h = parseFloat(vb[3]);
+                    }
+                }
+                if (w > 0 && h > 0) return { width: w, height: h };
+                return null;
+            })
+            .catch(() => null);
+    }
+
     // Add Image or SVG to Canvas
     function addImageLayer(asset, left, top) {
         const canvas = window.editorCanvas;
@@ -170,77 +194,84 @@
 
         const posX = (typeof left === 'number') ? left : (canvas.width / 2);
         const posY = (typeof top === 'number') ? top : (canvas.height / 2);
+        const isSvg = (asset.original_filename && asset.original_filename.toLowerCase().endsWith('.svg')) ||
+                      (asset.mime_type && asset.mime_type.includes('svg')) ||
+                      (asset.url && asset.url.toLowerCase().includes('.svg'));
 
-        fabric.Image.fromURL(asset.url, (img) => {
-            if (!img) return;
+        const dimPromise = isSvg ? resolveSvgDimensions(asset.url) : Promise.resolve(null);
 
-            // Ensure natural dimensions are resolved (especially for SVGs)
-            const rawEl = (typeof img.getElement === 'function') ? img.getElement() : null;
-            const naturalW = (rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (img.width || 300);
-            const naturalH = (rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (img.height || 300);
+        dimPromise.then(svgDim => {
+            fabric.Image.fromURL(asset.url, (img) => {
+                if (!img) return;
 
-            if (!img.width || img.width <= 0) img.set('width', naturalW);
-            if (!img.height || img.height <= 0) img.set('height', naturalH);
+                // Ensure natural dimensions are resolved (especially for SVGs)
+                const rawEl = (typeof img.getElement === 'function') ? img.getElement() : null;
+                let naturalW = (svgDim && svgDim.width > 0) ? svgDim.width : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (img.width || 300));
+                let naturalH = (svgDim && svgDim.height > 0) ? svgDim.height : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (img.height || 300));
 
-            const imgW = img.width || naturalW || 1;
-            const imgH = img.height || naturalH || 1;
+                img.set('width', naturalW);
+                img.set('height', naturalH);
 
-            // Target a visible, balanced proportion: ~40-50% of the canvas workspace, bounded between 20% and 75%
-            const targetWidth = canvas.width * 0.45;
-            const targetHeight = canvas.height * 0.45;
-            const maxFitScale = Math.min((canvas.width * 0.75) / imgW, (canvas.height * 0.75) / imgH);
+                const imgW = img.width || naturalW || 1;
+                const imgH = img.height || naturalH || 1;
 
-            let scale = 1.0;
-            // If image is huge compared to canvas (> 70%), scale it down
-            if (imgW > canvas.width * 0.7 || imgH > canvas.height * 0.7) {
-                scale = maxFitScale;
-            } else if (imgW < canvas.width * 0.25 && imgH < canvas.height * 0.25) {
-                // If image is small relative to canvas (< 25%), scale it up so it is clearly visible and noticeable
-                scale = Math.min(targetWidth / imgW, targetHeight / imgH, maxFitScale);
-            } else {
-                scale = Math.min(1.0, maxFitScale);
-            }
+                // Target a visible, balanced proportion: ~40-50% of the canvas workspace, bounded between 20% and 75%
+                const targetWidth = canvas.width * 0.45;
+                const targetHeight = canvas.height * 0.45;
+                const maxFitScale = Math.min((canvas.width * 0.75) / imgW, (canvas.height * 0.75) / imgH);
 
-            if (!isFinite(scale) || scale <= 0) scale = 1.0;
+                let scale = 1.0;
+                // If image is huge compared to canvas (> 70%), scale it down
+                if (imgW > canvas.width * 0.7 || imgH > canvas.height * 0.7) {
+                    scale = maxFitScale;
+                } else if (imgW < canvas.width * 0.25 && imgH < canvas.height * 0.25) {
+                    // If image is small relative to canvas (< 25%), scale it up so it is clearly visible and noticeable
+                    scale = Math.min(targetWidth / imgW, targetHeight / imgH, maxFitScale);
+                } else {
+                    scale = Math.min(1.0, maxFitScale);
+                }
 
-            img.set({
-                left: posX,
-                top: posY,
-                originX: 'center',
-                originY: 'center',
-                scaleX: scale,
-                scaleY: scale,
-                name: asset.original_filename,
-                original_filename: asset.original_filename,
-                stored_filename: asset.stored_filename
-            });
+                if (!isFinite(scale) || scale <= 0) scale = 1.0;
 
-            img.setCoords();
-            canvas.add(img);
+                img.set({
+                    left: posX,
+                    top: posY,
+                    originX: 'center',
+                    originY: 'center',
+                    scaleX: scale,
+                    scaleY: scale,
+                    name: asset.original_filename,
+                    original_filename: asset.original_filename,
+                    stored_filename: asset.stored_filename
+                });
 
-            // Ensure the newly added image layer is on top of content layers
-            img.bringToFront();
+                img.setCoords();
+                canvas.add(img);
 
-            // Keep guide lines on the top overlay above all content
-            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
-                window.guideRenderer.renderGuides();
-            }
+                // Ensure the newly added image layer is on top of content layers
+                img.bringToFront();
 
-            canvas.setActiveObject(img);
-            canvas.renderAll();
+                // Keep guide lines on the top overlay above all content
+                if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+                    window.guideRenderer.renderGuides();
+                }
 
-            // Immediately update layer stack sidebar
-            if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
-                window.layerManager.renderLayersList();
-            }
+                canvas.setActiveObject(img);
+                canvas.renderAll();
 
-            // Immediately inspect in properties inspector
-            if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
-                window.propertyInspector.inspect(img);
-            }
+                // Immediately update layer stack sidebar
+                if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
+                    window.layerManager.renderLayersList();
+                }
 
-            window.editorCore.triggerAutoSave();
-        }, { crossOrigin: 'anonymous' });
+                // Immediately inspect in properties inspector
+                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+                    window.propertyInspector.inspect(img);
+                }
+
+                window.editorCore.triggerAutoSave();
+            }, { crossOrigin: 'anonymous' });
+        });
     }
 
     // Select custom font for active text layer

@@ -110,13 +110,19 @@ class BgAssetService
             throw new ValidationException("Failed to save uploaded file.");
         }
 
+        if ($targetExt === 'svg' || $mime === 'image/svg+xml') {
+            $this->normalizeSvgFile($targetPath);
+        }
+
+        $fileSize = (int)filesize($targetPath);
+
         $asset = new BgAsset(
             null,
             $projectId,
             $originalName,
             $storedFilename,
             $mime,
-            $file['size'],
+            $fileSize > 0 ? $fileSize : $file['size'],
             $cleanTag,
             $uploadedByUserId
         );
@@ -311,13 +317,17 @@ class BgAssetService
 
             $targetPath = $projectUploadDir . DIRECTORY_SEPARATOR . $storedFilename;
             if (copy($fileInfo->getPathname(), $targetPath)) {
+                if ($ext === 'svg' || $mime === 'image/svg+xml') {
+                    $this->normalizeSvgFile($targetPath);
+                }
+                $fileSize = (int)filesize($targetPath);
                 $asset = new BgAsset(
                     null,
                     $projectId,
                     $originalFilename,
                     $storedFilename,
                     $mime,
-                    $fileInfo->getSize(),
+                    $fileSize > 0 ? $fileSize : $fileInfo->getSize(),
                     null,
                     $uploadedByUserId
                 );
@@ -329,5 +339,53 @@ class BgAssetService
 
         @rmdir($extractDir);
         return $results;
+    }
+
+    /**
+     * Normalizes SVG files so that width and height attributes match the viewBox dimensions.
+     * Prevents browser and HTML5 Canvas coordinate mismatch / over-sampling clipping.
+     */
+    private function normalizeSvgFile(string $filePath): void
+    {
+        if (!file_exists($filePath)) {
+            return;
+        }
+
+        $content = file_get_contents($filePath);
+        if ($content === false || trim($content) === '') {
+            return;
+        }
+
+        // Match opening <svg ...> tag
+        if (preg_match('/<svg\b([^>]*)>/i', $content, $matches)) {
+            $svgTag = $matches[0];
+            $attributes = $matches[1];
+
+            // Extract viewBox dimensions if present (minX minY width height)
+            if (preg_match('/viewBox=["\']\s*([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)\s*["\']/i', $attributes, $vbMatches)) {
+                $vbWidth = $vbMatches[3];
+                $vbHeight = $vbMatches[4];
+
+                $hasWidth = (bool)preg_match('/\bwidth=["\'][^"\']+["\']/i', $attributes);
+                $hasHeight = (bool)preg_match('/\bheight=["\'][^"\']+["\']/i', $attributes);
+
+                if (!$hasWidth || !$hasHeight) {
+                    $newAttributes = $attributes;
+                    if (!$hasWidth) {
+                        $newAttributes .= ' width="' . htmlspecialchars($vbWidth, ENT_QUOTES, 'UTF-8') . '"';
+                    }
+                    if (!$hasHeight) {
+                        $newAttributes .= ' height="' . htmlspecialchars($vbHeight, ENT_QUOTES, 'UTF-8') . '"';
+                    }
+
+                    $newSvgTag = '<svg' . $newAttributes . '>';
+                    $pos = strpos($content, $svgTag);
+                    if ($pos !== false) {
+                        $content = substr_replace($content, $newSvgTag, $pos, strlen($svgTag));
+                        file_put_contents($filePath, $content);
+                    }
+                }
+            }
+        }
     }
 }
