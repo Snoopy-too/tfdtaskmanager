@@ -342,8 +342,8 @@ class BgAssetService
     }
 
     /**
-     * Normalizes SVG files so that width and height attributes match the viewBox dimensions.
-     * Prevents browser and HTML5 Canvas coordinate mismatch / over-sampling clipping.
+     * Normalizes SVG files so that width and height attributes match high-res viewBox dimensions
+     * and currentColor is replaced with #000000 for standalone canvas image rendering.
      */
     private function normalizeSvgFile(string $filePath): void
     {
@@ -356,6 +356,9 @@ class BgAssetService
             return;
         }
 
+        // Replace any currentColor references with solid black for isolated image contexts
+        $content = preg_replace('/\bcurrentColor\b/i', '#000000', $content) ?? $content;
+
         // Match opening <svg ...> tag
         if (preg_match('/<svg\b([^>]*)>/i', $content, $matches)) {
             $svgTag = $matches[0];
@@ -363,29 +366,28 @@ class BgAssetService
 
             // Extract viewBox dimensions if present (minX minY width height)
             if (preg_match('/viewBox=["\']\s*([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)\s*["\']/i', $attributes, $vbMatches)) {
-                $vbWidth = $vbMatches[3];
-                $vbHeight = $vbMatches[4];
+                $vbWidth = (float)$vbMatches[3];
+                $vbHeight = (float)$vbMatches[4];
 
-                $hasWidth = (bool)preg_match('/\bwidth=["\'][^"\']+["\']/i', $attributes);
-                $hasHeight = (bool)preg_match('/\bheight=["\'][^"\']+["\']/i', $attributes);
+                if ($vbWidth > 0 && $vbHeight > 0) {
+                    $maxDim = max($vbWidth, $vbHeight);
+                    $scale = ($maxDim < 512) ? (512 / $maxDim) : 1.0;
+                    $targetW = (int)round($vbWidth * $scale);
+                    $targetH = (int)round($vbHeight * $scale);
 
-                if (!$hasWidth || !$hasHeight) {
-                    $newAttributes = $attributes;
-                    if (!$hasWidth) {
-                        $newAttributes .= ' width="' . htmlspecialchars($vbWidth, ENT_QUOTES, 'UTF-8') . '"';
-                    }
-                    if (!$hasHeight) {
-                        $newAttributes .= ' height="' . htmlspecialchars($vbHeight, ENT_QUOTES, 'UTF-8') . '"';
-                    }
+                    // Remove existing width/height if any to replace with target high-res dimensions
+                    $cleanAttributes = preg_replace('/\s*(?:width|height)=["\'][^"\']*["\']/i', '', $attributes);
+                    $newAttributes = $cleanAttributes . ' width="' . $targetW . '" height="' . $targetH . '"';
 
                     $newSvgTag = '<svg' . $newAttributes . '>';
                     $pos = strpos($content, $svgTag);
                     if ($pos !== false) {
                         $content = substr_replace($content, $newSvgTag, $pos, strlen($svgTag));
-                        file_put_contents($filePath, $content);
                     }
                 }
             }
         }
+
+        file_put_contents($filePath, $content);
     }
 }

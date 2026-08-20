@@ -181,7 +181,11 @@
                         h = parseFloat(vb[3]);
                     }
                 }
-                if (w > 0 && h > 0) return { width: w, height: h };
+                if (w > 0 && h > 0) {
+                    const maxDim = Math.max(w, h);
+                    const scale = (maxDim < 512) ? (512 / maxDim) : 1.0;
+                    return { width: Math.round(w * scale), height: Math.round(h * scale) };
+                }
                 return null;
             })
             .catch(() => null);
@@ -206,8 +210,8 @@
 
                 // Ensure natural dimensions are resolved (especially for SVGs)
                 const rawEl = (typeof img.getElement === 'function') ? img.getElement() : null;
-                let naturalW = (svgDim && svgDim.width > 0) ? svgDim.width : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (img.width || 300));
-                let naturalH = (svgDim && svgDim.height > 0) ? svgDim.height : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (img.height || 300));
+                let naturalW = (svgDim && svgDim.width > 0) ? svgDim.width : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (img.width || 512));
+                let naturalH = (svgDim && svgDim.height > 0) ? svgDim.height : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (img.height || 512));
 
                 img.set('width', naturalW);
                 img.set('height', naturalH);
