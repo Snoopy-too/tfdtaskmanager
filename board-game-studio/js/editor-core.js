@@ -1,10 +1,11 @@
 /**
  * Editor Core Module
- * Initializes FabricJS canvas, handles zoom/pan and auto-save syncing.
+ * Initializes FabricJS canvas, coordinates modules, and handles canvas save/load lifecycle.
  */
 (function() {
     'use strict';
-    // Global override to prevent FabricJS from scrolling the viewport when focusing the hidden textarea
+
+    // Global override to prevent FabricJS from scrolling viewport when focusing hidden textarea
     const originalFocus = HTMLTextAreaElement.prototype.focus;
     HTMLTextAreaElement.prototype.focus = function(options) {
         if (this.hasAttribute && this.hasAttribute('data-fabric-hiddentextarea')) {
@@ -15,22 +16,10 @@
     };
 
     let canvas;
-    let zoomLevel = 1.0;
     let isSaving = false;
     let saveTimeout = null;
-    let clipboard = null;
 
-    // History undo/redo state variables
-    const historyStack = [];
-    const redoStack = [];
-    let isUndoingRedoing = false;
-    let historyTimeout = null;
-    const maxHistorySize = 50;
-
-    // Initialize Canvas
     function initCanvas() {
-        // Force FabricJS to append the hidden textarea to the document body instead of the transformed wrapper.
-        // This is CRITICAL to prevent massive scroll jumps when entering edit mode inside a scaled container.
         if (fabric) {
             if (fabric.IText) {
                 fabric.IText.prototype.hiddenTextareaContainer = document.body;
@@ -40,22 +29,15 @@
                     ctx.textBaseline = 'alphabetic';
                     if (this.path) {
                         switch (this.pathAlign) {
-                            case 'center':
-                                ctx.textBaseline = 'middle';
-                                break;
-                            case 'ascender':
-                                ctx.textBaseline = 'top';
-                                break;
-                            case 'descender':
-                                ctx.textBaseline = 'bottom';
-                                break;
+                            case 'center': ctx.textBaseline = 'middle'; break;
+                            case 'ascender': ctx.textBaseline = 'top'; break;
+                            case 'descender': ctx.textBaseline = 'bottom'; break;
                         }
                     }
                     ctx.font = this._getFontDeclaration(charStyle, forMeasuring);
                 };
             }
             if (fabric.Textbox) {
-                // ponytail: fix FabricJS 5.3.1 Textbox space-stripping bug that causes ghost trailing characters (" e r") at end of wrapped lines
                 const origSplit = fabric.Textbox.prototype._splitTextIntoLines;
                 fabric.Textbox.prototype._splitTextIntoLines = function(text) {
                     const result = origSplit.call(this, text);
@@ -73,79 +55,29 @@
         const width = window.studioConfig.canvasWidth;
         const height = window.studioConfig.canvasHeight;
         
-        // Size wrapper container
         const wrapper = document.getElementById('canvas-container-wrapper');
-        wrapper.style.width = width + 'px';
-        wrapper.style.height = height + 'px';
+        if (wrapper) {
+            wrapper.style.width = width + 'px';
+            wrapper.style.height = height + 'px';
+        }
 
         canvas = new fabric.Canvas('editor-canvas', {
             width: width,
             height: height,
             backgroundColor: '#ffffff',
-            preserveObjectStacking: true // Keep z-order ordering consistent
+            preserveObjectStacking: true
         });
 
         window.editorCanvas = canvas;
 
-        // ponytail: dynamically compute control handle size, touch radius, and border thickness so handles remain a constant visible size on screen at any canvas zoom level
-        function syncControlAppearance() {
-            if (!fabric || !fabric.Object) return;
-
-            const effectiveZoom = zoomLevel || 1.0;
-            // Target 15 CSS px on-screen handles, 26 CSS px touch targets, 2 CSS px border
-            const cSize = Math.max(12, Math.round(15 / effectiveZoom));
-            const touchSize = Math.max(20, Math.round(26 / effectiveZoom));
-            const bScale = Math.max(1, Math.round(2 / effectiveZoom));
-            const pad = Math.max(2, Math.round(5 / effectiveZoom));
-
-            fabric.Object.prototype.cornerSize = cSize;
-            fabric.Object.prototype.touchCornerSize = touchSize;
-            fabric.Object.prototype.borderScaleFactor = bScale;
-            fabric.Object.prototype.padding = pad;
-            fabric.Object.prototype.transparentCorners = false;
-            fabric.Object.prototype.cornerColor = '#ffffff';
-            fabric.Object.prototype.cornerStrokeColor = '#4f46e5';
-            fabric.Object.prototype.borderColor = '#6366f1';
-            fabric.Object.prototype.cornerStyle = 'rect';
-
-            if (fabric.Object.prototype.setControlVisible) {
-                fabric.Object.prototype.setControlVisible('tl', true);
-                fabric.Object.prototype.setControlVisible('tr', true);
-                fabric.Object.prototype.setControlVisible('bl', true);
-                fabric.Object.prototype.setControlVisible('br', true);
-                fabric.Object.prototype.setControlVisible('ml', true);
-                fabric.Object.prototype.setControlVisible('mr', true);
-                fabric.Object.prototype.setControlVisible('mt', true);
-                fabric.Object.prototype.setControlVisible('mb', true);
-                fabric.Object.prototype.setControlVisible('mtr', true);
-            }
-
-            if (canvas) {
-                canvas.getObjects().forEach(obj => {
-                    if (obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') return;
-                    obj.cornerSize = cSize;
-                    obj.touchCornerSize = touchSize;
-                    obj.borderScaleFactor = bScale;
-                    obj.padding = pad;
-                    obj.transparentCorners = false;
-                    obj.cornerColor = '#ffffff';
-                    obj.cornerStrokeColor = '#4f46e5';
-                    obj.borderColor = '#6366f1';
-                    obj.cornerStyle = 'rect';
-                    obj.setCoords();
-                });
-                canvas.requestRenderAll();
-            }
+        if (window.editorViewport && typeof window.editorViewport.syncControlAppearance === 'function') {
+            window.editorViewport.syncControlAppearance();
         }
-        window.editorCoreSyncControls = syncControlAppearance;
-
-        syncControlAppearance();
 
         if (window.studioConfig.isViewMode) {
             document.body.classList.add('view-only-mode');
             canvas.selection = false;
 
-            // Make any newly added or rendered objects non-selectable
             canvas.on('object:added', function(e) {
                 const obj = e.target;
                 if (obj.id !== 'safe-zone-guide' && obj.id !== 'bleed-zone-guide') {
@@ -175,11 +107,10 @@
                 });
             });
         } else {
-            // Apply zoom-scaled control styles to newly added objects
             canvas.on('object:added', function(e) {
                 const obj = e.target;
                 if (obj && obj.id !== 'safe-zone-guide' && obj.id !== 'bleed-zone-guide') {
-                    const effectiveZoom = zoomLevel || 1.0;
+                    const effectiveZoom = (window.editorViewport ? window.editorViewport.getZoomLevel() : 1.0) || 1.0;
                     obj.cornerSize = Math.max(12, Math.round(15 / effectiveZoom));
                     obj.touchCornerSize = Math.max(20, Math.round(26 / effectiveZoom));
                     obj.borderScaleFactor = Math.max(1, Math.round(2 / effectiveZoom));
@@ -193,31 +124,27 @@
                 }
                 triggerAutoSave();
             });
-            // Auto-save on modify
+
             canvas.on('object:modified', triggerAutoSave);
             canvas.on('object:removed', triggerAutoSave);
         }
         
-        // Listen to selection changes for Property Inspector
         canvas.on('selection:created', (e) => {
-            syncControlAppearance();
+            if (window.editorViewport) window.editorViewport.syncControlAppearance();
             onSelectionChanged(e);
         });
         canvas.on('selection:updated', (e) => {
-            syncControlAppearance();
+            if (window.editorViewport) window.editorViewport.syncControlAppearance();
             onSelectionChanged(e);
         });
         canvas.on('selection:cleared', onSelectionCleared);
 
-        // Hidden textarea focus is now handled by the HTMLTextAreaElement.prototype.focus override.
-
         loadCanvas();
-        setupZoomControls();
+        if (window.editorViewport) window.editorViewport.setupZoomControls();
     }
 
-    // Debounce Save Trigger
     function triggerAutoSave() {
-        pushState(); // Push to local undo/redo stack
+        if (window.editorHistory) window.editorHistory.pushState();
 
         if (saveTimeout) clearTimeout(saveTimeout);
         
@@ -225,23 +152,18 @@
         
         saveTimeout = setTimeout(() => {
             saveCanvas();
-        }, 1500); // 1.5s debounce
+        }, 1500);
     }
 
-    // Save Canvas state to database
     function saveCanvas() {
-        if (isSaving) return Promise.resolve();
+        if (isSaving || !canvas) return Promise.resolve();
         isSaving = true;
 
         const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
         
-        // Simplified layer metadata sync
         const layers = [];
         canvas.getObjects().forEach((obj, index) => {
-            // Exclude guides overlay layers
-            if (obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') {
-                return;
-            }
+            if (obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') return;
 
             let textVal = '';
             let layerType = 'shape';
@@ -304,7 +226,6 @@
             isSaving = false;
             if (data.success) {
                 setSaveStatus('All changes saved', 'saved');
-                // Reload layer list in sidebar
                 if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                     window.layerManager.renderLayersList();
                 }
@@ -323,7 +244,6 @@
         });
     }
 
-    // ponytail: upgrade legacy i-text objects to fabric.Textbox for automatic word wrapping
     function upgradeLegacyTextLayers() {
         if (!canvas) return;
         const legacyTextObjects = canvas.getObjects().filter(obj => obj.type === 'i-text' || obj.type === 'text');
@@ -342,17 +262,13 @@
         });
     }
 
-// Helper to refresh all text layers once their fonts are loaded
     function refreshCanvasTextLayers() {
         if (!canvas || !document.fonts) return;
         const textObjects = canvas.getObjects().filter(obj => obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox');
         
-        // Clear FabricJS character width cache to force dynamic re-measurement
         if (typeof fabric !== 'undefined') {
             fabric.charWidthsCache = {};
-            if (fabric.util) {
-                fabric.util.charWidthsCache = {};
-            }
+            if (fabric.util) fabric.util.charWidthsCache = {};
         }
 
         textObjects.forEach(obj => {
@@ -370,12 +286,7 @@
         });
     }
 
-    // Load Canvas state
     function loadCanvas() {
-        loadTemplateCanvas();
-    }
-
-    function loadTemplateCanvas() {
         if (!canvas) return;
         setSaveStatus('Loading canvas...', 'pulse');
         
@@ -386,22 +297,20 @@
                 canvas.loadFromJSON(data.canvas_json, () => {
                     upgradeLegacyTextLayers();
 
-                    // Re-render guides on top after load
                     if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                         window.guideRenderer.renderGuides();
                     }
                     
-                    // Recalculate dimensions of all text objects once fonts are ready
                     refreshCanvasTextLayers();
 
-                    if (typeof syncControlAppearance === 'function') {
-                        syncControlAppearance();
+                    if (window.editorViewport && typeof window.editorViewport.syncControlAppearance === 'function') {
+                        window.editorViewport.syncControlAppearance();
                     }
 
                     canvas.renderAll();
                     setSaveStatus('All changes saved', 'saved');
                     
-                    pushStateImmediate(); // Push base state
+                    if (window.editorHistory) window.editorHistory.pushStateImmediate();
 
                     if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                         window.layerManager.renderLayersList();
@@ -412,13 +321,12 @@
                     }
                 });
             } else {
-                // Initialize clean slate canvas with guides
                 if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                     window.guideRenderer.renderGuides();
                 }
                 setSaveStatus('All changes saved', 'saved');
                 
-                pushStateImmediate(); // Push base state
+                if (window.editorHistory) window.editorHistory.pushStateImmediate();
 
                 if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                     window.layerManager.renderLayersList();
@@ -435,25 +343,25 @@
         });
     }
 
-    // Update Status Indicator UI
     function setSaveStatus(text, state) {
         const indicator = document.getElementById('save-status');
+        if (!indicator) return;
         const dot = indicator.querySelector('span');
         const textSpan = document.getElementById('save-status-text');
 
-        textSpan.textContent = text;
-        dot.className = 'h-2 w-2 rounded-full';
-
-        if (state === 'pulse') {
-            dot.classList.add('bg-indigo-400', 'animate-pulse');
-        } else if (state === 'saved') {
-            dot.classList.add('bg-emerald-500');
-        } else if (state === 'error') {
-            dot.classList.add('bg-rose-500');
+        if (textSpan) textSpan.textContent = text;
+        if (dot) {
+            dot.className = 'h-2 w-2 rounded-full';
+            if (state === 'pulse') {
+                dot.classList.add('bg-indigo-400', 'animate-pulse');
+            } else if (state === 'saved') {
+                dot.classList.add('bg-emerald-500');
+            } else if (state === 'error') {
+                dot.classList.add('bg-rose-500');
+            }
         }
     }
 
-    // Selection Events
     function onSelectionChanged(e) {
         const activeObject = canvas.getActiveObject();
         if (activeObject && activeObject.id !== 'safe-zone-guide' && activeObject.id !== 'bleed-zone-guide') {
@@ -464,7 +372,6 @@
                 window.layerManager.renderLayersList();
             }
         } else {
-            // Guides or multiple selections
             canvas.discardActiveObject();
             onSelectionCleared();
         }
@@ -479,441 +386,26 @@
         }
     }
 
-    // Zoom setup
-    function setupZoomControls() {
-        const viewport = document.querySelector('.canvas-viewport');
-        const wrapper = document.getElementById('canvas-container-wrapper');
-        const zoomContainer = document.getElementById('canvas-zoom-container');
-        const zoomInput = document.getElementById('zoom-value');
-        
-        function applyZoom() {
-            const width = window.studioConfig.canvasWidth;
-            const height = window.studioConfig.canvasHeight;
-            
-            if (zoomContainer) {
-                zoomContainer.style.width = (width * zoomLevel) + 'px';
-                zoomContainer.style.height = (height * zoomLevel) + 'px';
-            }
-            
-            wrapper.style.transform = `scale(${zoomLevel})`;
-            wrapper.style.transformOrigin = '0 0';
-            if (zoomInput) {
-                zoomInput.value = Math.round(zoomLevel * 100) + '%';
-            }
-
-            if (typeof syncControlAppearance === 'function') {
-                syncControlAppearance();
-            }
-        }
-
-        document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            zoomLevel = Math.min(zoomLevel + 0.1, 3.0);
-            applyZoom();
-        });
-
-        document.getElementById('btn-zoom-out').addEventListener('click', () => {
-            zoomLevel = Math.max(zoomLevel - 0.1, 0.2);
-            applyZoom();
-        });
-
-        document.getElementById('btn-zoom-fit').addEventListener('click', fitToView);
-
-        if (zoomInput) {
-            zoomInput.addEventListener('change', () => {
-                let val = parseFloat(zoomInput.value.replace(/[^0-9.]/g, ''));
-                if (!isNaN(val)) {
-                    val = Math.max(10, Math.min(val, 300));
-                    zoomLevel = val / 100;
-                }
-                applyZoom();
-            });
-
-            zoomInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    zoomInput.blur();
-                }
-            });
-
-            zoomInput.addEventListener('focus', () => {
-                zoomInput.select();
-            });
-        }
-
-        function fitToView() {
-            const containerWidth = viewport.clientWidth - 64;
-            const containerHeight = viewport.clientHeight - 64;
-            const widthScale = containerWidth / window.studioConfig.canvasWidth;
-            const heightScale = containerHeight / window.studioConfig.canvasHeight;
-            
-            zoomLevel = Math.min(widthScale, heightScale, 1.0);
-            applyZoom();
-        }
-
-        // Trigger initial fit to view
-        setTimeout(fitToView, 200);
-    }
-
-    // Push canvas state to local history stack with a small debounce
-    function pushState() {
-        if (isUndoingRedoing || !canvas) return;
-
-        if (historyTimeout) clearTimeout(historyTimeout);
-
-        historyTimeout = setTimeout(() => {
-            const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
-            if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
-
-            historyStack.push(json);
-            if (historyStack.length > maxHistorySize) {
-                historyStack.shift();
-            }
-            
-            // Clear redo stack on new action
-            redoStack.length = 0;
-            updateHistoryButtons();
-        }, 300); // 300ms debounce
-    }
-
-    // Push canvas state to local history stack immediately
-    function pushStateImmediate() {
-        if (isUndoingRedoing || !canvas) return;
-
-        const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
-        if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
-
-        historyStack.push(json);
-        if (historyStack.length > maxHistorySize) {
-            historyStack.shift();
-        }
-        updateHistoryButtons();
-    }
-
-    function undo() {
-        if (historyStack.length <= 1) return;
-
-        isUndoingRedoing = true;
-        const currentState = historyStack.pop();
-        redoStack.push(currentState);
-
-        const previousState = historyStack[historyStack.length - 1];
-        canvas.loadFromJSON(previousState, () => {
-            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
-                window.guideRenderer.renderGuides();
-            }
-            canvas.renderAll();
-            isUndoingRedoing = false;
-
-            triggerAutoSave();
-
-            // Refresh properties inspector selection if any
-            const activeObj = canvas.getActiveObject();
-            if (activeObj) {
-                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
-                    window.propertyInspector.inspect(activeObj);
-                }
-            } else {
-                if (window.propertyInspector && typeof window.propertyInspector.clearInspect === 'function') {
-                    window.propertyInspector.clearInspect();
-                }
-            }
-            updateHistoryButtons();
-        });
-    }
-
-    function redo() {
-        if (redoStack.length === 0) return;
-
-        isUndoingRedoing = true;
-        const nextState = redoStack.pop();
-        historyStack.push(nextState);
-
-        canvas.loadFromJSON(nextState, () => {
-            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
-                window.guideRenderer.renderGuides();
-            }
-            canvas.renderAll();
-            isUndoingRedoing = false;
-
-            triggerAutoSave();
-
-            // Refresh properties inspector selection if any
-            const activeObj = canvas.getActiveObject();
-            if (activeObj) {
-                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
-                    window.propertyInspector.inspect(activeObj);
-                }
-            } else {
-                if (window.propertyInspector && typeof window.propertyInspector.clearInspect === 'function') {
-                    window.propertyInspector.clearInspect();
-                }
-            }
-            updateHistoryButtons();
-        });
-    }
-
-    function updateHistoryButtons() {
-        const btnUndo = document.getElementById('btn-undo');
-        const btnRedo = document.getElementById('btn-redo');
-
-        if (btnUndo) {
-            btnUndo.disabled = (historyStack.length <= 1);
-        }
-        if (btnRedo) {
-            btnRedo.disabled = (redoStack.length === 0);
-        }
-    }
-
-    function setupHistoryControls() {
-        const btnUndo = document.getElementById('btn-undo');
-        if (btnUndo) {
-            btnUndo.addEventListener('click', undo);
-        }
-        
-        const btnRedo = document.getElementById('btn-redo');
-        if (btnRedo) {
-            btnRedo.addEventListener('click', redo);
-        }
-
-        // Keyboard Shortcuts
-        window.addEventListener('keydown', (e) => {
-            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-            if (activeTag === 'input' || activeTag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) {
-                return;
-            }
-
-            // ponytail: delete active canvas object/selection on Delete key
-            if (e.key === 'Delete') {
-                const activeObj = canvas.getActiveObject();
-                if (activeObj && !activeObj.isEditing) {
-                    e.preventDefault();
-                    if (activeObj.id === 'safe-zone-guide' || activeObj.id === 'bleed-zone-guide') {
-                        return;
-                    }
-
-                    if (activeObj.type === 'activeSelection') {
-                        activeObj.forEachObject((obj) => {
-                            canvas.remove(obj);
-                        });
-                        canvas.discardActiveObject();
-                    } else {
-                        canvas.remove(activeObj);
-                        canvas.discardActiveObject();
-                    }
-                    canvas.renderAll();
-                    if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
-                        window.layerManager.renderLayersList();
-                    }
-                    triggerAutoSave();
-                    if (window.propertyInspector && typeof window.propertyInspector.clearInspect === 'function') {
-                        window.propertyInspector.clearInspect();
-                    }
-                }
-            }
-
-            const isCtrl = e.ctrlKey || e.metaKey;
-
-            // Ctrl + Z (Undo)
-            if (isCtrl && e.key.toLowerCase() === 'z') {
-                if (e.shiftKey) {
-                    // Ctrl + Shift + Z (Redo)
-                    e.preventDefault();
-                    redo();
-                } else {
-                    e.preventDefault();
-                    undo();
-                }
-            }
-
-            // Ctrl + Y (Redo)
-            if (isCtrl && e.key.toLowerCase() === 'y') {
-                e.preventDefault();
-                redo();
-            }
-
-            // Ctrl + C (Copy)
-            if (isCtrl && e.key.toLowerCase() === 'c') {
-                const activeObj = canvas.getActiveObject();
-                if (activeObj && !activeObj.isEditing) {
-                    e.preventDefault();
-                    copyObjects(activeObj);
-                }
-            }
-
-            // Ctrl + V (Paste)
-            if (isCtrl && e.key.toLowerCase() === 'v') {
-                const activeObj = canvas.getActiveObject();
-                if (!activeObj || !activeObj.isEditing) {
-                    e.preventDefault();
-                    pasteObjects();
-                }
-            }
-
-            // Ctrl + D (Duplicate)
-            if (isCtrl && e.key.toLowerCase() === 'd') {
-                e.preventDefault();
-                const activeObj = canvas.getActiveObject();
-                if (activeObj) {
-                    duplicateObject(activeObj);
-                }
-            }
-
-            // Arrow keys nudge navigation
-            const activeObj = canvas.getActiveObject();
-            if (activeObj && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                e.preventDefault(); // Prevent browser scrolling
-                const step = e.shiftKey ? 10 : 1;
-                
-                switch (e.key) {
-                    case 'ArrowUp':
-                        activeObj.set('top', activeObj.top - step);
-                        break;
-                    case 'ArrowDown':
-                        activeObj.set('top', activeObj.top + step);
-                        break;
-                    case 'ArrowLeft':
-                        activeObj.set('left', activeObj.left - step);
-                        break;
-                    case 'ArrowRight':
-                        activeObj.set('left', activeObj.left + step);
-                        break;
-                }
-                
-                activeObj.setCoords();
-                canvas.renderAll();
-                triggerAutoSave();
-                
-                // Live update properties inspector form
-                if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
-                    window.propertyInspector.inspect(activeObj);
-                }
-            }
-        });
-    }
-
-    // Duplicate an object and offset its position slightly
-    function duplicateObject(obj) {
-        if (!obj || obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') return;
-
-        obj.clone((clonedObj) => {
-            canvas.discardActiveObject();
-            
-            clonedObj.set({
-                left: obj.left + 30, // Offset by 30px X and Y
-                top: obj.top + 30,
-                evented: true
-            });
-
-            if (clonedObj.type === 'activeSelection') {
-                clonedObj.canvas = canvas;
-                clonedObj.forEachObject((o) => {
-                    o.set({
-                        name: o.name ? (o.name + ' Copy') : (o.type.charAt(0).toUpperCase() + o.type.slice(1) + ' Copy'),
-                        evented: true
-                    });
-                    canvas.add(o);
-                });
-                clonedObj.setCoords();
-                canvas.setActiveObject(clonedObj);
-            } else {
-                clonedObj.set({
-                    name: clonedObj.name ? (clonedObj.name + ' Copy') : (clonedObj.type.charAt(0).toUpperCase() + clonedObj.type.slice(1) + ' Copy')
-                });
-                canvas.add(clonedObj);
-                canvas.setActiveObject(clonedObj);
-            }
-
-            canvas.renderAll();
-            triggerAutoSave();
-
-            // Refresh layer list
-            if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
-                window.layerManager.renderLayersList();
-            }
-        }, ['id', 'name', 'layerType', 'variable_binding', 'properties', 'original_filename', 'stored_filename', 'is_locked']);
-    }
-
-    // Copy active object(s)
-    function copyObjects(obj) {
-        if (!obj || obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') return;
-
-        obj.clone((cloned) => {
-            clipboard = cloned;
-        }, ['id', 'name', 'layerType', 'variable_binding', 'properties', 'original_filename', 'stored_filename', 'is_locked']);
-    }
-
-    // Paste copied object(s)
-    function pasteObjects() {
-        if (!clipboard) return;
-
-        clipboard.clone((clonedObj) => {
-            canvas.discardActiveObject();
-
-            clonedObj.set({
-                left: clonedObj.left + 30,
-                top: clonedObj.top + 30,
-                evented: true
-            });
-
-            if (clonedObj.type === 'activeSelection') {
-                clonedObj.canvas = canvas;
-                clonedObj.forEachObject((obj) => {
-                    obj.set({
-                        name: obj.name ? (obj.name + ' Copy') : (obj.type.charAt(0).toUpperCase() + obj.type.slice(1) + ' Copy'),
-                        evented: true
-                    });
-                    canvas.add(obj);
-                });
-                clonedObj.setCoords();
-                canvas.setActiveObject(clonedObj);
-            } else {
-                clonedObj.set({
-                    name: clonedObj.name ? (clonedObj.name + ' Copy') : (clonedObj.type.charAt(0).toUpperCase() + clonedObj.type.slice(1) + ' Copy')
-                });
-                canvas.add(clonedObj);
-                canvas.setActiveObject(clonedObj);
-            }
-
-            // Offset clipboard for subsequent paste operations
-            clipboard.top += 30;
-            clipboard.left += 30;
-
-            canvas.renderAll();
-            triggerAutoSave();
-
-            // Refresh layer list
-            if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
-                window.layerManager.renderLayersList();
-            }
-        }, ['id', 'name', 'layerType', 'variable_binding', 'properties', 'original_filename', 'stored_filename', 'is_locked']);
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
         initCanvas();
-        setupHistoryControls();
+        if (window.editorHistory) window.editorHistory.setupHistoryControls();
 
-        // Register and pre-load project assets/custom fonts immediately on startup
         if (window.assetPicker && typeof window.assetPicker.loadAssets === 'function') {
             window.assetPicker.loadAssets();
         }
 
-        // Listen for browser font load completion events to handle asynchronous stylesheet loads (e.g. Google Fonts latency)
         if (document.fonts) {
-            document.fonts.ready.then(() => {
-                refreshCanvasTextLayers();
-            });
-            document.fonts.addEventListener('loadingdone', () => {
-                refreshCanvasTextLayers();
-            });
+            document.fonts.ready.then(refreshCanvasTextLayers);
+            document.fonts.addEventListener('loadingdone', refreshCanvasTextLayers);
         }
 
-        window.addEventListener('load', () => {
-            refreshCanvasTextLayers();
-        });
+        window.addEventListener('load', refreshCanvasTextLayers);
 
-        setupImportTemplateControls();
+        if (window.editorImporter && typeof window.editorImporter.setupImportTemplateControls === 'function') {
+            window.editorImporter.setupImportTemplateControls();
+        }
 
         if (!window.studioConfig.isViewMode) {
-            // Heartbeat lock refresh
             setInterval(() => {
                 const formData = new FormData();
                 formData.append('csrf_token', window.studioConfig.csrfToken);
@@ -922,9 +414,7 @@
                 fetch('api.php?action=heartbeat_lock', {
                     method: 'POST',
                     body: formData,
-                    headers: {
-                        'X-CSRF-Token': window.studioConfig.csrfToken
-                    }
+                    headers: { 'X-CSRF-Token': window.studioConfig.csrfToken }
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -933,12 +423,9 @@
                         window.location.reload();
                     }
                 })
-                .catch(err => {
-                    console.error('Lock heartbeat failed:', err);
-                });
-            }, 20000); // every 20 seconds
+                .catch(err => console.error('Lock heartbeat failed:', err));
+            }, 20000);
 
-            // Release lock on page unload
             window.addEventListener('beforeunload', () => {
                 const formData = new FormData();
                 formData.append('csrf_token', window.studioConfig.csrfToken);
@@ -948,481 +435,24 @@
         }
     });
 
-    // Template Import Component Handler
-    function setupImportTemplateControls() {
-        const btnImport = document.getElementById('btn-import-template');
-        const modal = document.getElementById('modal-import-template');
-        const btnClose = document.getElementById('btn-close-import-modal');
-        const btnCancel = document.getElementById('btn-cancel-import');
-        const btnConfirm = document.getElementById('btn-confirm-import');
-        const select = document.getElementById('import-template-select');
-        const chkGroup = document.getElementById('import-as-group');
-
-        const rowContainer = document.getElementById('import-dataset-row-container');
-        const rowSelect = document.getElementById('import-dataset-row-select');
-        const dsNameEl = document.getElementById('import-dataset-name');
-        const dsCountEl = document.getElementById('import-dataset-row-count');
-
-        let currentImportDataset = null;
-
-        if (!btnImport || !modal) return;
-
-        function onTemplateChange() {
-            if (!select) return;
-            const templateId = select.value;
-            currentImportDataset = null;
-            if (rowContainer) rowContainer.classList.add('hidden');
-            if (rowSelect) rowSelect.innerHTML = '<option value="raw">Template Default (Unsubstituted {{Placeholders}})</option>';
-
-            if (!templateId) return;
-
-            fetch(`api.php?action=load_canvas&template_id=${templateId}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data && data.dataset_id) {
-                        return fetch(`api.php?action=get_dataset&dataset_id=${data.dataset_id}`);
-                    }
-                    return null;
-                })
-                .then(r => r ? r.json() : null)
-                .then(dataset => {
-                    if (dataset && dataset.rowData && dataset.rowData.length > 0) {
-                        currentImportDataset = dataset;
-                        if (dsNameEl) dsNameEl.textContent = dataset.name || 'Bound Dataset';
-                        if (dsCountEl) dsCountEl.textContent = `${dataset.rowData.length} items`;
-
-                        if (rowSelect) {
-                            rowSelect.innerHTML = '<option value="raw">Template Default (Unsubstituted {{Placeholders}})</option>';
-                            dataset.rowData.forEach((row, idx) => {
-                                let label = '';
-                                const priorityKeys = ['name', 'title', 'fighter', 'card_name', 'card name', 'character', 'header'];
-                                for (const pk of priorityKeys) {
-                                    const matchKey = Object.keys(row).find(k => k.toLowerCase().trim() === pk);
-                                    if (matchKey && row[matchKey] && String(row[matchKey]).trim() !== '') {
-                                        label = String(row[matchKey]).trim();
-                                        break;
-                                    }
-                                }
-                                if (!label) {
-                                    const firstVal = Object.values(row).find(v => v !== null && v !== undefined && String(v).trim() !== '');
-                                    if (firstVal) label = String(firstVal).trim();
-                                }
-
-                                const opt = document.createElement('option');
-                                opt.value = idx.toString();
-                                opt.textContent = `Row ${idx + 1}` + (label ? `: ${label}` : '');
-                                rowSelect.appendChild(opt);
-                            });
-                        }
-                        if (rowContainer) rowContainer.classList.remove('hidden');
-                    }
-                })
-                .catch(err => console.error('Failed to load dataset for import template:', err));
+    window.toggleCanvasOrientation = function() {
+        if (window.editorViewport && typeof window.editorViewport.toggleCanvasOrientation === 'function') {
+            window.editorViewport.toggleCanvasOrientation();
         }
-
-        if (select) {
-            select.addEventListener('change', onTemplateChange);
-        }
-
-        function openModal() {
-            if (!select) return;
-            select.innerHTML = '<option value="">Loading templates...</option>';
-            modal.classList.remove('hidden');
-            currentImportDataset = null;
-            if (rowContainer) rowContainer.classList.add('hidden');
-
-            const projectId = window.studioConfig.projectId;
-            const currentTemplateId = window.studioConfig.templateId;
-
-            fetch(`api.php?action=list_templates&project_id=${projectId}&exclude_id=${currentTemplateId}`)
-                .then(r => r.json())
-                .then(templates => {
-                    select.innerHTML = '';
-                    if (!templates || templates.length === 0) {
-                        select.innerHTML = '<option value="">No other templates found in this project</option>';
-                        btnConfirm.disabled = true;
-                        return;
-                    }
-                    btnConfirm.disabled = false;
-                    templates.forEach(t => {
-                        const opt = document.createElement('option');
-                        opt.value = t.id;
-                        opt.textContent = `${t.name} (${t.width}x${t.height}px)`;
-                        select.appendChild(opt);
-                    });
-                    onTemplateChange();
-                })
-                .catch(err => {
-                    console.error('Failed to load project templates:', err);
-                    select.innerHTML = '<option value="">Error loading templates</option>';
-                    btnConfirm.disabled = true;
-                });
-        }
-
-        function closeModal() {
-            modal.classList.add('hidden');
-        }
-
-        btnImport.addEventListener('click', openModal);
-        if (btnClose) btnClose.addEventListener('click', closeModal);
-        if (btnCancel) btnCancel.addEventListener('click', closeModal);
-
-        if (btnConfirm) {
-            btnConfirm.addEventListener('click', () => {
-                const sourceTemplateId = select ? select.value : null;
-                const asGroup = chkGroup ? chkGroup.checked : true;
-                const selectedOption = select ? select.options[select.selectedIndex] : null;
-                let templateName = selectedOption ? selectedOption.textContent.split(' (')[0] : 'Imported Component';
-
-                const selectedRowVal = rowSelect ? rowSelect.value : 'raw';
-                let selectedRowData = null;
-
-                if (selectedRowVal !== 'raw' && currentImportDataset && currentImportDataset.rowData) {
-                    const idx = parseInt(selectedRowVal, 10);
-                    if (!isNaN(idx) && currentImportDataset.rowData[idx]) {
-                        selectedRowData = currentImportDataset.rowData[idx];
-                        const rowOpt = rowSelect.options[rowSelect.selectedIndex];
-                        const rowLabel = rowOpt ? rowOpt.textContent : `Row ${idx + 1}`;
-                        templateName = `${templateName} (${rowLabel})`;
-                    }
-                }
-
-                if (!sourceTemplateId) {
-                    alert('Please select a template to import.');
-                    return;
-                }
-
-                closeModal();
-                importTemplateToCanvas(parseInt(sourceTemplateId, 10), templateName, asGroup, selectedRowData);
-            });
-        }
-    }
-
-    function applyRowDataToCanvasObjects(objectsList, rowData) {
-        if (!objectsList || !Array.isArray(objectsList) || !rowData) return;
-
-        // Case-insensitive & trimmed dataset column lookup helper
-        function getRowValue(row, rawBinding) {
-            if (!row || !rawBinding) return undefined;
-            const colName = String(rawBinding).replace(/\{\{|\}\}/g, '').trim();
-            if (!colName) return undefined;
-            if (row[colName] !== undefined) return row[colName];
-            
-            const lowerCol = colName.toLowerCase();
-            const matchKey = Object.keys(row).find(k => k.toLowerCase().trim() === lowerCol);
-            return matchKey !== undefined ? row[matchKey] : undefined;
-        }
-
-        objectsList.forEach(obj => {
-            if (obj.type === 'group' && Array.isArray(obj.objects)) {
-                applyRowDataToCanvasObjects(obj.objects, rowData);
-            }
-
-            // Text substitution
-            if ((obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') && (obj.text || obj.variable_binding)) {
-                let templateText = obj.variable_binding || obj.text || '';
-                let substitutedText = templateText;
-                const matches = templateText.match(/\{\{([a-zA-Z0-9_\-]+)\}\}/g);
-                if (matches) {
-                    matches.forEach(placeholder => {
-                        const colName = placeholder.replace(/\{\{|\}\}/g, '').trim();
-                        const val = getRowValue(rowData, colName);
-                        const replacement = val !== undefined ? val : placeholder;
-                        substitutedText = substitutedText.replaceAll(placeholder, replacement);
-                    });
-                } else if (obj.variable_binding) {
-                    const val = getRowValue(rowData, obj.variable_binding);
-                    if (val !== undefined) {
-                        substitutedText = val;
-                    }
-                }
-                obj.text = substitutedText;
-            }
-
-            // Image substitution
-            if (obj.type === 'image' && obj.variable_binding) {
-                const filename = getRowValue(rowData, obj.variable_binding);
-                if (filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
-                    const assetUrl = window.assetPicker.getAssetUrlByFilename(filename);
-                    if (assetUrl) {
-                        obj.src = assetUrl;
-                    }
-                }
-            }
-
-            // Shape / Generic object visibility & dynamic asset binding
-            if (obj.variable_binding && obj.type !== 'text' && obj.type !== 'i-text' && obj.type !== 'textbox' && obj.type !== 'image') {
-                const rawVal = getRowValue(rowData, obj.variable_binding);
-                if (rawVal !== undefined && rawVal !== null) {
-                    const val = String(rawVal).trim();
-                    if (val && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
-                        const assetUrl = window.assetPicker.getAssetUrlByFilename(val);
-                        if (assetUrl) {
-                            obj.src = assetUrl;
-                        }
-                    }
-                    const lowerVal = val.toLowerCase();
-                    const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide'];
-                    if (hideValues.includes(lowerVal)) {
-                        obj.opacity = 0;
-                        obj.visible = false;
-                    } else {
-                        obj.visible = true;
-                        if (obj.opacity === 0) obj.opacity = 1;
-                    }
-                }
-            }
-        });
-    }
-
-    function importTemplateToCanvas(sourceTemplateId, templateName, groupAsSingleComponent, selectedRowData = null) {
-        setSaveStatus('Importing template component...', 'pulse');
-
-        fetch(`api.php?action=load_canvas&template_id=${sourceTemplateId}`)
-            .then(r => r.json())
-            .then(data => {
-                if (!data || !data.canvas_json) {
-                    alert('The selected template contains no canvas data.');
-                    setSaveStatus('Import failed', 'error');
-                    return;
-                }
-
-                let parsed;
-                try {
-                    parsed = JSON.parse(data.canvas_json);
-                } catch (e) {
-                    console.error('Failed to parse target template canvas JSON:', e);
-                    alert('Invalid canvas data format in selected template.');
-                    setSaveStatus('Import failed', 'error');
-                    return;
-                }
-
-                if (!parsed.objects || !Array.isArray(parsed.objects) || parsed.objects.length === 0) {
-                    alert('The selected template has no elements to import.');
-                    setSaveStatus('Selected template is empty', 'error');
-                    return;
-                }
-
-                // Apply dataset row substitution if a specific row was selected
-                if (selectedRowData) {
-                    applyRowDataToCanvasObjects(parsed.objects, selectedRowData);
-                }
-
-                // Filter out guide lines / overlays
-                const filteredObjects = (parsed.objects || []).filter(o => o.id !== 'safe-zone-guide' && o.id !== 'bleed-zone-guide');
-
-                fabric.util.enlivenObjects(filteredObjects, (enlivenedObjects) => {
-                    if (!enlivenedObjects) enlivenedObjects = [];
-
-                    const sourceW = data.width || parsed.width || 200;
-                    const sourceH = data.height || parsed.height || 200;
-
-                    // Determine background fill color from source canvas
-                    let bgFill = 'transparent';
-                    if (typeof parsed.backgroundColor === 'string' && parsed.backgroundColor) {
-                        bgFill = parsed.backgroundColor;
-                    } else if (parsed.backgroundColor && typeof parsed.backgroundColor === 'object' && parsed.backgroundColor.color) {
-                        bgFill = parsed.backgroundColor.color;
-                    } else if (typeof parsed.background === 'string' && parsed.background) {
-                        bgFill = parsed.background;
-                    }
-
-                    // Check if an existing object already covers the full card background
-                    const hasExistingFullBg = enlivenedObjects.some(obj => 
-                        (obj.type === 'rect' || obj.type === 'image') &&
-                        Math.abs(obj.left || 0) < 5 &&
-                        Math.abs(obj.top || 0) < 5 &&
-                        Math.abs((obj.width * (obj.scaleX || 1)) - sourceW) < 10 &&
-                        Math.abs((obj.height * (obj.scaleY || 1)) - sourceH) < 10
-                    );
-
-                    if (!hasExistingFullBg) {
-                        const bgRect = new fabric.Rect({
-                            id: `card-bg-${Date.now()}`,
-                            name: `Card Background (${templateName})`,
-                            left: 0,
-                            top: 0,
-                            width: sourceW,
-                            height: sourceH,
-                            fill: bgFill,
-                            stroke: '#64748b',
-                            strokeWidth: 1,
-                            strokeUniform: true,
-                            selectable: true
-                        });
-                        enlivenedObjects.unshift(bgRect);
-                    }
-
-                    canvas.discardActiveObject();
-
-                    if (groupAsSingleComponent && enlivenedObjects.length > 1) {
-                        const group = new fabric.Group(enlivenedObjects, {
-                            name: `Component: ${templateName}`,
-                            left: (canvas.width - sourceW) / 2,
-                            top: (canvas.height - sourceH) / 2
-                        });
-                        canvas.add(group);
-                        canvas.setActiveObject(group);
-                    } else if (groupAsSingleComponent && enlivenedObjects.length === 1) {
-                        const singleObj = enlivenedObjects[0];
-                        singleObj.set({
-                            name: singleObj.name ? `${singleObj.name} (${templateName})` : templateName,
-                            left: (canvas.width - sourceW) / 2,
-                            top: (canvas.height - sourceH) / 2
-                        });
-                        canvas.add(singleObj);
-                        canvas.setActiveObject(singleObj);
-                    } else {
-                        // Import as separate un-grouped objects
-                        const createdObjects = [];
-                        enlivenedObjects.forEach((obj, idx) => {
-                            obj.set({
-                                name: obj.name ? `${obj.name}` : `Layer ${idx + 1} (${templateName})`,
-                                left: (obj.left || 0) + 20,
-                                top: (obj.top || 0) + 20
-                            });
-                            canvas.add(obj);
-                            createdObjects.push(obj);
-                        });
-                        if (createdObjects.length > 0) {
-                            const sel = new fabric.ActiveSelection(createdObjects, { canvas: canvas });
-                            canvas.setActiveObject(sel);
-                        }
-                    }
-
-                    canvas.renderAll();
-                    triggerAutoSave();
-
-                    if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
-                        window.layerManager.renderLayersList();
-                    }
-
-                    setSaveStatus('Template component imported', 'saved');
-                });
-            })
-            .catch(err => {
-                console.error('Error importing template:', err);
-                alert('Failed to load target template data.');
-                setSaveStatus('Import failed', 'error');
-            });
-    }
-
-    function toggleCanvasOrientation() {
-        if (window.studioConfig.isViewMode) return;
-
-        const curW = window.studioConfig.canvasWidth;
-        const curH = window.studioConfig.canvasHeight;
-        const newW = curH;
-        const newH = curW;
-        const newOrientation = (newW > newH) ? 'landscape' : 'portrait';
-
-        const formData = new FormData();
-        formData.append('csrf_token', window.studioConfig.csrfToken);
-        formData.append('template_id', window.studioConfig.templateId);
-        formData.append('target_orientation', newOrientation);
-
-        setSaveStatus('Changing orientation...', 'saving');
-
-        fetch('api.php?action=toggle_orientation', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': window.studioConfig.csrfToken
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-                setSaveStatus('Orientation change failed', 'error');
-                return;
-            }
-
-            // Update configuration
-            window.studioConfig.canvasWidth = data.canvasWidth;
-            window.studioConfig.canvasHeight = data.canvasHeight;
-            window.studioConfig.orientation = data.orientation;
-
-            // Resize Fabric canvas
-            canvas.setWidth(data.canvasWidth);
-            canvas.setHeight(data.canvasHeight);
-
-            // Resize container wrapper
-            const wrapper = document.getElementById('canvas-container-wrapper');
-            if (wrapper) {
-                wrapper.style.width = data.canvasWidth + 'px';
-                wrapper.style.height = data.canvasHeight + 'px';
-            }
-
-            // Re-render guidelines
-            if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
-                window.guideRenderer.renderGuides();
-            }
-
-            // Update UI elements in header
-            const badge = document.getElementById('template-orientation-badge');
-            if (badge) {
-                if (data.orientation === 'landscape') {
-                    badge.textContent = 'Landscape';
-                    badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20';
-                } else {
-                    badge.textContent = 'Portrait';
-                    badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700';
-                }
-            }
-
-            const btnText = document.getElementById('orient-btn-text');
-            if (btnText) {
-                btnText.textContent = data.orientation === 'landscape' ? 'Switch to Portrait' : 'Switch to Landscape';
-            }
-
-            const sizeDisplay = document.getElementById('template-size-display');
-            if (sizeDisplay) {
-                const wMm = Math.round((data.canvasWidth / 300 * 25.4) * 10) / 10;
-                const hMm = Math.round((data.canvasHeight / 300 * 25.4) * 10) / 10;
-                sizeDisplay.textContent = `${wMm}x${hMm} mm (${data.canvasWidth}x${data.canvasHeight} px)`;
-            }
-
-            // Re-fit canvas to view
-            const viewport = document.getElementById('canvas-viewport');
-            if (viewport && wrapper) {
-                const containerWidth = viewport.clientWidth - 64;
-                const containerHeight = viewport.clientHeight - 64;
-                const widthScale = containerWidth / data.canvasWidth;
-                const heightScale = containerHeight / data.canvasHeight;
-                zoomLevel = Math.min(widthScale, heightScale, 1.0);
-                const zoomValElem = document.getElementById('zoom-value');
-                if (zoomValElem) zoomValElem.value = Math.round(zoomLevel * 100) + '%';
-                wrapper.style.transform = `scale(${zoomLevel})`;
-            }
-
-            canvas.renderAll();
-            pushState();
-            triggerAutoSave();
-            setSaveStatus(`Switched to ${data.orientation.charAt(0).toUpperCase() + data.orientation.slice(1)}`, 'saved');
-        })
-        .catch(err => {
-            console.error('Error switching orientation:', err);
-            alert('Failed to update orientation. Please try again.');
-            setSaveStatus('Orientation change failed', 'error');
-        });
-    }
-
-    // Expose functions globally
-    window.toggleCanvasOrientation = toggleCanvasOrientation;
+    };
 
     window.editorCore = {
-        saveCanvas: saveCanvas,
-        triggerAutoSave: triggerAutoSave,
-        loadCanvas: loadCanvas,
-        setSaveStatus: setSaveStatus,
-        undo: undo,
-        redo: redo,
-        pushState: pushState,
-        duplicateObject: duplicateObject,
-        refreshCanvasTextLayers: refreshCanvasTextLayers,
-        importTemplateToCanvas: importTemplateToCanvas,
-        toggleCanvasOrientation: toggleCanvasOrientation,
-        getZoomLevel: () => zoomLevel
+        saveCanvas,
+        triggerAutoSave,
+        loadCanvas,
+        setSaveStatus,
+        undo: () => (window.editorHistory ? window.editorHistory.undo() : null),
+        redo: () => (window.editorHistory ? window.editorHistory.redo() : null),
+        pushState: () => (window.editorHistory ? window.editorHistory.pushState() : null),
+        duplicateObject: (obj) => (window.editorHistory ? window.editorHistory.duplicateObject(obj) : null),
+        refreshCanvasTextLayers,
+        importTemplateToCanvas: (sId, name, grp, row) => (window.editorImporter ? window.editorImporter.importTemplateToCanvas(sId, name, grp, row) : null),
+        toggleCanvasOrientation: window.toggleCanvasOrientation,
+        getZoomLevel: () => (window.editorViewport ? window.editorViewport.getZoomLevel() : 1.0)
     };
 })();

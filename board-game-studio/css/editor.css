@@ -1,0 +1,61 @@
+html, body {
+    overflow: hidden !important;
+    height: 100% !important;
+}
+/* ponytail: maximize editor canvas space by hiding outer site header/footer & removing container max-width */
+header.sticky, footer {
+    display: none !important;
+}
+body > main {
+    max-width: 100% !important;
+    padding: 0.5rem 0.75rem !important;
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+.editor-container {
+    flex-grow: 1;
+    min-height: 0;
+}
+.canvas-viewport {
+    background-color: #0b0f19;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+    background-size: 16px 16px;
+}
+/* Hidden file inputs */
+.hidden-upload {
+    display: none;
+}
+/* Prevent FabricJS hidden textarea from triggering page scrolls */
+textarea[data-fabric-hiddentextarea] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
+    z-index: -9999 !important;
+    pointer-events: none !important;
+}
+/* Scrollbars are managed by canvas-viewport, not the body */
+
+/* Read-only view styles */
+body.view-only-mode #left-layers-panel,
+body.view-only-mode #right-inspector-panel,
+body.view-only-mode #btn-toggle-guides,
+body.view-only-mode #save-status {
+    pointer-events: none !important;
+    opacity: 0.6 !important;
+}
+body.view-only-mode #tab-layers-view .grid {
+    display: none !important; /* Hide Add layer buttons */
+}
+
+/* Drag & Drop Visual Indicator */
+#canvas-container-wrapper.drag-over {
+    outline: 3px solid #6366f1 !important; /* Indigo-500 */
+    outline-offset: 4px;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.4) !important;
+    transition: outline-offset 0.15s ease, box-shadow 0.15s ease;
+}

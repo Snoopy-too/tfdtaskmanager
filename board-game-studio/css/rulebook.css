@@ -1,0 +1,203 @@
+/* Styling rules for print view vs screen view */
+@media print {
+    @page {
+        size: auto;
+        margin: 0; /* Hides browser default header, footer, date, and URL */
+    }
+    body {
+        background: white !important;
+        color: #111827 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        margin: 20mm !important; /* Restores safe page margins for actual content */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    /* Hide all print scrollbars and prevent cut-off */
+    ::-webkit-scrollbar {
+        display: none !important;
+    }
+    .overflow-x-auto {
+        overflow: hidden !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        width: 800px !important;
+        max-width: 100% !important;
+        zoom: 0.9;
+    }
+    .w-\[800px\] {
+        max-width: none !important;
+    }
+    /* Prevent dark background leak from parent workspace containers */
+    #editor-workspace, 
+    #main-workspace-container {
+        background: white !important;
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    /* Prevent layout columns and notes lists from breaking across pages */
+    .layout-stacked > div,
+    .layout-side-by-side > div,
+    .anatomy-columns > div {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    header, body > nav, #editor-sidebar, #editor-controls, #add-block-panel {
+        display: none !important;
+    }
+    #editor-workspace {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+    #rulebook-viewport-container {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+    }
+    #rulebook-content-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    .block-card {
+        background: transparent !important;
+        border: none !important;
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    /* Darken all text for readability on white paper */
+    #rulebook-content-wrapper h2,
+    #rulebook-content-wrapper h3,
+    #rulebook-content-wrapper h4,
+    #rulebook-content-wrapper p,
+    #rulebook-content-wrapper span,
+    #rulebook-content-wrapper td,
+    #rulebook-content-wrapper th,
+    #rulebook-content-wrapper div {
+        color: #111827 !important;
+    }
+    /* Clean table borders and headers */
+    #rulebook-content-wrapper table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        border: 1px solid #e5e7eb !important;
+    }
+    #rulebook-content-wrapper th {
+        background-color: #f3f4f6 !important;
+        border-bottom: 2px solid #e5e7eb !important;
+        font-weight: 700 !important;
+    }
+    #rulebook-content-wrapper td {
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+    /* High contrast for pin badges and coordinate numbers */
+    .anatomy-pin, [class*="bg-amber-500"] {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        background-color: #d97706 !important; /* Darker amber for print contrast */
+        color: white !important;
+        border-color: #d97706 !important;
+    }
+    /* Light background for the virtual table setup canvas */
+    #rulebook-content-wrapper .pattern-grid {
+        background-color: #f9fafb !important;
+        background-image: radial-gradient(#e5e7eb 1px, transparent 0) !important;
+        background-size: 20px 20px !important;
+        border: 1px solid #e5e7eb !important;
+    }
+    /* Force definition list rows to be clean, transparent text blocks in print mode for all themes */
+    #rulebook-content-wrapper .flex.items-start.space-x-3.bg-slate-950\/60,
+    #rulebook-content-wrapper [class*="bg-slate-950/60"] {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        margin-bottom: 0.75rem !important;
+    }
+    .page-break {
+        page-break-after: always;
+    }
+    /* Hide crop marks in rulebook print layout */
+    .crop-mark {
+        display: none !important;
+    }
+}
+
+.crop-mark {
+    display: none;
+}
+
+/* Screen rules for the block editor workspace */
+.block-card:hover .block-actions {
+    opacity: 1;
+}
+
+.anatomy-pin {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: #f59e0b;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    border: 2px solid white;
+    transform: translate(-50%, -50%);
+    transition: transform 0.2s;
+}
+.anatomy-pin:hover {
+    transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* Anatomy Block Layout styles */
+.layout-stacked {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+}
+.layout-side-by-side {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+}
+@media (min-width: 768px) {
+    #rulebook-content-wrapper:not(.max-w-sm) .layout-side-by-side {
+        flex-direction: row !important;
+        align-items: start !important;
+    }
+    #rulebook-content-wrapper:not(.max-w-sm) .layout-side-by-side > div {
+        flex: 1 !important;
+        width: 50% !important;
+    }
+}
+@media print {
+    .layout-side-by-side {
+        flex-direction: row !important;
+        align-items: start !important;
+    }
+    .layout-side-by-side > div {
+        flex: 1 !important;
+        width: 50% !important;
+    }
+}

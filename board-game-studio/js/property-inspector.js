@@ -68,38 +68,8 @@
             applyTextContentChange(e.target.value);
         });
 
-        document.querySelectorAll('.btn-text-color-tag').forEach(btn => {
-            btn.addEventListener('mousedown', (e) => e.preventDefault());
-            btn.addEventListener('click', () => {
-                const tag = btn.dataset.tag;
-                if (tag) wrapTextSelectionWithTag(`<${tag}>`, `</${tag}>`);
-            });
-        });
-
-        const customColorPicker = document.getElementById('picker-text-custom-color');
-        if (customColorPicker) {
-            customColorPicker.addEventListener('change', (e) => {
-                const hex = e.target.value;
-                if (hex) wrapTextSelectionWithTag(`<color:${hex}>`, '</color>');
-            });
-        }
-
-        const btnTagBold = document.getElementById('btn-tag-bold');
-        if (btnTagBold) {
-            btnTagBold.addEventListener('mousedown', (e) => e.preventDefault());
-            btnTagBold.addEventListener('click', () => wrapTextSelectionWithTag('<b>', '</b>'));
-        }
-
-        const btnTagItalic = document.getElementById('btn-tag-italic');
-        if (btnTagItalic) {
-            btnTagItalic.addEventListener('mousedown', (e) => e.preventDefault());
-            btnTagItalic.addEventListener('click', () => wrapTextSelectionWithTag('<i>', '</i>'));
-        }
-
-        const btnTagClear = document.getElementById('btn-tag-clear');
-        if (btnTagClear) {
-            btnTagClear.addEventListener('mousedown', (e) => e.preventDefault());
-            btnTagClear.addEventListener('click', clearTextTags);
+        if (window.inspectorText && typeof window.inspectorText.bindTextToolbar === 'function') {
+            window.inspectorText.bindTextToolbar(() => activeObj, () => isUpdatingForm);
         }
         
         const bindSelect = document.getElementById('prop-text-bind');
@@ -270,94 +240,17 @@
         const btnFitContain = document.getElementById('btn-inspector-fit-contain');
         if (btnFitContain) {
             btnFitContain.addEventListener('click', () => {
-                if (!activeObj || !window.editorCanvas) return;
-                const canvas = window.editorCanvas;
-
-                const rawEl = (typeof activeObj.getElement === 'function') ? activeObj.getElement() : null;
-                const rawW = (activeObj.width && activeObj.width > 0)
-                    ? activeObj.width
-                    : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (activeObj.getScaledWidth ? (activeObj.getScaledWidth() / (activeObj.scaleX || 1)) : 300));
-                const rawH = (activeObj.height && activeObj.height > 0)
-                    ? activeObj.height
-                    : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (activeObj.getScaledHeight ? (activeObj.getScaledHeight() / (activeObj.scaleY || 1)) : 300));
-
-                if (!activeObj.width || activeObj.width <= 0) activeObj.set('width', rawW);
-                if (!activeObj.height || activeObj.height <= 0) activeObj.set('height', rawH);
-
-                let scale = Math.min(canvas.width / rawW, canvas.height / rawH);
-                if (!isFinite(scale) || scale <= 0) scale = 1.0;
-
-                activeObj.set({
-                    angle: 0,
-                    originX: 'center',
-                    originY: 'center',
-                    left: canvas.width / 2,
-                    top: canvas.height / 2,
-                    scaleX: scale,
-                    scaleY: scale
-                });
-
-                activeObj.setCoords();
-                activeObj.bringToFront();
-
-                if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
-                    window.guideRenderer.renderGuides();
-                }
-
-                canvas.renderAll();
-                window.editorCore.triggerAutoSave();
-                if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
-                    window.layerManager.renderLayersList();
-                }
-                inspect(activeObj);
+                if (window.inspectorCanvas) window.inspectorCanvas.fitObject(activeObj, 'contain');
             });
         }
 
         const btnFitCover = document.getElementById('btn-inspector-fit-cover');
         if (btnFitCover) {
             btnFitCover.addEventListener('click', () => {
-                if (!activeObj || !window.editorCanvas) return;
-                const canvas = window.editorCanvas;
-
-                const rawEl = (typeof activeObj.getElement === 'function') ? activeObj.getElement() : null;
-                const rawW = (activeObj.width && activeObj.width > 0)
-                    ? activeObj.width
-                    : ((rawEl && rawEl.naturalWidth > 0) ? rawEl.naturalWidth : (activeObj.getScaledWidth ? (activeObj.getScaledWidth() / (activeObj.scaleX || 1)) : 300));
-                const rawH = (activeObj.height && activeObj.height > 0)
-                    ? activeObj.height
-                    : ((rawEl && rawEl.naturalHeight > 0) ? rawEl.naturalHeight : (activeObj.getScaledHeight ? (activeObj.getScaledHeight() / (activeObj.scaleY || 1)) : 300));
-
-                if (!activeObj.width || activeObj.width <= 0) activeObj.set('width', rawW);
-                if (!activeObj.height || activeObj.height <= 0) activeObj.set('height', rawH);
-
-                let scale = Math.max(canvas.width / rawW, canvas.height / rawH);
-                if (!isFinite(scale) || scale <= 0) scale = 1.0;
-
-                activeObj.set({
-                    angle: 0,
-                    originX: 'center',
-                    originY: 'center',
-                    left: canvas.width / 2,
-                    top: canvas.height / 2,
-                    scaleX: scale,
-                    scaleY: scale
-                });
-
-                activeObj.setCoords();
-                activeObj.bringToFront();
-
-                if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
-                    window.guideRenderer.renderGuides();
-                }
-
-                canvas.renderAll();
-                window.editorCore.triggerAutoSave();
-                if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
-                    window.layerManager.renderLayersList();
-                }
-                inspect(activeObj);
+                if (window.inspectorCanvas) window.inspectorCanvas.fitObject(activeObj, 'cover');
             });
         }
+
     }
 
     // Apply values to canvas object
@@ -454,83 +347,12 @@
         document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
     }
 
-    // ponytail: handle text edits seamlessly across bound dataset rows and static template layers
     function applyTextContentChange(newVal) {
-        if (!activeObj || isUpdatingForm) return;
-
-        if (activeObj.variable_binding && window.templateEngine && typeof window.templateEngine.getCurrentRowData === 'function') {
-            const row = window.templateEngine.getCurrentRowData();
-            const colName = activeObj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
-            if (row && colName) {
-                // Update active dataset cell in memory & background save
-                window.templateEngine.updateDatasetCell(colName, newVal);
-                return;
-            }
-        }
-
-        // Unbound / template default text
-        if (window.templateEngine && typeof window.templateEngine.updateTextTemplate === 'function') {
-            window.templateEngine.updateTextTemplate(activeObj, newVal);
-        } else {
-            updateActiveProp('text', newVal);
+        if (window.inspectorText) {
+            window.inspectorText.applyTextContentChange(activeObj, newVal, isUpdatingForm);
         }
     }
 
-    function wrapTextSelectionWithTag(openTag, closeTag) {
-        const textarea = document.getElementById('prop-text-val');
-        if (!textarea || !activeObj) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const val = textarea.value || '';
-
-        let newVal;
-        let newCursorPos;
-
-        if (start !== undefined && end !== undefined && start !== end) {
-            const selected = val.substring(start, end);
-            newVal = val.substring(0, start) + openTag + selected + closeTag + val.substring(end);
-            newCursorPos = start + openTag.length + selected.length + closeTag.length;
-        } else {
-            const pos = start !== undefined ? start : val.length;
-            newVal = val.substring(0, pos) + openTag + closeTag + val.substring(pos);
-            newCursorPos = pos + openTag.length;
-        }
-
-        textarea.value = newVal;
-        textarea.focus();
-        if (start !== end) {
-            textarea.setSelectionRange(start, newCursorPos);
-        } else {
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }
-
-        applyTextContentChange(newVal);
-    }
-
-    function clearTextTags() {
-        const textarea = document.getElementById('prop-text-val');
-        if (!textarea || !activeObj) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const val = textarea.value || '';
-
-        let newVal;
-        if (start !== undefined && end !== undefined && start !== end) {
-            const selected = val.substring(start, end);
-            const cleaned = selected.replace(/<\/?([a-zA-Z0-9_\-#:=]+)>/g, '');
-            newVal = val.substring(0, start) + cleaned + val.substring(end);
-            textarea.value = newVal;
-            textarea.setSelectionRange(start, start + cleaned.length);
-        } else {
-            newVal = val.replace(/<\/?([a-zA-Z0-9_\-#:=]+)>/g, '');
-            textarea.value = newVal;
-        }
-
-        textarea.focus();
-        applyTextContentChange(newVal);
-    }
 
     // Set form fields based on active selection
     function inspect(obj) {
@@ -539,43 +361,8 @@
         activeObj = obj;
         isUpdatingForm = true;
 
-        // ponytail: auto-correct text originX mismatch upon selecting/inspecting the layer to align anchor point
-        if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
-            const alignVal = obj.textAlign || 'left';
-            const expectedOriginX = alignVal === 'justify' ? 'left' : alignVal;
-            if (obj.originX !== expectedOriginX) {
-                let centerLeft;
-                const width = obj.width * obj.scaleX;
-                const oldOriginX = obj.originX || 'left';
-                if (oldOriginX === 'left') {
-                    centerLeft = obj.left + width / 2;
-                } else if (oldOriginX === 'right') {
-                    centerLeft = obj.left - width / 2;
-                } else {
-                    centerLeft = obj.left;
-                }
-
-                let newLeft;
-                if (expectedOriginX === 'left') {
-                    newLeft = centerLeft - width / 2;
-                } else if (expectedOriginX === 'right') {
-                    newLeft = centerLeft + width / 2;
-                } else {
-                    newLeft = centerLeft;
-                }
-
-                obj.set({
-                    originX: expectedOriginX,
-                    left: newLeft
-                });
-                obj.setCoords();
-                if (window.editorCanvas) {
-                    window.editorCanvas.renderAll();
-                }
-                if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
-                    window.editorCore.triggerAutoSave();
-                }
-            }
+        if (window.inspectorPopulate && typeof window.inspectorPopulate.autoCorrectOriginX === 'function') {
+            window.inspectorPopulate.autoCorrectOriginX(obj);
         }
 
         const noneSelected = document.getElementById('inspector-none-selected');
@@ -606,168 +393,35 @@
         const shapeSec = document.getElementById('inspector-shape-section');
         const imgSec = document.getElementById('inspector-image-section');
         
-        textSec.classList.add('hidden');
-        shapeSec.classList.add('hidden');
-        imgSec.classList.add('hidden');
+        if (textSec) textSec.classList.add('hidden');
+        if (shapeSec) shapeSec.classList.add('hidden');
+        if (imgSec) imgSec.classList.add('hidden');
 
         // Render type-specific sections
-        if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
-            textSec.classList.remove('hidden');
-
-            let currentText = obj.text || '';
-            const bindBadge = document.getElementById('text-bind-badge');
-
-            if (obj.variable_binding && window.templateEngine && typeof window.templateEngine.getCurrentRowData === 'function') {
-                const row = window.templateEngine.getCurrentRowData();
-                const colName = obj.variable_binding.replace(/\{\{|\}\}/g, '').trim();
-                if (row && row[colName] !== undefined) {
-                    currentText = row[colName];
-                    if (bindBadge) {
-                        const rowIdx = window.templateEngine.getCurrentRowIndex ? window.templateEngine.getCurrentRowIndex() + 1 : '';
-                        bindBadge.textContent = `Row ${rowIdx} • {{${colName}}}`;
-                        bindBadge.classList.remove('hidden');
-                    }
-                } else {
-                    if (bindBadge) bindBadge.classList.add('hidden');
-                }
-            } else {
-                if (window.templateEngine && typeof window.templateEngine.getTextTemplate === 'function') {
-                    const tmpl = window.templateEngine.getTextTemplate(obj);
-                    if (tmpl !== undefined && tmpl !== null) currentText = tmpl;
-                }
-                if (bindBadge) bindBadge.classList.add('hidden');
-            }
-
-            document.getElementById('prop-text-val').value = currentText;
-        
-        const bindSelect = document.getElementById('prop-text-bind');
-        if (bindSelect) {
-            bindSelect.value = obj.variable_binding || '';
-        }
-        
-        document.getElementById('prop-font-size').value = obj.fontSize || 12;
-        document.getElementById('prop-font-family').value = obj.fontFamily || 'Plus Jakarta Sans';
-        
-        // Standardize hex color mapping for color picker
-        const color = obj.fill || '#000000';
-        if (color.startsWith('#')) {
-            document.getElementById('prop-text-color').value = color;
-        }
-        
-        document.getElementById('prop-text-align').value = obj.textAlign || 'left';
-        document.getElementById('prop-font-bold').checked = obj.fontWeight === 'bold';
-        document.getElementById('prop-font-italic').checked = obj.fontStyle === 'italic';
-
-    } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'line' || obj.type === 'group' || obj.type === 'path') {
-            shapeSec.classList.remove('hidden');
-            
-            // Toggle fill options visibility if it is a Line layer
-            const fillGroup = document.getElementById('prop-shape-fill-group');
-            const opacityGroup = document.getElementById('prop-shape-opacity-group');
-            if (obj.type === 'line') {
-                if (fillGroup) fillGroup.classList.add('hidden');
-                if (opacityGroup) opacityGroup.classList.add('hidden');
-            } else {
-                if (fillGroup) fillGroup.classList.remove('hidden');
-                if (opacityGroup) opacityGroup.classList.remove('hidden');
-            }
-
-            // ponytail: display and populate corner radius control for Rectangle layers
-            const cornersGroup = document.getElementById('prop-rect-corners-group');
-            if (cornersGroup) {
-                if (obj.type === 'rect') {
-                    cornersGroup.classList.remove('hidden');
-                    document.getElementById('prop-rect-rx').value = obj.rx || 0;
-                } else {
-                    cornersGroup.classList.add('hidden');
-                }
-            }
-            
-            let fillVal = obj.fill || '';
-            let strokeVal = obj.stroke || '';
-            let strokeWidthVal = obj.strokeWidth || 0;
-
-            if (obj.type === 'group' && obj.getObjects && obj.getObjects().length > 0) {
-                const firstChild = obj.getObjects()[0];
-                fillVal = fillVal || firstChild.fill || '';
-                strokeVal = strokeVal || firstChild.stroke || '';
-                strokeWidthVal = strokeWidthVal !== undefined ? strokeWidthVal : firstChild.strokeWidth;
-            }
-
-            const isTransparent = fillVal === 'transparent' || fillVal === '' || fillVal === 'none';
-            document.getElementById('prop-fill-transparent').checked = isTransparent;
-            
-            if (isTransparent) {
-                document.getElementById('prop-fill-opacity').value = 0;
-            } else if (fillVal.startsWith('rgba')) {
-                const parsed = parseRgba(fillVal);
-                document.getElementById('prop-fill-color').value = parsed.hex;
-                document.getElementById('prop-fill-opacity').value = Math.round(parsed.alpha * 100);
-            } else if (fillVal.startsWith('#')) {
-                document.getElementById('prop-fill-color').value = fillVal;
-                document.getElementById('prop-fill-opacity').value = 100;
-            } else {
-                document.getElementById('prop-fill-opacity').value = 100;
-            }
-
-            if (strokeVal && strokeVal.startsWith('#')) {
-                document.getElementById('prop-stroke-color').value = strokeVal;
-            }
-            document.getElementById('prop-stroke-width').value = strokeWidthVal || 0;
-
-            const shapeBindSelect = document.getElementById('prop-shape-bind');
-            if (shapeBindSelect) {
-                shapeBindSelect.value = obj.variable_binding || '';
-            }
-
-        } else if (obj.type === 'image') {
-            imgSec.classList.remove('hidden');
-            document.getElementById('prop-image-filename').textContent = obj.original_filename || 'Uploaded Image';
-
-            // Populate image binding dropdown if it exists
-            const imgBindSelect = document.getElementById('prop-image-bind');
-            if (imgBindSelect) {
-                imgBindSelect.value = obj.variable_binding || '';
+        if (window.inspectorPopulate) {
+            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                window.inspectorPopulate.populateTextSection(obj);
+            } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'line' || obj.type === 'group' || obj.type === 'path') {
+                window.inspectorPopulate.populateShapeSection(obj);
+            } else if (obj.type === 'image') {
+                window.inspectorPopulate.populateImageSection(obj);
             }
         }
 
         isUpdatingForm = false;
     }
 
-    // Helper to convert hex to rgba
     function hexToRgba(hex, alpha) {
-        hex = hex.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        return window.inspectorCanvas ? window.inspectorCanvas.hexToRgba(hex, alpha) : `rgba(0,0,0,${alpha})`;
     }
 
-    // Helper to parse rgb or rgba string
     function parseRgba(rgbaStr) {
-        const match = rgbaStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-        if (!match) return { hex: '#000000', alpha: 1.0 };
-        
-        const r = parseInt(match[1]);
-        const g = parseInt(match[2]);
-        const b = parseInt(match[3]);
-        const alpha = match[4] !== undefined ? parseFloat(match[4]) : 1.0;
-        
-        const toHex = (c) => {
-            const hex = c.toString(16);
-            return hex.length === 1 ? '0' + hex : hex;
-        };
-        
-        return {
-            hex: `#${toHex(r)}${toHex(g)}${toHex(b)}`,
-            alpha: alpha
-        };
+        return window.inspectorCanvas ? window.inspectorCanvas.parseRgba(rgbaStr) : { hex: '#000000', alpha: 1.0 };
     }
 
     // Clear Inspector state
     function clearInspect() {
-        // ponytail: don't wipe the inspector while crop mode is active
-        if (isCropMode) return;
+        if (window.inspectorCrop && window.inspectorCrop.isCropMode()) return;
         activeObj = null;
         document.getElementById('inspector-none-selected').classList.remove('hidden');
         document.getElementById('inspector-form').classList.add('hidden');
@@ -777,79 +431,7 @@
         }
     }
 
-    // Canvas properties inspector and binder
-    function initCanvasInspector() {
-        const bgPicker = document.getElementById('prop-canvas-bg');
-        const bgHex = document.getElementById('prop-canvas-bg-hex');
-        const transparentCheck = document.getElementById('prop-canvas-transparent');
-        
-        if (!bgPicker || !bgHex || !transparentCheck) return;
-
-        const canvas = window.editorCanvas;
-        if (!canvas) return;
-
-        function updateCanvasBg(color, isTransparent) {
-            if (!canvas) return;
-
-            if (isTransparent) {
-                canvas.backgroundColor = 'transparent';
-            } else {
-                canvas.backgroundColor = color;
-            }
-            
-            canvas.renderAll();
-            if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
-                window.editorCore.triggerAutoSave();
-            }
-            
-            syncInputs();
-        }
-
-        function syncInputs() {
-            const currentBg = canvas.backgroundColor;
-            if (!currentBg || currentBg === 'transparent') {
-                transparentCheck.checked = true;
-                bgHex.value = '#FFFFFF';
-                bgPicker.value = '#ffffff';
-            } else {
-                transparentCheck.checked = false;
-                let hexColor = '#ffffff';
-                if (typeof currentBg === 'string') {
-                    if (currentBg.startsWith('#')) {
-                        hexColor = currentBg;
-                    } else if (currentBg.startsWith('rgb')) {
-                        const parsed = parseRgba(currentBg);
-                        hexColor = parsed.hex;
-                    }
-                }
-                bgHex.value = hexColor;
-                bgPicker.value = hexColor;
-            }
-        }
-
-        bgPicker.addEventListener('input', (e) => {
-            updateCanvasBg(e.target.value, false);
-        });
-
-        bgHex.addEventListener('input', (e) => {
-            const val = e.target.value;
-            if (val.match(/^#[0-9A-F]{6}$/i)) {
-                updateCanvasBg(val, false);
-            }
-        });
-
-        transparentCheck.addEventListener('change', (e) => {
-            updateCanvasBg(bgHex.value, e.target.checked);
-        });
-
-        window.propertyInspector.syncCanvasBgInputs = syncInputs;
-
-        // Automatically sync inputs when selection is cleared
-        canvas.on('selection:cleared', syncInputs);
-        syncInputs();
-    }
-
-    // Listen to canvas transform updates to live-sync form fields (like dragging)
+    // Listen to canvas transform updates to live-sync form fields
     document.addEventListener('DOMContentLoaded', () => {
         initInspector();
         
@@ -860,273 +442,35 @@
                 canvas.on('object:moving', () => { if (activeObj) inspect(activeObj); });
                 canvas.on('object:scaling', () => { if (activeObj) inspect(activeObj); });
                 canvas.on('mouse:dblclick', (options) => {
-                    if (options.target && options.target.type === 'image' && !isCropMode) {
-                        startImageCrop(options.target);
+                    if (options.target && options.target.type === 'image' && window.inspectorCrop && !window.inspectorCrop.isCropMode()) {
+                        window.inspectorCrop.startImageCrop(options.target);
                     }
                 });
-                canvas.on('selection:cleared', () => {
-                    // ponytail: don't auto-cancel crop on selection:cleared — it fires during startImageCrop setup
-                });
                 
-                // Initialize canvas properties inspector once canvas is ready
-                initCanvasInspector();
+                if (window.inspectorCanvas && typeof window.inspectorCanvas.initCanvasInspector === 'function') {
+                    window.inspectorCanvas.initCanvasInspector();
+                }
             }
         }, 100);
     });
 
-    // ─── Crop Mode ───────────────────────────────────────────────────────────
-    let isCropMode = false;
-    let activeCropImage = null;   // the fabric.Image being cropped
-    let _cropOverlay = null;      // dim rect covering full canvas
-    let _cropBg = null;           // ghost of the full image (dimmed)
-    let _cropBox = null;          // the draggable/resizable crop rect
-    let _cropOrigState = null;    // snapshot of original cropX/Y/width/height/scaleX/scaleY
-
     function startImageCrop(img) {
-        if (isCropMode || !img || img.type !== 'image' || !window.editorCanvas) return;
-
-        const canvas = window.editorCanvas;
-        const imgEl  = img.getElement();
-
-        // Natural (uncropped) pixel dimensions of the source image
-        const natW = (imgEl && imgEl.naturalWidth)  || img.width  || 1;
-        const natH = (imgEl && imgEl.naturalHeight) || img.height || 1;
-
-        isCropMode      = true;
-        activeCropImage = img;
-
-        // Save original state so Cancel can fully restore
-        _cropOrigState = {
-            cropX: img.cropX || 0,
-            cropY: img.cropY || 0,
-            width: img.width,
-            height: img.height,
-            scaleX: img.scaleX,
-            scaleY: img.scaleY,
-            left: img.left,
-            top: img.top
-        };
-
-        // Show Apply/Cancel UI
-        document.getElementById('btn-crop-image').classList.add('hidden');
-        document.getElementById('crop-actions-group').classList.remove('hidden');
-
-        // ── 1. Compute the canvas-space position of the full (uncropped) image center
-        const matrix = img.calcTransformMatrix();
-        // Local offset from img center to uncropped-image center
-        const localDx = -img.width / 2 - (img.cropX || 0) + natW / 2;
-        const localDy = -img.height / 2 - (img.cropY || 0) + natH / 2;
-        const fullCenter = fabric.util.transformPoint(new fabric.Point(localDx, localDy), matrix);
-
-        // ── 2. Ghost image (full uncropped, dimmed)
-        _cropBg = new fabric.Image(imgEl, {
-            left:      fullCenter.x,
-            top:       fullCenter.y,
-            width:     natW,
-            height:    natH,
-            scaleX:    img.scaleX,
-            scaleY:    img.scaleY,
-            angle:     img.angle,
-            originX:   'center',
-            originY:   'center',
-            opacity:   0.35,
-            selectable: false,
-            evented:    false,
-            id: '_crop_bg'
-        });
-
-        // ── 3. Crop selection rect (positioned over the currently-cropped region)
-        _cropBox = new fabric.Rect({
-            left:   img.left,
-            top:    img.top,
-            width:  img.width  * img.scaleX,
-            height: img.height * img.scaleY,
-            scaleX: 1,
-            scaleY: 1,
-            angle:  img.angle,
-            originX: 'center',
-            originY: 'center',
-            fill:   'rgba(99,102,241,0.10)',
-            stroke: '#6366f1',
-            strokeWidth: 1.5,
-            strokeDashArray: null,
-            cornerColor: '#6366f1',
-            cornerStrokeColor: '#fff',
-            cornerSize: 9,
-            transparentCorners: false,
-            hasRotatingPoint: false,
-            lockRotation: true,
-            id: '_crop_box'
-        });
-
-        // Hide the actual image while we're in crop mode
-        img.visible = false;
-        canvas.discardActiveObject();
-
-        canvas.add(_cropBg);
-        canvas.add(_cropBox);
-
-        // Lock all other objects
-        canvas.getObjects().forEach(obj => {
-            if (obj !== _cropBox && obj !== _cropBg) {
-                obj._cs = obj.selectable;
-                obj._ce = obj.evented;
-                obj.selectable = false;
-                obj.evented    = false;
-            }
-        });
-
-        canvas.setActiveObject(_cropBox);
-        canvas.renderAll();
+        if (window.inspectorCrop) window.inspectorCrop.startImageCrop(img);
     }
-
     function applyImageCrop() {
-        if (!isCropMode || !activeCropImage || !_cropBox || !_cropBg) return;
-
-        const canvas = window.editorCanvas;
-        const img    = activeCropImage;
-        const imgEl  = img.getElement();
-        const natW   = (imgEl && imgEl.naturalWidth)  || _cropOrigState.width  || 1;
-        const natH   = (imgEl && imgEl.naturalHeight) || _cropOrigState.height || 1;
-
-        // Map the crop box corners back into the source image's pixel space
-        const bgMatrix  = _cropBg.calcTransformMatrix();
-        const invMatrix = fabric.util.invertTransform(bgMatrix);
-        const coords    = _cropBox.getCoords(); // canvas-space corners [TL,TR,BR,BL]
-        const localTL   = fabric.util.transformPoint(coords[0], invMatrix);
-        const localBR   = fabric.util.transformPoint(coords[2], invMatrix);
-
-        // localTL/BR are in ghost-image local space where (0,0) = image center
-        let cropX = localTL.x + natW / 2;
-        let cropY = localTL.y + natH / 2;
-        let newW  = localBR.x - localTL.x;
-        let newH  = localBR.y - localTL.y;
-
-        // Clamp to source boundaries
-        cropX = Math.max(0, cropX);
-        cropY = Math.max(0, cropY);
-        if (cropX + newW > natW) newW = natW - cropX;
-        if (cropY + newH > natH) newH = natH - cropY;
-        newW = Math.max(10, newW);
-        newH = Math.max(10, newH);
-
-        // New canvas-space center of the cropped region
-        const localCx = -natW / 2 + cropX + newW / 2;
-        const localCy = -natH / 2 + cropY + newH / 2;
-        const newCenter = fabric.util.transformPoint(new fabric.Point(localCx, localCy), bgMatrix);
-
-        // Visual pixel size of the crop box on canvas
-        const visW = _cropBox.width  * _cropBox.scaleX;
-        const visH = _cropBox.height * _cropBox.scaleY;
-
-        img.set({
-            cropX,
-            cropY,
-            width:  newW,
-            height: newH,
-            scaleX: visW / newW,
-            scaleY: visH / newH,
-            left:   newCenter.x,
-            top:    newCenter.y
-        });
-
-        _exitCropMode(true);
+        if (window.inspectorCrop) window.inspectorCrop.applyImageCrop();
     }
-
     function cancelImageCrop() {
-        if (!isCropMode || !activeCropImage) return;
-        // Fully restore original state
-        activeCropImage.set(_cropOrigState);
-        _exitCropMode(false);
+        if (window.inspectorCrop) window.inspectorCrop.cancelImageCrop();
     }
 
-    function _exitCropMode(shouldSave) {
-        if (!isCropMode || !window.editorCanvas) return;
-
-        const canvas = window.editorCanvas;
-
-        // Restore UI
-        document.getElementById('btn-crop-image').classList.remove('hidden');
-        document.getElementById('crop-actions-group').classList.add('hidden');
-
-        // Remove temp objects
-        if (_cropBox) canvas.remove(_cropBox);
-        if (_cropBg)  canvas.remove(_cropBg);
-        _cropBox = null;
-        _cropBg  = null;
-
-        // Restore selectable/evented on all objects
-        canvas.getObjects().forEach(obj => {
-            if (obj._cs !== undefined) { obj.selectable = obj._cs; delete obj._cs; }
-            if (obj._ce !== undefined) { obj.evented    = obj._ce; delete obj._ce; }
-        });
-
-        // Reveal the image and re-select it
-        if (activeCropImage) {
-            activeCropImage.visible = true;
-            canvas.setActiveObject(activeCropImage);
-            inspect(activeCropImage);
-        }
-
-        canvas.renderAll();
-
-        isCropMode       = false;
-        activeCropImage  = null;
-        _cropOrigState   = null;
-
-        if (shouldSave && window.editorCore) window.editorCore.triggerAutoSave();
-    }
-
-    // Keyboard shortcuts: Enter = apply, Escape = cancel
-    document.addEventListener('keydown', (e) => {
-        if (!isCropMode) return;
-        if (e.key === 'Enter')  { e.preventDefault(); applyImageCrop(); }
-        if (e.key === 'Escape') { e.preventDefault(); cancelImageCrop(); }
-    });
 
     function updateDatasetColumns(columnMap) {
-        const textSelect = document.getElementById('prop-text-bind');
-        const imageSelect = document.getElementById('prop-image-bind');
-        const shapeSelect = document.getElementById('prop-shape-bind');
-        const bindHint = document.getElementById('prop-text-bind-hint');
-
-        const hasColumns = Array.isArray(columnMap) && columnMap.length > 0;
-        if (bindHint) {
-            if (hasColumns) {
-                bindHint.classList.add('hidden');
-            } else {
-                bindHint.classList.remove('hidden');
-            }
+        if (window.inspectorPopulate) {
+            window.inspectorPopulate.updateDatasetColumns(columnMap);
         }
-
-        [textSelect, imageSelect, shapeSelect].forEach(select => {
-            if (!select) return;
-            const currentVal = select.value;
-            select.innerHTML = '';
-
-            const defaultOpt = document.createElement('option');
-            defaultOpt.value = '';
-            if (select.id === 'prop-text-bind') {
-                defaultOpt.textContent = 'No Binding (Static Text)';
-            } else if (select.id === 'prop-image-bind') {
-                defaultOpt.textContent = 'No Binding (Static Image)';
-            } else {
-                defaultOpt.textContent = 'No Binding (Always Visible)';
-            }
-            select.appendChild(defaultOpt);
-
-            if (hasColumns) {
-                columnMap.forEach(col => {
-                    const opt = document.createElement('option');
-                    opt.value = `{{${col}}}`;
-                    opt.textContent = `{{${col}}}`;
-                    select.appendChild(opt);
-                });
-            }
-
-            select.value = currentVal;
-        });
     }
+
 
     window.propertyInspector = {
         inspect: inspect,
