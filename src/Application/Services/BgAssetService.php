@@ -24,6 +24,85 @@ class BgAssetService
         return $this->assetRepository->findByProjectId($projectId, $includeGlobal);
     }
 
+    /**
+     * Synchronizes all built-in SVG icons from board-game-studio/icons into the
+     * global assets database (project_id IS NULL) and the uploads/board-game-studio/global folder.
+     */
+    public function syncBuiltinGlobalIcons(int $uploadedByUserId = 1): void
+    {
+        $iconsDir = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'icons';
+        if (!is_dir($iconsDir)) {
+            return;
+        }
+
+        $globalUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . 'global';
+        if (!is_dir($globalUploadDir)) {
+            if (!mkdir($globalUploadDir, 0755, true) && !is_dir($globalUploadDir)) {
+                return;
+            }
+        }
+
+        // Ensure .htaccess exists
+        $htaccessPath = $this->uploadDirBase . DIRECTORY_SEPARATOR . '.htaccess';
+        if (!file_exists($htaccessPath)) {
+            $htaccessContent = "# Disable directory listing\nOptions -Indexes\n\n# Prevent PHP execution\n<FilesMatch \"\\.php$\">\n    Require all denied\n</FilesMatch>\n\n# Protect .htaccess\n<Files \".htaccess\">\n    Require all denied\n</Files>\n\n# Allow cross-origin asset loading\n<IfModule mod_headers.c>\n    Header set Access-Control-Allow-Origin \"*\"\n</IfModule>\n";
+            @file_put_contents($htaccessPath, $htaccessContent);
+        }
+
+        $existingGlobalAssets = $this->assetRepository->findByProjectId(null, false);
+        $existingMap = [];
+        foreach ($existingGlobalAssets as $asset) {
+            $existingMap[$asset->getOriginalFilename()] = $asset;
+        }
+
+        $files = scandir($iconsDir);
+        if ($files === false) {
+            return;
+        }
+
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..' || !str_ends_with(strtolower($file), '.svg')) {
+                continue;
+            }
+
+            $sourcePath = $iconsDir . DIRECTORY_SEPARATOR . $file;
+            if (!is_file($sourcePath)) {
+                continue;
+            }
+
+            $tag = '[' . pathinfo($file, PATHINFO_FILENAME) . ']';
+
+            if (isset($existingMap[$file])) {
+                $asset = $existingMap[$file];
+                $targetPath = $globalUploadDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+                if (!file_exists($targetPath)) {
+                    copy($sourcePath, $targetPath);
+                    $this->normalizeSvgFile($targetPath);
+                }
+                continue;
+            }
+
+            $storedFilename = bin2hex(random_bytes(16)) . '.svg';
+            $targetPath = $globalUploadDir . DIRECTORY_SEPARATOR . $storedFilename;
+
+            if (copy($sourcePath, $targetPath)) {
+                $this->normalizeSvgFile($targetPath);
+                $fileSize = (int)filesize($targetPath);
+                $newAsset = new BgAsset(
+                    null,
+                    null,
+                    $file,
+                    $storedFilename,
+                    'image/svg+xml',
+                    $fileSize > 0 ? $fileSize : (int)filesize($sourcePath),
+                    $tag,
+                    $uploadedByUserId
+                );
+                $this->assetRepository->save($newAsset);
+            }
+        }
+    }
+
     public function normalizeAllProjectSvgs(?int $projectId): void
     {
         $assets = $this->assetRepository->findByProjectId($projectId, true);

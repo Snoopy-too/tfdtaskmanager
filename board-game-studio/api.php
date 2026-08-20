@@ -156,6 +156,8 @@ try {
             if ($method !== 'GET') {
                 throw new \InvalidArgumentException('Method not allowed.');
             }
+            $currentUserId = (int)($_SESSION['user_id'] ?? 1);
+            $assetService->syncBuiltinGlobalIcons($currentUserId);
             $projectId = isset($_GET['project_id']) && (int)$_GET['project_id'] > 0 ? (int)$_GET['project_id'] : null;
             $assetService->normalizeAllProjectSvgs($projectId);
             $assets = $assetService->getAssetsByProject($projectId, true);
