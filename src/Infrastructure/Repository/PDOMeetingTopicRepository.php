@@ -16,8 +16,22 @@ class PDOMeetingTopicRepository implements MeetingTopicRepositoryInterface
         $this->pdo = $pdo;
     }
 
+    private function ensureTopicColumns(): void
+    {
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM `meeting_topics` LIKE 'title'");
+            $col = $stmt->fetch();
+            if ($col && isset($col['Type']) && strpos(strtolower((string)$col['Type']), 'varchar') !== false) {
+                $this->pdo->exec("ALTER TABLE `meeting_topics` MODIFY COLUMN `title` TEXT NOT NULL");
+            }
+        } catch (\PDOException $e) {
+            // Ignore if already modified or permission error
+        }
+    }
+
     public function findById(int $id): ?MeetingTopic
     {
+        $this->ensureTopicColumns();
         $stmt = $this->pdo->prepare("SELECT * FROM meeting_topics WHERE id = :id");
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
@@ -29,6 +43,7 @@ class PDOMeetingTopicRepository implements MeetingTopicRepositoryInterface
 
     public function save(MeetingTopic $topic): MeetingTopic
     {
+        $this->ensureTopicColumns();
         if ($topic->getId() === null) {
             $stmt = $this->pdo->prepare("
                 INSERT INTO meeting_topics (meeting_id, user_id, title)

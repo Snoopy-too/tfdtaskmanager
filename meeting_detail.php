@@ -270,7 +270,7 @@ require_once __DIR__ . '/templates/header.php';
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="edit_topic">
                                         <input type="hidden" name="topic_id" value="<?php echo $topic->getId(); ?>">
-                                        <textarea name="topic_title" rows="2" required class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg p-2 text-slate-100 text-sm transition outline-none"><?php echo SecurityHelper::escape($topic->getTitle()); ?></textarea>
+                                        <textarea name="topic_title" rows="3" required class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg p-2.5 text-slate-100 text-sm transition outline-none resize-y"><?php echo SecurityHelper::escape($topic->getTitle()); ?></textarea>
                                         <div class="flex items-center space-x-2">
                                             <button type="submit" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded transition">
                                                 Save
@@ -282,7 +282,7 @@ require_once __DIR__ . '/templates/header.php';
                                     </form>
                                 <?php else: ?>
                                     <div class="flex items-start justify-between gap-3">
-                                        <p class="text-slate-200 font-medium text-base"><?php echo SecurityHelper::escape($topic->getTitle()); ?></p>
+                                        <p class="text-slate-200 font-medium text-base whitespace-pre-wrap break-words"><?php echo SecurityHelper::escape($topic->getTitle()); ?></p>
                                         <?php if ($topic->getUserId() === $currentUserId): ?>
                                             <a href="meeting_detail.php?id=<?php echo $meetingId; ?>&edit_topic=<?php echo $topic->getId(); ?>" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition whitespace-nowrap">
                                                 Edit

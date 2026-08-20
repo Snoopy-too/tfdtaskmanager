@@ -117,7 +117,7 @@ try {
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `meeting_id` INT NOT NULL,
             `user_id` INT NOT NULL,
-            `title` VARCHAR(255) NOT NULL,
+            `title` TEXT NOT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT `fk_topics_meeting` FOREIGN KEY (`meeting_id`) REFERENCES `meetings` (`id`) ON DELETE CASCADE,
             CONSTRAINT `fk_topics_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
