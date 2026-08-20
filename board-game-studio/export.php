@@ -224,20 +224,33 @@ require_once __DIR__ . '/../templates/header.php';
 
                         <!-- PDF specific configurations -->
                         <div id="pdf-settings" class="space-y-4">
-                            <div>
-                                <label for="pdf_page_size" class="block text-sm font-medium text-slate-300 mb-1">Page Size</label>
-                                <select id="pdf_page_size" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <option value="a4">A4 (210 x 297 mm)</option>
-                                    <option value="letter">US Letter (8.5 x 11 in)</option>
-                                </select>
-                            </div>
-
                             <?php
                             $tmplWidth = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasWidthPx()) : ($compType ? $compType->getWidthMm() : 0.0);
                             $tmplHeight = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasHeightPx()) : ($compType ? $compType->getHeightMm() : 0.0);
+                            $isF10A4 = ($compType && str_contains($compType->getName(), 'F10A4-1')) || (abs($tmplWidth - 91.0) < 1.5 && abs($tmplHeight - 55.0) < 1.5) || (abs($tmplWidth - 55.0) < 1.5 && abs($tmplHeight - 91.0) < 1.5);
                             $autoOrientation = ($tmplWidth > $tmplHeight) ? 'landscape' : 'portrait';
                             ?>
                             <div>
+                                <label for="pdf_page_size" class="block text-sm font-medium text-slate-300 mb-1">Page Size & Layout</label>
+                                <select id="pdf_page_size" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
+                                    <optgroup label="Standard Sheets (Auto Grid)">
+                                        <option value="a4" <?php echo !$isF10A4 ? 'selected' : ''; ?>>A4 (210 x 297 mm)</option>
+                                        <option value="letter">US Letter (8.5 x 11 in)</option>
+                                    </optgroup>
+                                    <optgroup label="Pre-cut / Label Sheets">
+                                        <option value="f10a4_1" <?php echo $isF10A4 ? 'selected' : ''; ?>>A-one F10A4-1 (A4 10-Card / 91x55 mm)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <div id="f10a4-info-badge" class="<?php echo $isF10A4 ? '' : 'hidden '; ?>p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 space-y-1">
+                                <div class="font-bold flex items-center gap-1.5 text-indigo-400">
+                                    <span>🎴 A-one F10A4-1 (10-Card Sheet Layout)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300">Places 10 cards ($2\times 5$ grid, 91x55mm) with exact 14mm side margins, 11mm top/bottom margins, and 0mm gap. Set printer scale to <strong>100% / Actual Size</strong>.</p>
+                            </div>
+
+                            <div id="pdf-orientation-container">
                                 <label for="pdf_orientation" class="block text-sm font-medium text-slate-300 mb-1">Orientation</label>
                                 <select id="pdf_orientation" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
                                     <option value="portrait" <?php echo $autoOrientation === 'portrait' ? 'selected' : ''; ?>>Portrait</option>

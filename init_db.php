@@ -148,7 +148,8 @@ try {
         (6, 'Player Board (A4 Landscape)', 297.00, 210.00, 'Standard player mat/board (A4 Landscape)'),
         (7, 'Player Board (A5 Landscape)', 210.00, 148.00, 'Compact player board (A5 Landscape)'),
         (8, 'Game Board (Medium Square)', 300.00, 300.00, 'Medium square game board'),
-        (9, 'Custom', 0.00, 0.00, 'Custom dimensions defined by user.');
+        (9, 'Custom', 0.00, 0.00, 'Custom dimensions defined by user.'),
+        (10, 'Japanese Business Card (A-one F10A4-1)', 91.00, 55.00, 'Standard Japanese business card / A-one 10-card sheet (91x55 mm, Format F10A4-1)');
     ");
     // Force reset all default types to their correct details
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Poker Card', `width_mm` = 63.00, `height_mm` = 88.00, `description` = 'Standard poker-size playing card' WHERE `id` = 1");
@@ -160,6 +161,7 @@ try {
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Player Board (A5 Landscape)', `width_mm` = 210.00, `height_mm` = 148.00, `description` = 'Compact player board (A5 Landscape)' WHERE `id` = 7");
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Game Board (Medium Square)', `width_mm` = 300.00, `height_mm` = 300.00, `description` = 'Medium square game board' WHERE `id` = 8");
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Custom', `width_mm` = 0.00, `height_mm` = 0.00, `description` = 'Custom dimensions defined by user.' WHERE `id` = 9");
+    $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Japanese Business Card (A-one F10A4-1)', `width_mm` = 91.00, `height_mm` = 55.00, `description` = 'Standard Japanese business card / A-one 10-card sheet (91x55 mm, Format F10A4-1)' WHERE `id` = 10");
     echo "- Seeded default component types.\n";
 
     // 9. Board Game Assets table

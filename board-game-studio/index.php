@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $container = require_once __DIR__ . '/../src/bootstrap.php';
 
-// Auto-migration for template lock columns
+// Auto-migration for template lock columns & F10A4-1 component type
 try {
     $db = $container->get(PDO::class);
     $check = $db->query("SHOW COLUMNS FROM `bg_templates` LIKE 'locked_by_user_id'")->fetchAll();
@@ -11,6 +11,11 @@ try {
         $db->exec("ALTER TABLE `bg_templates` ADD COLUMN `locked_by_user_id` INT DEFAULT NULL AFTER `created_by`");
         $db->exec("ALTER TABLE `bg_templates` ADD COLUMN `locked_at` TIMESTAMP NULL DEFAULT NULL AFTER `locked_by_user_id`");
         $db->exec("ALTER TABLE `bg_templates` ADD CONSTRAINT `fk_bg_templates_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL");
+    }
+
+    $checkComp = $db->query("SELECT id FROM `bg_component_types` WHERE `name` LIKE '%F10A4-1%'")->fetch();
+    if (!$checkComp) {
+        $db->exec("INSERT INTO `bg_component_types` (`name`, `width_mm`, `height_mm`, `description`) VALUES ('Japanese Business Card (A-one F10A4-1)', 91.00, 55.00, 'Standard Japanese business card / A-one 10-card sheet (91x55 mm, Format F10A4-1)')");
     }
 } catch (\Exception $e) {
     // Ignore db connection issues here; standard page loads will handle them
