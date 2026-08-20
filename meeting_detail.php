@@ -179,11 +179,11 @@ require_once __DIR__ . '/templates/header.php';
                     <div class="flex items-center gap-3 flex-wrap">
                         <h2 class="text-2xl font-extrabold text-white"><?php echo SecurityHelper::escape($meeting->getTitle()); ?></h2>
                         <?php if ($meeting->isFinished()): ?>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Finished</span>
+                            <span class="stamp-finished ml-1">Finished</span>
                         <?php elseif ($meeting->getScheduledDate() === null): ?>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>
                         <?php else: ?>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Scheduled</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Scheduled</span>
                         <?php endif; ?>
                     </div>
                     <p class="text-slate-400 mt-1">

@@ -45,6 +45,34 @@ function isActive(string $page, string $current_page, bool $in_studio, bool $che
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
+        .stamp-finished {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+            font-weight: 900;
+            font-size: 0.75rem;
+            line-height: 1.1;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #ef4444;
+            border: 2px solid #ef4444;
+            outline: 1.5px solid rgba(239, 68, 68, 0.55);
+            outline-offset: 1.5px;
+            border-radius: 4px;
+            padding: 3px 8px 3px 10px;
+            background: rgba(239, 68, 68, 0.08);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.2), inset 0 0 6px rgba(239, 68, 68, 0.15);
+            text-shadow: 0 0 1px rgba(239, 68, 68, 0.8);
+            transform: rotate(-9deg);
+            transform-origin: center;
+            user-select: none;
+            transition: transform 0.2s ease, filter 0.2s ease;
+            filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.2));
+        }
+        .stamp-finished:hover {
+            transform: rotate(-6deg) scale(1.06);
+        }
     </style>
 </head>
 <body class="bg-darkbg text-slate-100 min-h-screen flex flex-col">

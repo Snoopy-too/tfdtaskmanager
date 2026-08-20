@@ -121,7 +121,9 @@ require_once __DIR__ . '/templates/header.php';
                                         </a>
                                     </h3>
                                     <?php if ($meeting->isFinished()): ?>
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Finished</span>
+                                        <div class="flex-shrink-0 pt-0.5 pr-1">
+                                            <span class="stamp-finished">Finished</span>
+                                        </div>
                                     <?php elseif ($meeting->getScheduledDate() === null): ?>
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>
                                     <?php else: ?>
