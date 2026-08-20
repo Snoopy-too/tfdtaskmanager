@@ -93,7 +93,13 @@
                     const img = document.createElement('img');
                     img.crossOrigin = 'anonymous';
                     img.src = asset.url;
-                    img.className = "max-h-full max-w-full object-contain group-hover:scale-105 transition duration-200";
+                    img.className = "max-h-full max-w-full object-contain group-hover:scale-105 transition duration-200 filter drop-shadow-[0_0_1.5px_rgba(255,255,255,0.75)]";
+                    img.onerror = () => {
+                        if (!img.dataset.triedBackup) {
+                            img.dataset.triedBackup = '1';
+                            img.src = 'icons/' + encodeURIComponent(asset.original_filename);
+                        }
+                    };
                     preview.appendChild(img);
                 } else if (isFont) {
                     preview.innerHTML = `

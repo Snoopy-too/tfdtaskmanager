@@ -164,6 +164,20 @@ try {
             
             $formatted = [];
             foreach ($assets as $asset) {
+                $folder = ($asset->getProjectId() === null ? 'global' : (string)$asset->getProjectId());
+                $url = '../uploads/board-game-studio/' . $folder . '/' . $asset->getStoredFilename();
+
+                // If global asset file is missing in upload folder on disk, fallback to built-in icons directory
+                if ($asset->getProjectId() === null) {
+                    $uploadPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . 'global' . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+                    if (!file_exists($uploadPath)) {
+                        $builtInPath = __DIR__ . DIRECTORY_SEPARATOR . 'icons' . DIRECTORY_SEPARATOR . $asset->getOriginalFilename();
+                        if (file_exists($builtInPath)) {
+                            $url = 'icons/' . $asset->getOriginalFilename();
+                        }
+                    }
+                }
+
                 $formatted[] = [
                     'id' => $asset->getId(),
                     'original_filename' => $asset->getOriginalFilename(),
@@ -171,8 +185,7 @@ try {
                     'mime_type' => $asset->getMimeType(),
                     'file_size_bytes' => $asset->getFileSizeBytes(),
                     'tag' => $asset->getTag(),
-                    // Client-side relative URL path to files in upload folder
-                    'url' => '../uploads/board-game-studio/' . ($asset->getProjectId() === null ? 'global' : $asset->getProjectId()) . '/' . $asset->getStoredFilename()
+                    'url' => $url
                 ];
             }
             echo json_encode($formatted);

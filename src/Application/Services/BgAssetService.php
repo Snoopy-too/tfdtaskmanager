@@ -75,9 +75,11 @@ class BgAssetService
             if (isset($existingMap[$file])) {
                 $asset = $existingMap[$file];
                 $targetPath = $globalUploadDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
-                if (!file_exists($targetPath)) {
-                    copy($sourcePath, $targetPath);
-                    $this->normalizeSvgFile($targetPath);
+                // Ensure target file exists, is non-empty, and is kept up-to-date with source icon
+                if (!file_exists($targetPath) || filesize($targetPath) === 0 || (filemtime($sourcePath) > filemtime($targetPath))) {
+                    if (copy($sourcePath, $targetPath)) {
+                        $this->normalizeSvgFile($targetPath);
+                    }
                 }
                 continue;
             }

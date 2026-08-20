@@ -112,8 +112,23 @@ $activeProjectId = $activeProjectId ?? null;
                 $isImage = str_starts_with($asset->getMimeType(), 'image/');
                 $ext = strtolower(pathinfo($asset->getStoredFilename(), PATHINFO_EXTENSION));
                 $isFont = str_contains($asset->getMimeType(), 'font') || in_array($ext, ['ttf', 'otf']);
-                $folderName = ($asset->getProjectId() === null) ? 'global' : $asset->getProjectId();
+                $folderName = ($asset->getProjectId() === null) ? 'global' : (string)$asset->getProjectId();
                 $fileUrl = '../uploads/board-game-studio/' . $folderName . '/' . $asset->getStoredFilename();
+
+                // Fallback check: if file is not in uploads, ensure it gets copied and fall back to built-in icons
+                $uploadsBaseDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . $folderName;
+                $targetDiskPath = $uploadsBaseDir . DIRECTORY_SEPARATOR . $asset->getStoredFilename();
+                $builtInIconPath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'icons' . DIRECTORY_SEPARATOR . $asset->getOriginalFilename();
+
+                if (!file_exists($targetDiskPath) || filesize($targetDiskPath) === 0) {
+                    if (file_exists($builtInIconPath)) {
+                        if (!is_dir($uploadsBaseDir)) {
+                            @mkdir($uploadsBaseDir, 0755, true);
+                        }
+                        @copy($builtInIconPath, $targetDiskPath);
+                        $fileUrl = 'icons/' . $asset->getOriginalFilename();
+                    }
+                }
                 ?>
                 <div class="bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-slate-700 hover:shadow-lg transition group relative" id="asset-card-<?php echo $asset->getId(); ?>">
                     <!-- Checkbox selector -->
@@ -122,9 +137,11 @@ $activeProjectId = $activeProjectId ?? null;
                     </label>
 
                     <!-- Preview Box -->
-                    <div class="bg-slate-950 h-44 flex items-center justify-center relative overflow-hidden p-4 border-b border-slate-800/60">
+                    <div class="bg-slate-950 h-44 flex items-center justify-center relative overflow-hidden p-4 border-b border-slate-800/60 group-hover:bg-slate-900/40 transition">
                         <?php if ($isImage): ?>
-                            <img src="<?php echo $fileUrl; ?>" alt="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>" class="max-h-full max-w-full object-contain group-hover:scale-[1.03] transition duration-300">
+                            <div class="w-full h-full flex items-center justify-center p-2 rounded-xl bg-slate-900/70 border border-slate-800/60 shadow-inner">
+                                <img src="<?php echo $fileUrl; ?>" alt="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300 filter drop-shadow-[0_0_1.5px_rgba(255,255,255,0.75)]" onerror="if(!this.dataset.triedBackup){this.dataset.triedBackup='1';this.src='icons/<?php echo urlencode($asset->getOriginalFilename()); ?>';}">
+                            </div>
                         <?php elseif ($isFont): ?>
                             <div class="text-center space-y-2">
                                 <svg class="mx-auto h-12 w-12 text-indigo-400 bg-indigo-500/10 p-2.5 rounded-2xl" fill="none" stroke="currentColor" viewBox="0 0 24 24">
