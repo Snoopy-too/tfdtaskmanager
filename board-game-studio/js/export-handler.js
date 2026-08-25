@@ -350,16 +350,17 @@
                                                 id: obj.id,
                                                 original_filename: val
                                             });
-                                        const idx = cardCanvas.getObjects().indexOf(obj);
-                                        cardCanvas.remove(obj);
-                                        if (idx >= 0) {
-                                            cardCanvas.insertAt(newImg, idx);
-                                        } else {
-                                            cardCanvas.add(newImg);
-                                        }
-                                        newImg.setCoords();
-                                        imgResolve();
-                                    }, { crossOrigin: 'anonymous' });
+                                            const idx = canvas.getObjects().indexOf(obj);
+                                            canvas.remove(obj);
+                                            if (idx >= 0) {
+                                                canvas.insertAt(newImg, idx, false);
+                                            } else {
+                                                canvas.add(newImg);
+                                            }
+                                            newImg.setCoords();
+                                            imgResolve();
+                                        }, { crossOrigin: 'anonymous' });
+                                    });
                                 });
                                 imageSwapPromises.push(swapPromise);
                             }
@@ -367,19 +368,19 @@
                         }
                     }
 
-                                    const lowerVal = val.toLowerCase();
-                                    const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide'];
-                                    if (hideValues.includes(lowerVal)) {
-                                        obj.set('opacity', 0);
-                                        obj.set('visible', false);
-                                    } else {
-                                        obj.set('opacity', 1);
-                                        obj.set('visible', true);
-                                    }
-                                }
-                            }
-                        });
+                    const lowerVal = val.toLowerCase();
+                    const hideValues = ['transparent.png', '0', 'false', 'none', 'hidden', 'hide', ''];
+                    if (hideValues.includes(lowerVal)) {
+                        obj.set('opacity', 0);
+                        obj.set('visible', false);
+                    } else {
+                        obj.set('opacity', 1);
+                        obj.set('visible', true);
                     }
+                }
+            }
+        });
+    }
 
                     processExportObjects(objects);
 
