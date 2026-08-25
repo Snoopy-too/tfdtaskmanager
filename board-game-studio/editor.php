@@ -230,6 +230,38 @@ require_once __DIR__ . '/../templates/header.php';
 
         <!-- Central Panel: Canvas Area (Expands dynamically to fill remaining workspace) -->
         <div id="center-canvas-panel" class="flex-1 min-w-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative transition-all duration-200">
+            
+            <!-- Canvas Loading Overlay (Displayed in center of canvas area during load) -->
+            <div id="canvas-loading-overlay" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/75 backdrop-blur-sm transition-all duration-300 pointer-events-auto">
+                <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center text-center max-w-sm mx-4 space-y-4">
+                    <!-- Animated Spinner with Pulsing Center Icon -->
+                    <div class="relative flex items-center justify-center w-14 h-14">
+                        <div class="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping opacity-75"></div>
+                        <div class="w-14 h-14 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 border-r-indigo-400 animate-spin"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-indigo-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <h3 id="canvas-loading-title" class="text-sm font-bold text-white tracking-wide">
+                            Loading Canvas...
+                        </h3>
+                        <p id="canvas-loading-subtitle" class="text-xs text-slate-400 leading-relaxed">
+                            Restoring your saved template layers, assets, and typography...
+                        </p>
+                    </div>
+
+                    <!-- Progress Badge with Pulsing Dot -->
+                    <div class="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full text-[11px] font-semibold text-indigo-300">
+                        <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+                        <span id="canvas-loading-status">Loading in progress...</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="canvas-viewport flex-grow overflow-auto flex p-2 md:p-3 relative">
                 <!-- Outer scaled container to handle flex-scroll centering -->
                 <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0;">

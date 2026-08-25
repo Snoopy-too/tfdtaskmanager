@@ -335,9 +335,39 @@
         });
     }
 
+    function showCanvasLoadingOverlay(title = 'Loading Canvas...', subtitle = 'Restoring your saved template layers, assets, and typography...', status = 'Loading in progress...') {
+        const overlay = document.getElementById('canvas-loading-overlay');
+        if (!overlay) return;
+
+        const titleEl = document.getElementById('canvas-loading-title');
+        const subtitleEl = document.getElementById('canvas-loading-subtitle');
+        const statusEl = document.getElementById('canvas-loading-status');
+
+        if (titleEl) titleEl.textContent = title;
+        if (subtitleEl) subtitleEl.textContent = subtitle;
+        if (statusEl) statusEl.textContent = status;
+
+        overlay.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100', 'pointer-events-auto');
+    }
+
+    function hideCanvasLoadingOverlay() {
+        const overlay = document.getElementById('canvas-loading-overlay');
+        if (!overlay) return;
+
+        overlay.classList.remove('opacity-100', 'pointer-events-auto');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            if (overlay.classList.contains('opacity-0')) {
+                overlay.classList.add('hidden');
+            }
+        }, 300);
+    }
+
     function loadCanvas() {
         if (!canvas) return;
         setSaveStatus('Loading canvas...', 'pulse');
+        showCanvasLoadingOverlay('Loading Canvas...', 'Restoring your saved template layers, assets, and typography...', 'Restoring saved template...');
         
         fetch(`api.php?action=load_canvas&template_id=${window.studioConfig.templateId}`)
         .then(response => response.json())
@@ -359,6 +389,7 @@
 
                     canvas.renderAll();
                     setSaveStatus('All changes saved', 'saved');
+                    hideCanvasLoadingOverlay();
                     
                     if (window.editorHistory) window.editorHistory.pushStateImmediate();
 
@@ -375,6 +406,7 @@
                     window.guideRenderer.renderGuides();
                 }
                 setSaveStatus('All changes saved', 'saved');
+                hideCanvasLoadingOverlay();
                 
                 if (window.editorHistory) window.editorHistory.pushStateImmediate();
 
@@ -389,6 +421,7 @@
         })
         .catch(err => {
             setSaveStatus('Load failed', 'error');
+            hideCanvasLoadingOverlay();
             console.error(err);
         });
     }
@@ -496,6 +529,8 @@
         triggerAutoSave,
         loadCanvas,
         setSaveStatus,
+        showCanvasLoadingOverlay,
+        hideCanvasLoadingOverlay,
         undo: () => (window.editorHistory ? window.editorHistory.undo() : null),
         redo: () => (window.editorHistory ? window.editorHistory.redo() : null),
         pushState: () => (window.editorHistory ? window.editorHistory.pushState() : null),

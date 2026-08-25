@@ -52,6 +52,23 @@ body.view-only-mode #tab-layers-view .grid {
     display: none !important; /* Hide Add layer buttons */
 }
 
+/* Canvas Loading Overlay */
+#canvas-loading-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(2, 6, 23, 0.75);
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
+}
+#canvas-loading-overlay.hidden {
+    display: none !important;
+}
+
 /* Drag & Drop Visual Indicator */
 #canvas-container-wrapper.drag-over {
     outline: 3px solid #6366f1 !important; /* Indigo-500 */
