@@ -17,6 +17,12 @@ try {
     if (!$checkComp) {
         $db->exec("INSERT INTO `bg_component_types` (`name`, `width_mm`, `height_mm`, `description`) VALUES ('Japanese Business Card (A-one F10A4-1)', 91.00, 55.00, 'Standard Japanese business card / A-one 10-card sheet (91x55 mm, Format F10A4-1)')");
     }
+
+    // ponytail: auto-migrate A-one 51215 preset
+    $check51215 = $db->query("SELECT id FROM `bg_component_types` WHERE `name` LIKE '%51215%' OR `name` LIKE '%F8A4-5%'")->fetch();
+    if (!$check51215) {
+        $db->exec("INSERT INTO `bg_component_types` (`name`, `width_mm`, `height_mm`, `description`) VALUES ('Japanese ID Card / Name Tag (A-one 51215)', 97.00, 69.00, 'Standard Japanese hanging name tag / ID card / A-one 8-card sheet (97x69 mm, Format F8A4-5, Model 51215)')");
+    }
 } catch (\Exception $e) {
     // Ignore db connection issues here; standard page loads will handle them
 }
@@ -226,7 +232,9 @@ if ($activeProjectId) {
             'Player Board (A5 Landscape)' => 6,
             'Player Board (A4 Landscape)' => 7,
             'Punchboard' => 8,
-            'Custom' => 9
+            'Custom' => 9,
+            'Japanese Business Card (A-one F10A4-1)' => 10,
+            'Japanese ID Card / Name Tag (A-one 51215)' => 11
         ];
         $aOrder = $logicalOrder[$a->getName()] ?? 99;
         $bOrder = $logicalOrder[$b->getName()] ?? 99;

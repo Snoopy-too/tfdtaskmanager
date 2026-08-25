@@ -201,9 +201,15 @@ function closeChangeSizeModal() {
 function handleResizePresetChange(selectEl) {
     const selected = selectEl.options[selectEl.selectedIndex];
     if (!selected || selected.value === 'custom') return;
-    const w = parseFloat(selected.getAttribute('data-width')) || 0;
-    const h = parseFloat(selected.getAttribute('data-height')) || 0;
+    let w = parseFloat(selected.getAttribute('data-width')) || 0;
+    let h = parseFloat(selected.getAttribute('data-height')) || 0;
     if (w > 0 && h > 0) {
+        // ponytail: align preset dimensions to active template orientation
+        if (window.studioConfig && window.studioConfig.orientation === 'portrait' && w > h) {
+            const tmp = w; w = h; h = tmp;
+        } else if (window.studioConfig && window.studioConfig.orientation === 'landscape' && w < h) {
+            const tmp = w; w = h; h = tmp;
+        }
         document.getElementById('resize-width-mm').value = w;
         document.getElementById('resize-height-mm').value = h;
         updateResizePreview();

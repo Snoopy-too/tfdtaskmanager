@@ -228,17 +228,19 @@ require_once __DIR__ . '/../templates/header.php';
                             $tmplWidth = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasWidthPx()) : ($compType ? $compType->getWidthMm() : 0.0);
                             $tmplHeight = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasHeightPx()) : ($compType ? $compType->getHeightMm() : 0.0);
                             $isF10A4 = ($compType && str_contains($compType->getName(), 'F10A4-1')) || (abs($tmplWidth - 91.0) < 1.5 && abs($tmplHeight - 55.0) < 1.5) || (abs($tmplWidth - 55.0) < 1.5 && abs($tmplHeight - 91.0) < 1.5);
+                            $is51215 = ($compType && (str_contains($compType->getName(), '51215') || str_contains($compType->getName(), 'F8A4-5'))) || (abs($tmplWidth - 97.0) < 1.5 && abs($tmplHeight - 69.0) < 1.5) || (abs($tmplWidth - 69.0) < 1.5 && abs($tmplHeight - 97.0) < 1.5);
                             $autoOrientation = ($tmplWidth > $tmplHeight) ? 'landscape' : 'portrait';
                             ?>
                             <div>
                                 <label for="pdf_page_size" class="block text-sm font-medium text-slate-300 mb-1">Page Size & Layout</label>
                                 <select id="pdf_page_size" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
                                     <optgroup label="Standard Sheets (Auto Grid)">
-                                        <option value="a4" <?php echo !$isF10A4 ? 'selected' : ''; ?>>A4 (210 x 297 mm)</option>
+                                        <option value="a4" <?php echo (!$isF10A4 && !$is51215) ? 'selected' : ''; ?>>A4 (210 x 297 mm)</option>
                                         <option value="letter">US Letter (8.5 x 11 in)</option>
                                     </optgroup>
                                     <optgroup label="Pre-cut / Label Sheets">
                                         <option value="f10a4_1" <?php echo $isF10A4 ? 'selected' : ''; ?>>A-one F10A4-1 (A4 10-Card / 91x55 mm)</option>
+                                        <option value="a_one_51215" <?php echo $is51215 ? 'selected' : ''; ?>>A-one 51215 / F8A4-5 (A4 8-Card / 97x69 mm)</option>
                                     </optgroup>
                                 </select>
                             </div>
@@ -247,7 +249,14 @@ require_once __DIR__ . '/../templates/header.php';
                                 <div class="font-bold flex items-center gap-1.5 text-indigo-400">
                                     <span>🎴 A-one F10A4-1 (10-Card Sheet Layout)</span>
                                 </div>
-                                <p class="text-[11px] text-slate-300">Places 10 cards ($2\times 5$ grid, 91x55mm) with exact 14mm side margins, 11mm top/bottom margins, and 0mm gap. Set printer scale to <strong>100% / Actual Size</strong>.</p>
+                                <p class="text-[11px] text-slate-300">Places 10 cards (2x5 grid, 91x55mm) with exact 14mm side margins, 11mm top/bottom margins, and 0mm gap. Set printer scale to <strong>100% / Actual Size</strong>.</p>
+                            </div>
+
+                            <div id="f8a4-info-badge" class="<?php echo $is51215 ? '' : 'hidden '; ?>p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 space-y-1">
+                                <div class="font-bold flex items-center gap-1.5 text-indigo-400">
+                                    <span>🎴 A-one 51215 / F8A4-5 (8-Card Sheet Layout)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300">Places 8 cards (2x4 grid, 97x69mm) with exact 8mm side margins, 10.5mm top/bottom margins, and 0mm gap. Set printer scale to <strong>100% / Actual Size</strong>.</p>
                             </div>
 
                             <div id="pdf-orientation-container">

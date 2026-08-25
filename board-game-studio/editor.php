@@ -63,6 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $project = $projectService->getProjectById($template->getProjectId());
 $_SESSION['last_project_id'] = $template->getProjectId();
 $compTypes = $templateService->getComponentTypes();
+usort($compTypes, function($a, $b) {
+    $order = ['Poker Card' => 1, 'Tarot Card' => 2, 'Game Board (Medium Square)' => 3, 'Game Board (Square)' => 4, 'Game Board (Rectangular)' => 5, 'Player Board (A5 Landscape)' => 6, 'Player Board (A4 Landscape)' => 7, 'Punchboard' => 8, 'Custom' => 9, 'Japanese Business Card (A-one F10A4-1)' => 10, 'Japanese ID Card / Name Tag (A-one 51215)' => 11];
+    return ($order[$a->getName()] ?? 99) <=> ($order[$b->getName()] ?? 99);
+});
 $compType = null;
 foreach ($compTypes as $ct) {
     if ($ct->getId() === $template->getComponentTypeId()) {

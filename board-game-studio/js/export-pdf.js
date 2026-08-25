@@ -142,8 +142,10 @@
             const drawCropMarks = document.getElementById('pdf_crop_marks').checked;
 
             const isF10A4 = (pageSize === 'f10a4_1');
-            const pdfFormat = isF10A4 ? 'a4' : pageSize;
-            const pdfOrientation = isF10A4 ? 'portrait' : orientation;
+            const is51215 = (pageSize === 'a_one_51215');
+            const isPrecutSheet = isF10A4 || is51215;
+            const pdfFormat = isPrecutSheet ? 'a4' : pageSize;
+            const pdfOrientation = isPrecutSheet ? 'portrait' : orientation;
 
             const pageDims = {
                 a4: { w: 210, h: 297 },
@@ -183,6 +185,15 @@
                 drawH = 55;
                 startX = 14;
                 startY = 11;
+                gap = 0;
+            } else if (is51215) {
+                // A-one 51215 / F8A4-5 layout (8 cards: 2x4 grid, 97x69mm, 8mm sides, 10.5mm top/bottom, 0mm gap)
+                cols = 2;
+                rows = 4;
+                drawW = 97;
+                drawH = 69;
+                startX = 8;
+                startY = 10.5;
                 gap = 0;
             } else {
                 const availW = pageW - (margin * 2);
@@ -268,8 +279,8 @@
                     const y = startY + (row * (drawH + gap));
 
                     let cardDataUrl = img.dataUrl;
-                    // ponytail: auto-rotate 90° if portrait card (e.g. 55x91mm) is placed on horizontal F10A4-1 slot
-                    if (isF10A4 && cardW < cardH) {
+                    // ponytail: auto-rotate 90° if portrait card (e.g. 55x91mm or 69x97mm) is placed on horizontal pre-cut slot
+                    if (isPrecutSheet && cardW < cardH) {
                         cardDataUrl = await rotateImage90(img.dataUrl);
                     }
 
@@ -334,21 +345,27 @@
         const selectedOption = tilingSelect ? tilingSelect.value : 'split_2';
 
         const f10Badge = document.getElementById('f10a4-info-badge');
+        const f8Badge = document.getElementById('f8a4-info-badge');
         const orientContainer = document.getElementById('pdf-orientation-container');
+        const isPrecut = (pageSize === 'f10a4_1' || pageSize === 'a_one_51215');
 
         if (f10Badge) {
             if (pageSize === 'f10a4_1') f10Badge.classList.remove('hidden');
             else f10Badge.classList.add('hidden');
         }
+        if (f8Badge) {
+            if (pageSize === 'a_one_51215') f8Badge.classList.remove('hidden');
+            else f8Badge.classList.add('hidden');
+        }
         if (orientContainer) {
-            if (pageSize === 'f10a4_1') orientContainer.classList.add('hidden');
+            if (isPrecut) orientContainer.classList.add('hidden');
             else orientContainer.classList.remove('hidden');
         }
 
         const tilingContainer = document.getElementById('pdf-tiling-container');
         const warningBox = document.getElementById('pdf-tiling-warning');
 
-        if (pageSize === 'f10a4_1') {
+        if (isPrecut) {
             if (tilingContainer) tilingContainer.classList.add('hidden');
             return;
         }
