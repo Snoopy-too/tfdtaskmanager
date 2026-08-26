@@ -401,7 +401,7 @@
         if (window.inspectorPopulate) {
             if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
                 window.inspectorPopulate.populateTextSection(obj);
-            } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'line' || obj.type === 'group' || obj.type === 'path') {
+            } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'triangle' || obj.type === 'line' || obj.type === 'group' || obj.type === 'path') {
                 window.inspectorPopulate.populateShapeSection(obj);
             } else if (obj.type === 'image') {
                 window.inspectorPopulate.populateImageSection(obj);

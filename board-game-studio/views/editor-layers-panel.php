@@ -30,7 +30,10 @@ use App\Infrastructure\Security\SecurityHelper;
                 <button id="btn-add-circle" class="py-2 bg-slate-950 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 rounded-xl transition flex items-center justify-center space-x-1">
                     <span>Circle</span>
                 </button>
-                <button id="btn-add-line" class="col-span-2 py-2 bg-slate-950 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 rounded-xl transition flex items-center justify-center space-x-1">
+                <button id="btn-add-triangle" class="py-2 bg-slate-950 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 rounded-xl transition flex items-center justify-center space-x-1">
+                    <span>Triangle</span>
+                </button>
+                <button id="btn-add-line" class="py-2 bg-slate-950 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 rounded-xl transition flex items-center justify-center space-x-1">
                     <span>Line</span>
                 </button>
                 <button id="btn-import-template" class="col-span-2 py-2.5 bg-indigo-600/20 border border-indigo-500/40 text-xs font-semibold text-indigo-300 hover:bg-indigo-600/30 hover:text-white hover:border-indigo-400 rounded-xl transition flex items-center justify-center space-x-1.5">

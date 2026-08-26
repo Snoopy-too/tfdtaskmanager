@@ -235,7 +235,7 @@ use App\Infrastructure\Security\SecurityHelper;
                 </div>
             </div>
 
-            <!-- Shape-Specific Properties (Rect, Circle) -->
+            <!-- Shape-Specific Properties (Rect, Circle, Triangle) -->
             <div id="inspector-shape-section" class="space-y-3 pb-4 border-b border-slate-800/80 hidden">
                 <div id="prop-shape-fill-group" class="grid grid-cols-2 gap-3">
                     <div>

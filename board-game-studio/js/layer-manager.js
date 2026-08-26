@@ -10,6 +10,10 @@
         document.getElementById('btn-add-text').addEventListener('click', addTextLayer);
         document.getElementById('btn-add-rect').addEventListener('click', addRectLayer);
         document.getElementById('btn-add-circle').addEventListener('click', addCircleLayer);
+        const btnTriangle = document.getElementById('btn-add-triangle');
+        if (btnTriangle) {
+            btnTriangle.addEventListener('click', addTriangleLayer);
+        }
         document.getElementById('btn-add-line').addEventListener('click', addLineLayer);
         
         // Image: switch to Assets tab so the user can select an uploaded image to place
@@ -124,6 +128,34 @@
         renderLayersList();
         if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
             window.propertyInspector.inspect(circle);
+        }
+        window.editorCore.triggerAutoSave();
+    }
+
+    // Add Triangle Layer (ponytail: native fabric.Triangle)
+    function addTriangleLayer() {
+        const canvas = window.editorCanvas;
+        const dim = Math.max(150, Math.round(canvas.height * 0.15));
+        const triangle = new fabric.Triangle({
+            left: canvas.width / 2,
+            top: canvas.height / 2,
+            originX: 'center',
+            originY: 'center',
+            fill: '#fed7aa',
+            width: dim,
+            height: dim,
+            name: 'Triangle Layer'
+        });
+        canvas.add(triangle);
+        triangle.bringToFront();
+        if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
+            window.guideRenderer.renderGuides();
+        }
+        canvas.setActiveObject(triangle);
+        canvas.renderAll();
+        renderLayersList();
+        if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+            window.propertyInspector.inspect(triangle);
         }
         window.editorCore.triggerAutoSave();
     }
