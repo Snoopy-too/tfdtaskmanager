@@ -19,7 +19,7 @@ $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
 
 // Projects list
-$projects = $projectService->getAllProjects();
+$projects = $projectService->getAllProjects($currentUserId);
 $activeProjectId = null;
 
 if (isset($_GET['project_id'])) {
@@ -31,15 +31,24 @@ if (isset($_GET['project_id'])) {
     }
 } else {
     if (isset($_SESSION['last_project_id'])) {
-        $activeProjectId = (int)$_SESSION['last_project_id'];
-        header("Location: rulebooks.php?project_id=" . $activeProjectId);
-        exit;
+        $candidateId = (int)$_SESSION['last_project_id'];
+        if ($projectService->getProjectById($candidateId, $currentUserId)) {
+            $activeProjectId = $candidateId;
+            header("Location: rulebooks.php?project_id=" . $activeProjectId);
+            exit;
+        } else {
+            unset($_SESSION['last_project_id']);
+        }
     }
 }
 
 $activeProject = null;
 if ($activeProjectId) {
-    $activeProject = $projectService->getProjectById($activeProjectId);
+    $activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
+    if (!$activeProject) {
+        $activeProjectId = null;
+        unset($_SESSION['last_project_id']);
+    }
 }
 
 // Handle actions
@@ -123,7 +132,7 @@ require_once __DIR__ . '/../templates/header.php';
                         <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None (Choose Project)</option>
                         <?php foreach ($projects as $proj): ?>
                             <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
-                                <?php echo SecurityHelper::escape($proj->getName()); ?>
+                                <?php echo SecurityHelper::escape($proj->getName() . ($proj->isPrivate() ? ' (🔒 Private)' : '')); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

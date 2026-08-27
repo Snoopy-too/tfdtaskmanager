@@ -19,6 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $isGlobal = isset($_POST['is_global']) && $_POST['is_global'] === '1';
             $uploadProjectId = ($activeProjectId === null || $isGlobal) ? null : $activeProjectId;
 
+            if ($uploadProjectId !== null) {
+                $targetProj = $projectService->getProjectById($uploadProjectId, $currentUserId);
+                if (!$targetProj) {
+                    throw new ValidationException("Selected project not found or access denied.");
+                }
+            }
+
             if ($zipFile && isset($zipFile['tmp_name']) && !empty($zipFile['tmp_name'])) {
                 $uploaded = $assetService->uploadZipAsset($uploadProjectId, $zipFile, $currentUserId);
                 $success = count($uploaded) . " assets extracted and imported from ZIP archive.";
@@ -48,11 +55,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $assetId = isset($_POST['asset_id']) ? (int)$_POST['asset_id'] : 0;
         $targetProjectId = (isset($_POST['target_project_id']) && $_POST['target_project_id'] !== '' && $_POST['target_project_id'] !== 'global') ? (int)$_POST['target_project_id'] : null;
         try {
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($targetProjectId !== null) {
+                $targetProj = $projectService->getProjectById($targetProjectId, $currentUserId);
+                if (!$targetProj) {
+                    throw new ValidationException("Target project not found or access denied.");
+                }
+            }
             $updated = $assetService->updateAssetProject($assetId, $targetProjectId);
             if ($targetProjectId === null) {
                 $success = "Asset '" . SecurityHelper::escape($updated->getOriginalFilename()) . "' moved to Global Asset Library.";
             } else {
-                $targetProj = $projectService->getProjectById($targetProjectId);
                 $projName = $targetProj ? $targetProj->getName() : "Project #{$targetProjectId}";
                 $success = "Asset '" . SecurityHelper::escape($updated->getOriginalFilename()) . "' assigned to {$projName}.";
             }
@@ -109,21 +122,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
             $error = 'No assets selected.';
         } elseif ($_POST['action'] === 'batch_update_project') {
             $targetProjectId = (isset($_POST['target_project_id']) && $_POST['target_project_id'] !== '' && $_POST['target_project_id'] !== 'global') ? (int)$_POST['target_project_id'] : null;
-            $count = 0;
-            foreach ($selectedIds as $assetId) {
-                try {
-                    $assetService->updateAssetProject($assetId, $targetProjectId);
-                    $count++;
-                } catch (\Exception $e) {
-                    // ignore individual failure
+            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($targetProjectId !== null) {
+                $targetProj = $projectService->getProjectById($targetProjectId, $currentUserId);
+                if (!$targetProj) {
+                    $error = "Target project not found or access denied.";
                 }
             }
-            if ($targetProjectId === null) {
-                $success = "{$count} asset(s) moved to Global Asset Library.";
-            } else {
-                $targetProj = $projectService->getProjectById($targetProjectId);
-                $projName = $targetProj ? $targetProj->getName() : "Project #{$targetProjectId}";
-                $success = "{$count} asset(s) assigned to {$projName}.";
+            if (empty($error)) {
+                $count = 0;
+                foreach ($selectedIds as $assetId) {
+                    try {
+                        $assetService->updateAssetProject($assetId, $targetProjectId);
+                        $count++;
+                    } catch (\Exception $e) {
+                        // ignore individual failure
+                    }
+                }
+                if ($targetProjectId === null) {
+                    $success = "{$count} asset(s) moved to Global Asset Library.";
+                } else {
+                    $projName = $targetProj ? $targetProj->getName() : "Project #{$targetProjectId}";
+                    $success = "{$count} asset(s) assigned to {$projName}.";
+                }
             }
         } elseif ($_POST['action'] === 'batch_delete') {
             $count = 0;

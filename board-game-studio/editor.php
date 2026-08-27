@@ -17,6 +17,8 @@ $datasetService = $container->get(BgDatasetService::class);
 
 $csrfToken = SecurityHelper::generateCsrfToken();
 
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
 $templateId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $template = $templateService->getTemplateById($templateId);
 
@@ -25,10 +27,15 @@ if (!$template) {
     exit;
 }
 
+$project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+if (!$project) {
+    header("Location: index.php");
+    exit;
+}
+
 // Check lock status
 $lockUser = null;
 $isViewMode = false;
-$currentUserId = (int)($_SESSION['user_id'] ?? 0);
 
 if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
     $isViewMode = true;
@@ -47,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     } else {
         $newName = $_POST['new_name'] ?? '';
-        $currentUserId = (int)($_SESSION['user_id'] ?? 0);
         try {
             $newTemplate = $templateService->cloneTemplate($templateId, $newName, $currentUserId);
             header("Location: editor.php?id=" . $newTemplate->getId());
@@ -60,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-$project = $projectService->getProjectById($template->getProjectId());
 $_SESSION['last_project_id'] = $template->getProjectId();
 $compTypes = $templateService->getComponentTypes();
 usort($compTypes, function($a, $b) {

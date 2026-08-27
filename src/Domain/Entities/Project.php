@@ -9,17 +9,23 @@ class Project
     private string $name;
     private string $description;
     private string $createdAt;
+    private bool $isPrivate;
+    private ?int $createdBy;
 
     public function __construct(
         ?int $id,
         string $name,
         string $description,
-        string $createdAt = ''
+        string $createdAt = '',
+        bool $isPrivate = false,
+        ?int $createdBy = null
     ) {
         $this->id = $id;
         $this->name = $name;
         $this->description = $description;
         $this->createdAt = $createdAt;
+        $this->isPrivate = $isPrivate;
+        $this->createdBy = $createdBy;
     }
 
     public function getId(): ?int
@@ -40,5 +46,26 @@ class Project
     public function getCreatedAt(): string
     {
         return $this->createdAt;
+    }
+
+    public function isPrivate(): bool
+    {
+        return $this->isPrivate;
+    }
+
+    public function getCreatedBy(): ?int
+    {
+        return $this->createdBy;
+    }
+
+    public function isAccessibleBy(?int $userId): bool
+    {
+        if (!$this->isPrivate) {
+            return true;
+        }
+        if ($userId === null || $userId <= 0) {
+            return false;
+        }
+        return $this->createdBy !== null && $this->createdBy === $userId;
     }
 }

@@ -46,8 +46,8 @@ $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
 
-// Fetch all projects to let user choose
-$projects = $projectService->getAllProjects();
+// Fetch all projects accessible to current user
+$projects = $projectService->getAllProjects($currentUserId);
 
 // Select active project and synchronize with session storage
 $activeProjectId = null;
@@ -63,14 +63,24 @@ if (isset($_GET['project_id'])) {
     // If no project_id parameter in URL, default to last worked project from session
     if (isset($_SESSION['last_project_id'])) {
         $activeProjectId = (int)$_SESSION['last_project_id'];
-        header("Location: index.php?project_id=" . $activeProjectId);
-        exit;
+        $checkProject = $projectService->getProjectById($activeProjectId, $currentUserId);
+        if ($checkProject) {
+            header("Location: index.php?project_id=" . $activeProjectId);
+            exit;
+        } else {
+            unset($_SESSION['last_project_id']);
+            $activeProjectId = null;
+        }
     }
 }
 
 $activeProject = null;
 if ($activeProjectId) {
-    $activeProject = $projectService->getProjectById($activeProjectId);
+    $activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
+    if (!$activeProject) {
+        $activeProjectId = null;
+        unset($_SESSION['last_project_id']);
+    }
 }
 
 // Handle Template Creation
@@ -263,7 +273,7 @@ require_once __DIR__ . '/../templates/header.php';
                         <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None (Global Library)</option>
                         <?php foreach ($projects as $proj): ?>
                             <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
-                                <?php echo SecurityHelper::escape($proj->getName()); ?>
+                                <?php echo SecurityHelper::escape($proj->getName() . ($proj->isPrivate() ? ' (🔒 Private)' : '')); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

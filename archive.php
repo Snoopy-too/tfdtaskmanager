@@ -14,9 +14,19 @@ $taskService = $container->get(TaskService::class);
 $projectService = $container->get(ProjectService::class);
 $userService = $container->get(UserService::class);
 
+$currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
+
 $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
 $onlyBugs = isset($_GET['only_bugs']) && $_GET['only_bugs'] === '1';
 $sortBy = $_GET['sort_by'] ?? '';
+
+$projects = $projectService->getAllProjects($currentUserId);
+if ($selectedProjectId !== null) {
+    $activeProj = $projectService->getProjectById($selectedProjectId, $currentUserId);
+    if (!$activeProj) {
+        $selectedProjectId = null;
+    }
+}
 
 $csrfToken = SecurityHelper::generateCsrfToken();
 $error = '';
@@ -26,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $submittedToken = $_POST['csrf_token'] ?? '';
     if (SecurityHelper::verifyCsrfToken($submittedToken)) {
         $taskId = (int)($_POST['task_id'] ?? 0);
-        $currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
         try {
             $taskService->unarchiveTask($taskId, $currentUserId);
             $success = "Task #" . $taskId . " has been unarchived and restored to active board.";
@@ -38,15 +47,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Fetch only archived tasks (isArchived = true)
-$archivedTasks = $taskService->getTasksFiltered($selectedProjectId, null, $onlyBugs, $sortBy, true);
-
-$projects = $projectService->getAllProjects();
+// Fetch only archived tasks (isArchived = true) scoped to current user
+$archivedTasks = $taskService->getTasksFiltered($selectedProjectId, null, $onlyBugs, $sortBy, true, $currentUserId);
 $users = $userService->getAllUsers();
 
 $projectMap = [];
+$projectObjMap = [];
 foreach ($projects as $p) {
     $projectMap[$p->getId()] = $p->getName();
+    $projectObjMap[$p->getId()] = $p;
 }
 
 $userMap = [];
@@ -97,7 +106,7 @@ require_once __DIR__ . '/templates/header.php';
                     <option value="">All Projects</option>
                     <?php foreach ($projects as $project): ?>
                         <option value="<?php echo $project->getId(); ?>" <?php echo $selectedProjectId === $project->getId() ? 'selected' : ''; ?>>
-                            <?php echo SecurityHelper::escape($project->getName()); ?>
+                            <?php echo SecurityHelper::escape($project->getName() . ($project->isPrivate() ? ' (🔒 Private)' : '')); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -138,15 +147,21 @@ require_once __DIR__ . '/templates/header.php';
     <?php else: ?>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <?php foreach ($archivedTasks as $task): ?>
+                <?php $taskProj = $projectObjMap[$task->getProjectId()] ?? null; ?>
                 <div class="bg-slate-900 border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-lg hover:border-slate-700 transition">
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                                 <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
                             </span>
-                            <?php if ($task->isBug()): ?>
-                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
-                            <?php endif; ?>
+                            <div class="flex items-center space-x-1.5">
+                                <?php if ($taskProj && $taskProj->isPrivate()): ?>
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">🔒 Private</span>
+                                <?php endif; ?>
+                                <?php if ($task->isBug()): ?>
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <h3 class="text-base font-bold text-slate-200 line-through">
                             <a href="task_detail.php?id=<?php echo $task->getId(); ?>" class="hover:text-indigo-400 transition">

@@ -129,39 +129,44 @@ class PDOTaskRepository implements TaskRepositoryInterface
         return $tasks;
     }
 
-    public function findByFilters(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null, ?bool $isArchived = false): array
+    public function findByFilters(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null, ?bool $isArchived = false, ?int $forUserId = null): array
     {
         $this->ensureTaskArchivedColumn();
-        $sql = "SELECT * FROM tasks WHERE 1=1";
+        $sql = "SELECT tasks.* FROM tasks INNER JOIN projects ON tasks.project_id = projects.id WHERE 1=1";
         $params = [];
 
+        if ($forUserId !== null && $forUserId > 0) {
+            $sql .= " AND (projects.is_private = 0 OR (projects.is_private = 1 AND projects.created_by = :for_user_id))";
+            $params['for_user_id'] = $forUserId;
+        }
+
         if ($isArchived !== null) {
-            $sql .= " AND is_archived = :is_archived";
+            $sql .= " AND tasks.is_archived = :is_archived";
             $params['is_archived'] = $isArchived ? 1 : 0;
         }
 
         if ($projectId !== null) {
-            $sql .= " AND project_id = :project_id";
+            $sql .= " AND tasks.project_id = :project_id";
             $params['project_id'] = $projectId;
         }
 
         if ($status !== null && $status !== '') {
-            $sql .= " AND status = :status";
+            $sql .= " AND tasks.status = :status";
             $params['status'] = $status;
         }
 
         if ($onlyBugs) {
-            $sql .= " AND is_bug = 1";
+            $sql .= " AND tasks.is_bug = 1";
         }
 
         if ($sortBy === 'deadline') {
-            $sql .= " ORDER BY (deadline IS NULL), deadline ASC, title ASC";
+            $sql .= " ORDER BY (tasks.deadline IS NULL), tasks.deadline ASC, tasks.title ASC";
         } elseif ($sortBy === 'alphabetical') {
-            $sql .= " ORDER BY title ASC";
+            $sql .= " ORDER BY tasks.title ASC";
         } elseif ($sortBy === 'task_number') {
-            $sql .= " ORDER BY id ASC";
+            $sql .= " ORDER BY tasks.id ASC";
         } else {
-            $sql .= " ORDER BY created_at DESC";
+            $sql .= " ORDER BY tasks.created_at DESC";
         }
 
         $stmt = $this->pdo->prepare($sql);

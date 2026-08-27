@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use App\Infrastructure\Security\SecurityHelper;
 use App\Application\Services\BgRulebookService;
+use App\Application\Services\ProjectService;
 
 /**
  * Handles Rulebook and Glossary API routes.
@@ -10,10 +11,13 @@ use App\Application\Services\BgRulebookService;
  * @param string $action
  * @param string $method
  * @param BgRulebookService $rulebookService
+ * @param ProjectService|null $projectService
  * @return bool True if the action was handled, false otherwise
  */
-function handleRulebookApiAction(string $action, string $method, BgRulebookService $rulebookService): bool
+function handleRulebookApiAction(string $action, string $method, BgRulebookService $rulebookService, ?ProjectService $projectService = null): bool
 {
+    $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
     switch ($action) {
         case 'heartbeat_lock_rulebook':
             if ($method !== 'POST') {
@@ -28,13 +32,20 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
             }
 
             $rulebookId = isset($_POST['rulebook_id']) ? (int)$_POST['rulebook_id'] : 0;
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
-
             $rulebook = $rulebookService->getRulebookById($rulebookId);
             if (!$rulebook) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Rulebook not found.']);
                 exit;
+            }
+
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($rulebook->getProjectId(), $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Rulebook not found or access denied.']);
+                    exit;
+                }
             }
 
             if ($rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
@@ -59,7 +70,15 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
             }
 
             $rulebookId = isset($_POST['rulebook_id']) ? (int)$_POST['rulebook_id'] : 0;
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $rulebook = $rulebookService->getRulebookById($rulebookId);
+            if ($rulebook && $projectService !== null) {
+                $project = $projectService->getProjectById($rulebook->getProjectId(), $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Rulebook not found or access denied.']);
+                    exit;
+                }
+            }
 
             $rulebookService->releaseLock($rulebookId, $currentUserId);
             echo json_encode(['success' => true]);
@@ -70,6 +89,13 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
                 throw new \InvalidArgumentException('Method not allowed.');
             }
             $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($projectId, $currentUserId);
+                if (!$project) {
+                    echo json_encode([]);
+                    exit;
+                }
+            }
             $rulebooks = $rulebookService->getRulebooksByProject($projectId);
             $formatted = [];
             foreach ($rulebooks as $rb) {
@@ -107,7 +133,15 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
                 throw new \InvalidArgumentException('Invalid content format.');
             }
 
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($projectId, $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Project not found or access denied.']);
+                    exit;
+                }
+            }
+
             if ($rulebookId === null) {
                 $saved = $rulebookService->createRulebook($projectId, $name, $content, $currentUserId);
             } else {
@@ -143,12 +177,21 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
             }
 
             $rulebookId = isset($_POST['rulebook_id']) ? (int)$_POST['rulebook_id'] : 0;
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
             $rulebook = $rulebookService->getRulebookById($rulebookId);
-            if ($rulebook && $rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
-                http_response_code(423);
-                echo json_encode(['error' => 'This rulebook is currently locked by another user.']);
-                exit;
+            if ($rulebook) {
+                if ($projectService !== null) {
+                    $project = $projectService->getProjectById($rulebook->getProjectId(), $currentUserId);
+                    if (!$project) {
+                        http_response_code(404);
+                        echo json_encode(['error' => 'Rulebook not found or access denied.']);
+                        exit;
+                    }
+                }
+                if ($rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
+                    http_response_code(423);
+                    echo json_encode(['error' => 'This rulebook is currently locked by another user.']);
+                    exit;
+                }
             }
             $rulebookService->deleteRulebook($rulebookId);
             echo json_encode(['success' => true]);
@@ -159,6 +202,13 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
                 throw new \InvalidArgumentException('Method not allowed.');
             }
             $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($projectId, $currentUserId);
+                if (!$project) {
+                    echo json_encode([]);
+                    exit;
+                }
+            }
             $terms = $rulebookService->getGlossaryByProject($projectId);
             $formatted = [];
             foreach ($terms as $t) {
@@ -192,7 +242,15 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
             $termKey = $_POST['term_key'] ?? '';
             $termName = $_POST['term_name'] ?? '';
             $termDescription = $_POST['term_description'] ?? '';
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($projectId, $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Project not found or access denied.']);
+                    exit;
+                }
+            }
 
             $saved = $rulebookService->saveGlossaryTerm($projectId, $termId, $termKey, $termName, $termDescription, $currentUserId);
             echo json_encode([
@@ -237,7 +295,15 @@ function handleRulebookApiAction(string $action, string $method, BgRulebookServi
 
             $projectId = isset($_POST['project_id']) ? (int)$_POST['project_id'] : 0;
             $csvText = $_POST['csv_text'] ?? '';
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($projectId, $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Project not found or access denied.']);
+                    exit;
+                }
+            }
 
             // Handle file upload
             if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] !== UPLOAD_ERR_NO_FILE) {

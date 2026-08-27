@@ -39,7 +39,10 @@ try {
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `name` VARCHAR(100) NOT NULL,
             `description` TEXT,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            `is_private` TINYINT(1) NOT NULL DEFAULT 0,
+            `created_by` INT DEFAULT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_projects_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
         ) ENGINE=InnoDB;
     ");
     echo "- 'projects' table created.\n";
@@ -362,6 +365,21 @@ try {
     if (empty($taskVersionCols)) {
         $pdo->exec("ALTER TABLE `tasks` ADD COLUMN `version` INT NOT NULL DEFAULT 1 AFTER `is_bug`");
         echo "- Added 'version' column to 'tasks' table via migration.\n";
+    }
+
+    // Migration: Check if is_private column exists on projects for existing DBs
+    $isPrivateCols = $pdo->query("SHOW COLUMNS FROM `projects` LIKE 'is_private'")->fetchAll();
+    if (empty($isPrivateCols)) {
+        $pdo->exec("ALTER TABLE `projects` ADD COLUMN `is_private` TINYINT(1) NOT NULL DEFAULT 0 AFTER `description`");
+        echo "- Added 'is_private' column to 'projects' table via migration.\n";
+    }
+
+    // Migration: Check if created_by column exists on projects for existing DBs
+    $projCreatedByCols = $pdo->query("SHOW COLUMNS FROM `projects` LIKE 'created_by'")->fetchAll();
+    if (empty($projCreatedByCols)) {
+        $pdo->exec("ALTER TABLE `projects` ADD COLUMN `created_by` INT DEFAULT NULL AFTER `is_private`");
+        $pdo->exec("ALTER TABLE `projects` ADD CONSTRAINT `fk_projects_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL");
+        echo "- Added 'created_by' column and foreign key to 'projects' table via migration.\n";
     }
 
     echo "Database setup completed successfully!\n";

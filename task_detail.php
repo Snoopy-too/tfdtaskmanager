@@ -15,8 +15,9 @@ $taskService = $container->get(TaskService::class);
 $projectService = $container->get(ProjectService::class);
 $userService = $container->get(UserService::class);
 
+$currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 $taskId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$task = $taskService->getTaskById($taskId);
+$task = $taskService->getTaskById($taskId, $currentUserId);
 
 if (!$task) {
     http_response_code(404);
@@ -39,7 +40,6 @@ if (!$task) {
 $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
-$currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submittedToken = $_POST['csrf_token'] ?? '';
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success = "Task unarchived successfully.";
             }
             
-            $task = $taskService->getTaskById($taskId);
+            $task = $taskService->getTaskById($taskId, $currentUserId);
         } catch (ValidationException $e) {
             $error = $e->getMessage();
         } catch (\Throwable $e) {
@@ -88,12 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$project = $projectService->getProjectById($task->getProjectId());
+$project = $projectService->getProjectById($task->getProjectId(), $currentUserId);
 $creator = $userService->getUserById($task->getCreatedBy());
 $assignee = $task->getAssignedTo() ? $userService->getUserById($task->getAssignedTo()) : null;
 
-$comments = $taskService->getTaskComments($taskId);
-$historyLogs = $taskService->getTaskHistory($taskId);
+$comments = $taskService->getTaskComments($taskId, $currentUserId);
+$historyLogs = $taskService->getTaskHistory($taskId, $currentUserId);
 
 $users = $userService->getAllUsers();
 $userMap = [];
@@ -126,9 +126,14 @@ require_once __DIR__ . '/templates/header.php';
         
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-800/80 pb-6">
             <div>
-                <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
-                    <?php echo $project ? SecurityHelper::escape($project->getName()) : 'Unknown Project'; ?>
-                </span>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+                        <?php echo $project ? SecurityHelper::escape($project->getName()) : 'Unknown Project'; ?>
+                    </span>
+                    <?php if ($project && $project->isPrivate()): ?>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">🔒 Private</span>
+                    <?php endif; ?>
+                </div>
                 <div class="flex items-center space-x-3 mt-1">
                     <h1 class="text-2xl md:text-3xl font-extrabold text-white">
                         <span class="text-slate-400 font-medium mr-1.5"><?php echo ($task->isBug() ? 'bug #' : 'task #') . $task->getId(); ?>:</span><?php echo SecurityHelper::escape($task->getTitle()); ?>

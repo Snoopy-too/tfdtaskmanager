@@ -14,10 +14,20 @@ $taskService = $container->get(TaskService::class);
 $projectService = $container->get(ProjectService::class);
 $userService = $container->get(UserService::class);
 
+$currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
+
 $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
 $selectedStatus = isset($_GET['status']) && $_GET['status'] !== '' ? $_GET['status'] : null;
 $onlyBugs = isset($_GET['only_bugs']) && $_GET['only_bugs'] === '1';
 $sortBy = $_GET['sort_by'] ?? '';
+
+$projects = $projectService->getAllProjects($currentUserId);
+if ($selectedProjectId !== null) {
+    $activeProj = $projectService->getProjectById($selectedProjectId, $currentUserId);
+    if (!$activeProj) {
+        $selectedProjectId = null;
+    }
+}
 
 $csrfToken = SecurityHelper::generateCsrfToken();
 $error = '';
@@ -26,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $submittedToken = $_POST['csrf_token'] ?? '';
     if (SecurityHelper::verifyCsrfToken($submittedToken)) {
         $taskId = (int)($_POST['task_id'] ?? 0);
-        $currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
         try {
             $taskService->archiveTask($taskId, $currentUserId);
             header('Location: index.php?' . http_build_query($_GET));
@@ -39,12 +48,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-$tasks = $taskService->getTasksFiltered($selectedProjectId, $selectedStatus, $onlyBugs, $sortBy, false);
-
-$projects = $projectService->getAllProjects();
+$tasks = $taskService->getTasksFiltered($selectedProjectId, $selectedStatus, $onlyBugs, $sortBy, false, $currentUserId);
 $users = $userService->getAllUsers();
 
-$projectMap = array_column(array_map(fn($p) => ['id' => $p->getId(), 'name' => $p->getName()], $projects), 'name', 'id');
+$projectMap = [];
+$projectObjMap = [];
+foreach ($projects as $p) {
+    $projectMap[$p->getId()] = $p->getName();
+    $projectObjMap[$p->getId()] = $p;
+}
 $userMap = array_column(array_map(fn($u) => ['id' => $u->getId(), 'name' => $u->getName()], $users), 'name', 'id');
 
 $todoTasks = array_filter($tasks, fn($t) => $t->getStatus() === 'To Do');
@@ -77,7 +89,7 @@ require_once __DIR__ . '/templates/header.php';
                     <option value="">All Projects</option>
                     <?php foreach ($projects as $project): ?>
                         <option value="<?php echo $project->getId(); ?>" <?php echo $selectedProjectId === $project->getId() ? 'selected' : ''; ?>>
-                            <?php echo SecurityHelper::escape($project->getName()); ?>
+                            <?php echo SecurityHelper::escape($project->getName() . ($project->isPrivate() ? ' (🔒 Private)' : '')); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -132,12 +144,16 @@ require_once __DIR__ . '/templates/header.php';
                         <?php 
                         $deadlineTime = $task->getDeadline() ? strtotime($task->getDeadline()) : null;
                         $isOverdue = $deadlineTime && $deadlineTime < strtotime(date('Y-m-d'));
+                        $taskProj = $projectObjMap[$task->getProjectId()] ?? null;
                         ?>
                         <div class="bg-slate-900 border border-slate-800/80 p-4 rounded-xl hover:border-slate-700 transition duration-200 flex flex-col justify-between space-y-3 group shadow-lg">
                             <div>
                                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                                     <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
                                 </span>
+                                <?php if ($taskProj && $taskProj->isPrivate()): ?>
+                                    <span class="inline-flex items-center ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">🔒 Private</span>
+                                <?php endif; ?>
                                 <?php if ($task->isBug()): ?>
                                     <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
                                 <?php endif; ?>
@@ -188,12 +204,16 @@ require_once __DIR__ . '/templates/header.php';
                         <?php 
                         $deadlineTime = $task->getDeadline() ? strtotime($task->getDeadline()) : null;
                         $isOverdue = $deadlineTime && $deadlineTime < strtotime(date('Y-m-d'));
+                        $taskProj = $projectObjMap[$task->getProjectId()] ?? null;
                         ?>
                         <div class="bg-slate-900 border border-amber-500/10 p-4 rounded-xl hover:border-amber-500/20 transition duration-200 flex flex-col justify-between space-y-3 shadow-lg">
                             <div>
                                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                                     <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
                                 </span>
+                                <?php if ($taskProj && $taskProj->isPrivate()): ?>
+                                    <span class="inline-flex items-center ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">🔒 Private</span>
+                                <?php endif; ?>
                                 <?php if ($task->isBug()): ?>
                                     <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
                                 <?php endif; ?>
@@ -248,11 +268,15 @@ require_once __DIR__ . '/templates/header.php';
                     <p class="text-slate-500 text-center py-8 text-sm">No completed tasks.</p>
                 <?php else: ?>
                     <?php foreach ($doneTasks as $task): ?>
+                        <?php $taskProj = $projectObjMap[$task->getProjectId()] ?? null; ?>
                         <div class="bg-slate-900 border border-slate-800/80 p-4 rounded-xl hover:border-slate-700 transition duration-200 flex flex-col justify-between space-y-3 shadow-lg opacity-75 hover:opacity-100">
                             <div>
                                 <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                                     <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
                                 </span>
+                                <?php if ($taskProj && $taskProj->isPrivate()): ?>
+                                    <span class="inline-flex items-center ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">🔒 Private</span>
+                                <?php endif; ?>
                                 <?php if ($task->isBug()): ?>
                                     <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
                                 <?php endif; ?>

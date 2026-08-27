@@ -12,6 +12,7 @@ use App\Application\Services\BgTemplateService;
 use App\Application\Services\BgAssetService;
 use App\Application\Services\BgDatasetService;
 use App\Application\Services\BgRulebookService;
+use App\Application\Services\ProjectService;
 
 // API requires active login session
 SecurityHelper::initSession();
@@ -25,7 +26,9 @@ $templateService = $container->get(BgTemplateService::class);
 $assetService = $container->get(BgAssetService::class);
 $datasetService = $container->get(BgDatasetService::class);
 $rulebookService = $container->get(BgRulebookService::class);
+$projectService = $container->get(ProjectService::class);
 
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -40,6 +43,12 @@ try {
             if (!$template) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
                 exit;
             }
             $canvasJson = $template->getCanvasJson();
@@ -80,7 +89,12 @@ try {
                 echo json_encode(['error' => 'Template not found.']);
                 exit;
             }
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
+                exit;
+            }
             if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
                 http_response_code(423); // Locked
                 echo json_encode(['error' => 'Template is currently locked for editing by another user.']);
@@ -115,12 +129,17 @@ try {
             }
 
             $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
-
             $template = $templateService->getTemplateById($templateId);
             if (!$template) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
                 exit;
             }
 
@@ -146,7 +165,15 @@ try {
             }
 
             $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $template = $templateService->getTemplateById($templateId);
+            if ($template) {
+                $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Template not found or access denied.']);
+                    exit;
+                }
+            }
 
             $templateService->releaseLock($templateId, $currentUserId);
             echo json_encode(['success' => true]);
@@ -157,6 +184,13 @@ try {
                 throw new \InvalidArgumentException('Method not allowed.');
             }
             $projectId = isset($_GET['project_id']) && (int)$_GET['project_id'] > 0 ? (int)$_GET['project_id'] : null;
+            if ($projectId !== null) {
+                $project = $projectService->getProjectById($projectId, $currentUserId);
+                if (!$project) {
+                    echo json_encode([]);
+                    exit;
+                }
+            }
             $assetService->normalizeAllProjectSvgs($projectId);
             $assets = $assetService->getAssetsByProject($projectId, true);
             
@@ -195,6 +229,11 @@ try {
             }
             $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
             $excludeId = isset($_GET['exclude_id']) ? (int)$_GET['exclude_id'] : 0;
+            $project = $projectService->getProjectById($projectId, $currentUserId);
+            if (!$project) {
+                echo json_encode([]);
+                exit;
+            }
             $templates = $templateService->getTemplatesByProject($projectId);
             
             $formatted = [];
@@ -235,7 +274,13 @@ try {
                 exit;
             }
 
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
+                exit;
+            }
+
             if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
                 http_response_code(423);
                 echo json_encode(['error' => 'Template is currently locked by another user.']);
@@ -288,6 +333,20 @@ try {
                 $rowFilter = null;
             }
 
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
+                exit;
+            }
+
             $templateService->updateTemplateRowFilter($templateId, $rowFilter);
 
             echo json_encode([
@@ -324,7 +383,13 @@ try {
                 exit;
             }
 
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
+                exit;
+            }
+
             if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
                 http_response_code(423);
                 echo json_encode(['error' => 'Template is currently locked by another user.']);
@@ -366,7 +431,13 @@ try {
                 exit;
             }
 
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
+                exit;
+            }
+
             if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
                 http_response_code(423);
                 echo json_encode(['error' => 'Template is currently locked by another user.']);
@@ -420,7 +491,13 @@ try {
                 exit;
             }
 
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
+                exit;
+            }
+
             if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
                 http_response_code(423);
                 echo json_encode(['error' => 'Template is currently locked by another user.']);
@@ -457,7 +534,7 @@ try {
             break;
 
         default:
-            if (!handleDatasetApiAction($action, $method, $datasetService) && !handleRulebookApiAction($action, $method, $rulebookService)) {
+            if (!handleDatasetApiAction($action, $method, $datasetService, $projectService) && !handleRulebookApiAction($action, $method, $rulebookService, $projectService)) {
                 http_response_code(400);
                 echo json_encode(['error' => 'Invalid action or route.']);
             }

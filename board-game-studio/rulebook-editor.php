@@ -20,6 +20,7 @@ $assetService = $container->get(BgAssetService::class);
 $datasetService = $container->get(BgDatasetService::class);
 $userService = $container->get(UserService::class);
 
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
 $rulebookId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $rulebook = $rulebookService->getRulebookById($rulebookId);
 
@@ -28,9 +29,14 @@ if (!$rulebook) {
     exit;
 }
 
+$project = $projectService->getProjectById($rulebook->getProjectId(), $currentUserId);
+if (!$project) {
+    header("Location: rulebooks.php");
+    exit;
+}
+
 $lockUser = null;
 $isLocked = false;
-$currentUserId = (int)($_SESSION['user_id'] ?? 0);
 if ($rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
     $isLocked = true;
     $lockUser = $userService->getUserById($rulebook->getLockedByUserId());
@@ -38,9 +44,6 @@ if ($rulebookService->isRulebookLockedByOther($rulebook, $currentUserId)) {
     $rulebookService->acquireOrRefreshLock($rulebook->getId(), $currentUserId);
 }
 
-
-
-$project = $projectService->getProjectById($rulebook->getProjectId());
 $_SESSION['last_project_id'] = $rulebook->getProjectId();
 
 $csrfToken = SecurityHelper::generateCsrfToken();

@@ -14,7 +14,8 @@ interface ProjectRepositoryInterface
     public function delete(int $id): void;
     
     /**
+     * @param int|null $forUserId
      * @return Project[]
      */
-    public function findAll(): array;
+    public function findAll(?int $forUserId = null): array;
 }

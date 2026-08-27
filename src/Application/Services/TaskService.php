@@ -9,6 +9,7 @@ use App\Domain\Entities\Comment;
 use App\Domain\Repositories\TaskRepositoryInterface;
 use App\Domain\Repositories\TaskHistoryRepositoryInterface;
 use App\Domain\Repositories\CommentRepositoryInterface;
+use App\Domain\Repositories\ProjectRepositoryInterface;
 use App\Application\Exceptions\ValidationException;
 
 class TaskService
@@ -16,25 +17,40 @@ class TaskService
     private TaskRepositoryInterface $taskRepository;
     private TaskHistoryRepositoryInterface $historyRepository;
     private CommentRepositoryInterface $commentRepository;
+    private ?ProjectRepositoryInterface $projectRepository;
 
     public function __construct(
         TaskRepositoryInterface $taskRepository,
         TaskHistoryRepositoryInterface $historyRepository,
-        CommentRepositoryInterface $commentRepository
+        CommentRepositoryInterface $commentRepository,
+        ?ProjectRepositoryInterface $projectRepository = null
     ) {
         $this->taskRepository = $taskRepository;
         $this->historyRepository = $historyRepository;
         $this->commentRepository = $commentRepository;
+        $this->projectRepository = $projectRepository;
     }
 
-    public function getTaskById(int $id): ?Task
+    public function getTaskById(int $id, ?int $forUserId = null): ?Task
     {
-        return $this->taskRepository->findById($id);
+        $task = $this->taskRepository->findById($id);
+        if (!$task) {
+            return null;
+        }
+
+        if ($forUserId !== null && $forUserId > 0 && $this->projectRepository !== null) {
+            $project = $this->projectRepository->findById($task->getProjectId());
+            if ($project && !$project->isAccessibleBy($forUserId)) {
+                return null;
+            }
+        }
+
+        return $task;
     }
 
-    public function getTasksFiltered(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null, ?bool $isArchived = false): array
+    public function getTasksFiltered(?int $projectId, ?string $status, bool $onlyBugs = false, ?string $sortBy = null, ?bool $isArchived = false, ?int $forUserId = null): array
     {
-        return $this->taskRepository->findByFilters($projectId, $status, $onlyBugs, $sortBy, $isArchived);
+        return $this->taskRepository->findByFilters($projectId, $status, $onlyBugs, $sortBy, $isArchived, $forUserId);
     }
 
     public function createTask(int $projectId, string $title, string $details, ?string $deadline, int $creatorId, bool $isBug = false): Task
@@ -49,6 +65,13 @@ class TaskService
 
         if ($projectId <= 0) {
             throw new ValidationException("Valid project selection is required.");
+        }
+
+        if ($this->projectRepository !== null) {
+            $project = $this->projectRepository->findById($projectId);
+            if (!$project || !$project->isAccessibleBy($creatorId)) {
+                throw new ValidationException("Selected project is not available.");
+            }
         }
 
         if ($deadline !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $deadline)) {
@@ -70,7 +93,7 @@ class TaskService
             throw new ValidationException("Invalid session or user. Please log in again.");
         }
 
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $userId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }
@@ -105,7 +128,7 @@ class TaskService
 
     public function checkinTask(int $taskId, int $userId, string $reason, int $expectedVersion): Task
     {
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $userId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }
@@ -149,7 +172,7 @@ class TaskService
 
     public function completeTask(int $taskId, int $userId, int $expectedVersion): Task
     {
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $userId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }
@@ -193,7 +216,7 @@ class TaskService
             throw new ValidationException("Comment message cannot be empty.");
         }
 
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $userId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }
@@ -218,6 +241,11 @@ class TaskService
             throw new ValidationException("You can only edit your own comments.");
         }
 
+        $task = $this->getTaskById($comment->getTaskId(), $userId);
+        if (!$task) {
+            throw new ValidationException("Task not found.");
+        }
+
         $updatedComment = new Comment(
             $comment->getId(),
             $comment->getTaskId(),
@@ -240,7 +268,7 @@ class TaskService
         int $updaterId,
         int $expectedVersion
     ): Task {
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $updaterId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }
@@ -256,6 +284,13 @@ class TaskService
 
         if ($projectId <= 0) {
             throw new ValidationException("Valid project selection is required.");
+        }
+
+        if ($this->projectRepository !== null) {
+            $targetProject = $this->projectRepository->findById($projectId);
+            if (!$targetProject || !$targetProject->isAccessibleBy($updaterId)) {
+                throw new ValidationException("Selected project is not available.");
+            }
         }
 
         if ($deadline !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $deadline)) {
@@ -304,28 +339,40 @@ class TaskService
         return $savedTask;
     }
 
-    public function deleteTask(int $taskId): void
+    public function deleteTask(int $taskId, ?int $userId = null): void
     {
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $userId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }
         $this->taskRepository->delete($taskId);
     }
 
-    public function getTaskComments(int $taskId): array
+    public function getTaskComments(int $taskId, ?int $forUserId = null): array
     {
+        if ($forUserId !== null) {
+            $task = $this->getTaskById($taskId, $forUserId);
+            if (!$task) {
+                return [];
+            }
+        }
         return $this->commentRepository->findByTaskId($taskId);
     }
 
-    public function getTaskHistory(int $taskId): array
+    public function getTaskHistory(int $taskId, ?int $forUserId = null): array
     {
+        if ($forUserId !== null) {
+            $task = $this->getTaskById($taskId, $forUserId);
+            if (!$task) {
+                return [];
+            }
+        }
         return $this->historyRepository->findByTaskId($taskId);
     }
 
     public function archiveTask(int $taskId, int $userId, int $expectedVersion = 0): Task
     {
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $userId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }
@@ -360,7 +407,7 @@ class TaskService
 
     public function unarchiveTask(int $taskId, int $userId, int $expectedVersion = 0): Task
     {
-        $task = $this->taskRepository->findById($taskId);
+        $task = $this->getTaskById($taskId, $userId);
         if (!$task) {
             throw new ValidationException("Task not found.");
         }

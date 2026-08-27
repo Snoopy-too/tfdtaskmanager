@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use App\Infrastructure\Security\SecurityHelper;
 use App\Application\Services\BgDatasetService;
+use App\Application\Services\ProjectService;
 
 /**
  * Handles Dataset API routes.
@@ -10,10 +11,13 @@ use App\Application\Services\BgDatasetService;
  * @param string $action
  * @param string $method
  * @param BgDatasetService $datasetService
+ * @param ProjectService|null $projectService
  * @return bool True if the action was handled, false otherwise
  */
-function handleDatasetApiAction(string $action, string $method, BgDatasetService $datasetService): bool
+function handleDatasetApiAction(string $action, string $method, BgDatasetService $datasetService, ?ProjectService $projectService = null): bool
 {
+    $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
     switch ($action) {
         case 'heartbeat_lock_dataset':
             if ($method !== 'POST') {
@@ -28,13 +32,20 @@ function handleDatasetApiAction(string $action, string $method, BgDatasetService
             }
 
             $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
-
             $dataset = $datasetService->getDatasetById($datasetId);
             if (!$dataset) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Dataset not found.']);
                 exit;
+            }
+
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($dataset->getProjectId(), $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Dataset not found or access denied.']);
+                    exit;
+                }
             }
 
             if ($datasetService->isDatasetLockedByOther($dataset, $currentUserId)) {
@@ -59,7 +70,15 @@ function handleDatasetApiAction(string $action, string $method, BgDatasetService
             }
 
             $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if ($dataset && $projectService !== null) {
+                $project = $projectService->getProjectById($dataset->getProjectId(), $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Dataset not found or access denied.']);
+                    exit;
+                }
+            }
 
             $datasetService->releaseLock($datasetId, $currentUserId);
             echo json_encode(['success' => true]);
@@ -75,6 +94,14 @@ function handleDatasetApiAction(string $action, string $method, BgDatasetService
                 http_response_code(404);
                 echo json_encode(['error' => 'Dataset not found.']);
                 exit;
+            }
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($dataset->getProjectId(), $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Dataset not found or access denied.']);
+                    exit;
+                }
             }
             echo json_encode([
                 'id' => $dataset->getId(),
@@ -108,7 +135,15 @@ function handleDatasetApiAction(string $action, string $method, BgDatasetService
                 exit;
             }
 
-            $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+            if ($projectService !== null) {
+                $project = $projectService->getProjectById($dataset->getProjectId(), $currentUserId);
+                if (!$project) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Dataset not found or access denied.']);
+                    exit;
+                }
+            }
+
             if ($datasetService->isDatasetLockedByOther($dataset, $currentUserId)) {
                 http_response_code(423);
                 echo json_encode(['error' => 'Dataset is currently locked for editing by another user.']);

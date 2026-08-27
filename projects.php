@@ -11,6 +11,7 @@ SecurityHelper::requireLogin();
 
 $projectService = $container->get(ProjectService::class);
 
+$currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
@@ -18,7 +19,10 @@ $csrfToken = SecurityHelper::generateCsrfToken();
 $editProject = null;
 $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : null;
 if ($editId) {
-    $editProject = $projectService->getProjectById($editId);
+    $editProject = $projectService->getProjectById($editId, $currentUserId);
+    if (!$editProject) {
+        $error = 'Project not found or access denied.';
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -30,26 +34,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = isset($_POST['id']) ? (int)$_POST['id'] : null;
         $name = $_POST['name'] ?? '';
         $description = $_POST['description'] ?? '';
+        $isPrivate = isset($_POST['is_private']) && $_POST['is_private'] === '1';
 
         try {
             if ($id) {
-                $projectService->updateProject($id, $name, $description);
+                $projectService->updateProject($id, $name, $description, $isPrivate, $currentUserId);
                 $success = "Project '$name' successfully updated.";
                 $editProject = null;
             } else {
-                $projectService->createProject($name, $description);
+                $projectService->createProject($name, $description, $isPrivate, $currentUserId);
                 $success = "Project '$name' successfully created.";
             }
         } catch (ValidationException $e) {
             $error = $e->getMessage();
             if ($id) {
-                $editProject = $projectService->getProjectById($id);
+                $editProject = $projectService->getProjectById($id, $currentUserId);
             }
         }
     }
 }
 
-$projects = $projectService->getAllProjects();
+$projects = $projectService->getAllProjects($currentUserId);
 
 require_once __DIR__ . '/templates/header.php';
 ?>
@@ -80,6 +85,7 @@ require_once __DIR__ . '/templates/header.php';
         $buttonText = $isEdit ? 'Save Changes' : 'Add Project';
         $nameValue = $isEdit ? $editProject->getName() : '';
         $descValue = $isEdit ? $editProject->getDescription() : '';
+        $isPrivateValue = $isEdit ? $editProject->isPrivate() : false;
         ?>
         <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl shadow-xl h-fit">
             <div class="flex items-center justify-between mb-6">
@@ -110,6 +116,19 @@ require_once __DIR__ . '/templates/header.php';
                         class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 transition outline-none"><?php echo SecurityHelper::escape($descValue); ?></textarea>
                 </div>
 
+                <div class="pt-1">
+                    <label class="flex items-start space-x-3 cursor-pointer select-none bg-slate-950/40 border border-slate-800/80 p-3 rounded-xl hover:border-slate-700 transition">
+                        <input type="checkbox" id="is_private" name="is_private" value="1" <?php echo $isPrivateValue ? 'checked' : ''; ?>
+                            class="mt-1 h-4 w-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900">
+                        <div>
+                            <span class="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                                <span>🔒</span> Private Project
+                            </span>
+                            <p class="text-xs text-slate-400 mt-0.5">Only you can view and access this project, its tasks, and its studio assets. Default is public.</p>
+                        </div>
+                    </label>
+                </div>
+
                 <button type="submit"
                     class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg transition duration-200">
                     <?php echo $buttonText; ?>
@@ -130,9 +149,20 @@ require_once __DIR__ . '/templates/header.php';
                     <?php foreach ($projects as $project): ?>
                         <div class="bg-slate-900/50 border border-slate-800/80 p-5 rounded-2xl hover:border-slate-700 transition duration-300 flex flex-col justify-between">
                             <div>
-                                <h3 class="text-lg font-bold text-indigo-300 mb-2">
-                                    <?php echo SecurityHelper::escape($project->getName()); ?>
-                                </h3>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-lg font-bold text-indigo-300">
+                                        <?php echo SecurityHelper::escape($project->getName()); ?>
+                                    </h3>
+                                    <?php if ($project->isPrivate()): ?>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                            🔒 Private
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700/60">
+                                            🌐 Public
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                                 <p class="text-sm text-slate-400 line-clamp-3">
                                     <?php echo SecurityHelper::escape($project->getDescription() ?: 'No description provided.'); ?>
                                 </p>

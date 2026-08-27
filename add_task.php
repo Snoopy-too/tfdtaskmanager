@@ -13,6 +13,7 @@ SecurityHelper::requireLogin();
 $taskService = $container->get(TaskService::class);
 $projectService = $container->get(ProjectService::class);
 
+$currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
@@ -27,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = $_POST['title'] ?? '';
         $details = $_POST['details'] ?? '';
         $deadline = $_POST['deadline'] ?? '';
-        $creatorId = SecurityHelper::getCurrentUserId() ?? 0;
+        $creatorId = $currentUserId;
         $isBug = isset($_POST['is_bug']) && $_POST['is_bug'] === '1';
 
         try {
@@ -39,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$projects = $projectService->getAllProjects();
+$projects = $projectService->getAllProjects($currentUserId);
 
 require_once __DIR__ . '/templates/header.php';
 ?>
@@ -83,7 +84,7 @@ require_once __DIR__ . '/templates/header.php';
                         <option value="">Select a project...</option>
                         <?php foreach ($projects as $project): ?>
                             <option value="<?php echo $project->getId(); ?>">
-                                <?php echo SecurityHelper::escape($project->getName()); ?>
+                                <?php echo SecurityHelper::escape($project->getName() . ($project->isPrivate() ? ' (🔒 Private)' : '')); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

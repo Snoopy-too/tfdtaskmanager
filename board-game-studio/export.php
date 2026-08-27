@@ -16,14 +16,21 @@ $datasetService = $container->get(BgDatasetService::class);
 
 $csrfToken = SecurityHelper::generateCsrfToken();
 
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
 // Projects dropdown
-$projects = $projectService->getAllProjects();
+$projects = $projectService->getAllProjects($currentUserId);
 $activeProjectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '') ? (int)$_GET['project_id'] : null;
 
 // Default to last project from session if not specified, otherwise default to first project
 if ($activeProjectId === null && !isset($_GET['project_id'])) {
     if (isset($_SESSION['last_project_id'])) {
-        $activeProjectId = (int)$_SESSION['last_project_id'];
+        $candidateId = (int)$_SESSION['last_project_id'];
+        if ($projectService->getProjectById($candidateId, $currentUserId)) {
+            $activeProjectId = $candidateId;
+        } else {
+            unset($_SESSION['last_project_id']);
+        }
     } elseif (!empty($projects)) {
         $activeProjectId = $projects[0]->getId();
     }
@@ -35,10 +42,11 @@ if ($activeProjectId) {
 
 $activeProject = null;
 if ($activeProjectId) {
-    $activeProject = $projectService->getProjectById($activeProjectId);
+    $activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
 }
 
 if (!$activeProject) {
+    unset($_SESSION['last_project_id']);
     header("Location: index.php");
     exit;
 }
@@ -174,7 +182,7 @@ require_once __DIR__ . '/../templates/header.php';
                     <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None (Global Library)</option>
                     <?php foreach ($projects as $proj): ?>
                         <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
-                            <?php echo SecurityHelper::escape($proj->getName()); ?>
+                            <?php echo SecurityHelper::escape($proj->getName() . ($proj->isPrivate() ? ' (🔒 Private)' : '')); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

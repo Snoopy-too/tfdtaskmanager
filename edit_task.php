@@ -13,8 +13,9 @@ SecurityHelper::requireLogin();
 $taskService = $container->get(TaskService::class);
 $projectService = $container->get(ProjectService::class);
 
+$currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 $taskId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$task = $taskService->getTaskById($taskId);
+$task = $taskService->getTaskById($taskId, $currentUserId);
 
 if (!$task) {
     http_response_code(404);
@@ -36,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'delete') {
             try {
-                $taskService->deleteTask($taskId);
+                $taskService->deleteTask($taskId, $currentUserId);
                 header('Location: index.php?deleted=1');
                 exit();
             } catch (ValidationException $e) {
@@ -51,7 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = $_POST['status'] ?? 'To Do';
             $isBug = isset($_POST['is_bug']) && $_POST['is_bug'] === '1';
             $version = (int)($_POST['version'] ?? 0);
-            $currentUserId = SecurityHelper::getCurrentUserId() ?? 0;
 
             try {
                 $taskService->updateTask(
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $success = "Task updated successfully.";
-                $task = $taskService->getTaskById($taskId); // Reload
+                $task = $taskService->getTaskById($taskId, $currentUserId); // Reload
             } catch (ValidationException $e) {
                 $error = $e->getMessage();
             }
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$projects = $projectService->getAllProjects();
+$projects = $projectService->getAllProjects($currentUserId);
 
 require_once __DIR__ . '/templates/header.php';
 ?>
@@ -121,7 +121,7 @@ require_once __DIR__ . '/templates/header.php';
                     class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-4 py-2.5 text-slate-100 transition outline-none">
                     <?php foreach ($projects as $project): ?>
                         <option value="<?php echo $project->getId(); ?>" <?php echo $task->getProjectId() === $project->getId() ? 'selected' : ''; ?>>
-                            <?php echo SecurityHelper::escape($project->getName()); ?>
+                            <?php echo SecurityHelper::escape($project->getName() . ($project->isPrivate() ? ' (🔒 Private)' : '')); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

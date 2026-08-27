@@ -54,14 +54,14 @@ try {
     );
     echo sprintf("6. Task Creation Use Case passed. ID: %d\n", $testTask->getId());
 
-    $taskService->checkoutTask($testTask->getId(), $adminUser->getId());
+    $taskService->checkoutTask($testTask->getId(), $adminUser->getId(), $testTask->getVersion());
     $updatedTask = $taskService->getTaskById($testTask->getId());
     if ($updatedTask->getStatus() !== 'In Progress' || $updatedTask->getAssignedTo() !== $adminUser->getId()) {
         throw new Exception("Task checkout failed state checks.");
     }
     echo "7. Task Checkout Engine and State checks passed.\n";
 
-    $taskService->checkinTask($testTask->getId(), $adminUser->getId(), 'Completed validation step.');
+    $taskService->checkinTask($testTask->getId(), $adminUser->getId(), 'Completed validation step.', $updatedTask->getVersion());
     $updatedTask = $taskService->getTaskById($testTask->getId());
     if ($updatedTask->getStatus() !== 'To Do' || $updatedTask->getAssignedTo() !== null) {
         throw new Exception("Task check-in failed state checks.");

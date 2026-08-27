@@ -84,7 +84,8 @@ class DIContainer
             return new TaskService(
                 $this->get(PDOTaskRepository::class),
                 $this->get(PDOTaskHistoryRepository::class),
-                $this->get(PDOCommentRepository::class)
+                $this->get(PDOCommentRepository::class),
+                $this->get(PDOProjectRepository::class)
             );
         };
 
