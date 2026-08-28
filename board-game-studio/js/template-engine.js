@@ -90,6 +90,21 @@
         });
     }
 
+    let rowDebounce = null;
+    function queueApplyBindings() {
+        clearTimeout(rowDebounce);
+        rowDebounce = setTimeout(applyBindings, 50);
+    }
+
+    function updateRowIndicator() {
+        if (!dataset || !dataset.rowData || dataset.rowData.length === 0) return;
+        const actualRowIndex = activeRowIndices[currentRowIndex] !== undefined ? activeRowIndices[currentRowIndex] : currentRowIndex;
+        const rowIndicator = document.getElementById('row-indicator');
+        if (rowIndicator) {
+            rowIndicator.textContent = `Row ${actualRowIndex + 1} (${currentRowIndex + 1} of ${activeRowIndices.length})`;
+        }
+    }
+
     function setupNavControls() {
         const btnPrev = document.getElementById('btn-row-prev');
         const btnNext = document.getElementById('btn-row-next');
@@ -99,14 +114,16 @@
         btnPrev.addEventListener('click', () => {
             if (currentRowIndex > 0) {
                 currentRowIndex--;
-                applyBindings();
+                updateRowIndicator();
+                queueApplyBindings();
             }
         });
 
         btnNext.addEventListener('click', () => {
             if (currentRowIndex < activeRowIndices.length - 1) {
                 currentRowIndex++;
-                applyBindings();
+                updateRowIndicator();
+                queueApplyBindings();
             }
         });
     }
@@ -128,6 +145,8 @@
     function applyBindings() {
         const canvas = window.editorCanvas;
         if (!canvas) return;
+
+        window.isApplyingDatasetRow = true;
 
         let row = null;
         let actualRowIndex = 0;
@@ -355,12 +374,18 @@
                 if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function' && canvas.getActiveObject()) {
                     window.propertyInspector.inspect(canvas.getActiveObject());
                 }
+                window.isApplyingDatasetRow = false;
+            }).catch(() => {
+                window.isApplyingDatasetRow = false;
             });
         } else if (needsRender) {
             canvas.renderAll();
             if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function' && canvas.getActiveObject()) {
                 window.propertyInspector.inspect(canvas.getActiveObject());
             }
+            window.isApplyingDatasetRow = false;
+        } else {
+            window.isApplyingDatasetRow = false;
         }
     }
 

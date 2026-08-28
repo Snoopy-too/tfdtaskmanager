@@ -185,11 +185,12 @@
             return Promise.resolve(url);
         }
 
+        // ponytail: cache in-flight Promise to collapse concurrent fetches into one
         if (svgBlobCache.has(url)) {
             return Promise.resolve(svgBlobCache.get(url));
         }
 
-        return fetch(url)
+        const fetchPromise = fetch(url)
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 return res.text();
@@ -260,8 +261,12 @@
             })
             .catch(err => {
                 console.warn('[prepareSvgSource] Failed to process SVG:', url, err);
+                svgBlobCache.delete(url);
                 return url;
             });
+
+        svgBlobCache.set(url, fetchPromise);
+        return fetchPromise;
     }
 
     // Add Image or SVG to Canvas

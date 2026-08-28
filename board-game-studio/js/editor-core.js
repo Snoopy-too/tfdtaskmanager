@@ -144,6 +144,9 @@
     }
 
     function triggerAutoSave() {
+        // ponytail: skip auto-save if canvas modifications are due to dataset row preview substitution
+        if (window.isApplyingDatasetRow) return;
+
         if (window.editorHistory) window.editorHistory.pushState();
 
         if (saveTimeout) clearTimeout(saveTimeout);
