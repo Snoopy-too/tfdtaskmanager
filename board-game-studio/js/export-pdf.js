@@ -132,206 +132,209 @@
 
     // Export PDF Tiled Generation
     function generatePdf(cardImages, updateProgress) {
-        return new Promise(async (resolve) => {
-            if (typeof updateProgress === 'function') {
-                updateProgress('Compiling Print-and-Play PDF sheets...', 80);
-            }
+        return new Promise(async (resolve, reject) => {
+            try {
+                if (typeof updateProgress === 'function') {
+                    updateProgress('Compiling Print-and-Play PDF sheets...', 80);
+                }
 
-            const pageSize = document.getElementById('pdf_page_size').value;
-            const orientation = document.getElementById('pdf_orientation') ? document.getElementById('pdf_orientation').value : 'portrait';
-            const drawCropMarks = document.getElementById('pdf_crop_marks').checked;
+                const pageSize = document.getElementById('pdf_page_size').value;
+                const orientation = document.getElementById('pdf_orientation') ? document.getElementById('pdf_orientation').value : 'portrait';
+                const drawCropMarks = document.getElementById('pdf_crop_marks').checked;
 
-            const isF10A4 = (pageSize === 'f10a4_1');
-            const is51215 = (pageSize === 'a_one_51215');
-            const isPrecutSheet = isF10A4 || is51215;
-            const pdfFormat = isPrecutSheet ? 'a4' : pageSize;
-            const pdfOrientation = isPrecutSheet ? 'portrait' : orientation;
+                const isF10A4 = (pageSize === 'f10a4_1');
+                const is51215 = (pageSize === 'a_one_51215');
+                const isPrecutSheet = isF10A4 || is51215;
+                const pdfFormat = isPrecutSheet ? 'a4' : pageSize;
+                const pdfOrientation = isPrecutSheet ? 'portrait' : orientation;
 
-            const pageDims = {
-                a4: { w: 210, h: 297 },
-                letter: { w: 215.9, h: 279.4 }
-            };
+                const pageDims = {
+                    a4: { w: 210, h: 297 },
+                    letter: { w: 215.9, h: 279.4 }
+                };
 
-            const selectedDims = pageDims[pdfFormat] || pageDims.a4;
-            const pageW = pdfOrientation === 'portrait' ? selectedDims.w : selectedDims.h;
-            const pageH = pdfOrientation === 'portrait' ? selectedDims.h : selectedDims.w;
+                const selectedDims = pageDims[pdfFormat] || pageDims.a4;
+                const pageW = pdfOrientation === 'portrait' ? selectedDims.w : selectedDims.h;
+                const pageH = pdfOrientation === 'portrait' ? selectedDims.h : selectedDims.w;
 
-            const cardW = window.studioConfig.widthMm;
-            const cardH = window.studioConfig.heightMm;
+                const cardW = window.studioConfig.widthMm;
+                const cardH = window.studioConfig.heightMm;
 
-            const pdf = new jsPDF({
-                orientation: pdfOrientation,
-                unit: 'mm',
-                format: pdfFormat
-            });
+                const pdf = new jsPDF({
+                    orientation: pdfOrientation,
+                    unit: 'mm',
+                    format: pdfFormat
+                });
 
-            let margin = 10;
-            let gap = 2;
-            let drawW = cardW;
-            let drawH = cardH;
-            let cols = 1;
-            let rows = 1;
-            let startX = 0;
-            let startY = 0;
-            let splitCols = 1;
-            let splitRows = 1;
-            let isTiled = false;
-
-            if (isF10A4) {
-                // A-one F10A4-1 fixed standard layout (10 cards: 2x5 grid, 91x55mm, 14mm sides, 11mm top/bottom, 0mm gap)
-                cols = 2;
-                rows = 5;
-                drawW = 91;
-                drawH = 55;
-                startX = 14;
-                startY = 11;
-                gap = 0;
-            } else if (is51215) {
-                // A-one 51215 / F8A4-5 layout (8 cards: 2x4 grid, 97x69mm, 8mm sides, 10.5mm top/bottom, 0mm gap)
-                cols = 2;
-                rows = 4;
-                drawW = 97;
-                drawH = 69;
-                startX = 8;
-                startY = 10.5;
-                gap = 0;
-            } else {
+                let margin = 10;
+                let gap = 2;
+                let drawW = cardW;
+                let drawH = cardH;
+                let cols = 1;
+                let rows = 1;
+                let startX = 0;
+                let startY = 0;
+                let splitCols = 1;
+                let splitRows = 1;
+                let isTiled = false;
                 const availW = pageW - (margin * 2);
                 const availH = pageH - (margin * 2);
-                let scaleFactor = 1.0;
 
-                cols = Math.floor((availW + gap) / (drawW + gap));
-                rows = Math.floor((availH + gap) / (drawH + gap));
+                if (isF10A4) {
+                    // A-one F10A4-1 fixed standard layout (10 cards: 2x5 grid, 91x55mm, 14mm sides, 11mm top/bottom, 0mm gap)
+                    cols = 2;
+                    rows = 5;
+                    drawW = 91;
+                    drawH = 55;
+                    startX = 14;
+                    startY = 11;
+                    gap = 0;
+                } else if (is51215) {
+                    // A-one 51215 / F8A4-5 layout (8 cards: 2x4 grid, 97x69mm, 8mm sides, 10.5mm top/bottom, 0mm gap)
+                    cols = 2;
+                    rows = 4;
+                    drawW = 97;
+                    drawH = 69;
+                    startX = 8;
+                    startY = 10.5;
+                    gap = 0;
+                } else {
+                    let scaleFactor = 1.0;
 
-                if (cols === 0 || rows === 0) {
-                    const tiling = document.getElementById('pdf_tiling') ? document.getElementById('pdf_tiling').value : 'fit';
-                    if (tiling === 'actual_1page') {
-                        isTiled = false;
-                        scaleFactor = 1.0;
-                        drawW = cardW;
-                        drawH = cardH;
-                        cols = 1;
-                        rows = 1;
-                    } else if (tiling !== 'fit') {
-                        isTiled = true;
-                        if (tiling === 'split_2') {
-                            if (cardW >= cardH) {
+                    cols = Math.floor((availW + gap) / (drawW + gap));
+                    rows = Math.floor((availH + gap) / (drawH + gap));
+
+                    if (cols === 0 || rows === 0) {
+                        const tiling = document.getElementById('pdf_tiling') ? document.getElementById('pdf_tiling').value : 'fit';
+                        if (tiling === 'actual_1page') {
+                            isTiled = false;
+                            scaleFactor = 1.0;
+                            drawW = cardW;
+                            drawH = cardH;
+                            cols = 1;
+                            rows = 1;
+                        } else if (tiling !== 'fit') {
+                            isTiled = true;
+                            if (tiling === 'split_2') {
+                                if (cardW >= cardH) {
+                                    splitCols = 2;
+                                    splitRows = 1;
+                                } else {
+                                    splitCols = 1;
+                                    splitRows = 2;
+                                }
+                            } else if (tiling === 'split_3') {
+                                if (cardW >= cardH) {
+                                    splitCols = 3;
+                                    splitRows = 1;
+                                } else {
+                                    splitCols = 1;
+                                    splitRows = 3;
+                                }
+                            } else if (tiling === 'split_4') {
                                 splitCols = 2;
-                                splitRows = 1;
-                            } else {
-                                splitCols = 1;
                                 splitRows = 2;
                             }
-                        } else if (tiling === 'split_3') {
-                            if (cardW >= cardH) {
-                                splitCols = 3;
-                                splitRows = 1;
-                            } else {
-                                splitCols = 1;
-                                splitRows = 3;
-                            }
-                        } else if (tiling === 'split_4') {
-                            splitCols = 2;
-                            splitRows = 2;
+                            const pieceW = cardW / splitCols;
+                            const pieceH = cardH / splitRows;
+                            scaleFactor = 1.0;
+                            drawW = pieceW;
+                            drawH = pieceH;
+                            cols = 1;
+                            rows = 1;
+                        } else {
+                            scaleFactor = Math.min(availW / cardW, availH / cardH);
+                            drawW = cardW * scaleFactor;
+                            drawH = cardH * scaleFactor;
+                            cols = 1;
+                            rows = 1;
                         }
-                        const pieceW = cardW / splitCols;
-                        const pieceH = cardH / splitRows;
-                        scaleFactor = Math.min(availW / pieceW, availH / pieceH);
-                        drawW = pieceW * scaleFactor;
-                        drawH = pieceH * scaleFactor;
-                        cols = 1;
-                        rows = 1;
+                    }
+
+                    const tilingContainer = document.getElementById('pdf-tiling-container');
+                    const isTilingVisible = tilingContainer && !tilingContainer.classList.contains('hidden');
+                    const tilingMode = (isTilingVisible && document.getElementById('pdf_tiling')) ? document.getElementById('pdf_tiling').value : 'fit';
+
+                    const gridW = (cols * drawW) + ((cols - 1) * gap);
+                    const gridH = (rows * drawH) + ((rows - 1) * gap);
+                    startX = (isTilingVisible && tilingMode === 'actual_1page') ? (pageW - drawW) / 2 : margin + ((availW - gridW) / 2);
+                    startY = (isTilingVisible && tilingMode === 'actual_1page') ? (pageH - drawH) / 2 : margin + ((availH - gridH) / 2);
+                }
+
+                const cardsPerPage = cols * rows;
+
+                let pageIndex = 0;
+                for (let index = 0; index < cardImages.length; index++) {
+                    const img = cardImages[index];
+
+                    if (!isTiled) {
+                        if (index > 0 && index % cardsPerPage === 0) {
+                            pdf.addPage(pdfFormat, pdfOrientation);
+                        }
+
+                        const pageCardIndex = index % cardsPerPage;
+                        const col = pageCardIndex % cols;
+                        const row = Math.floor(pageCardIndex / cols);
+
+                        const x = startX + (col * (drawW + gap));
+                        const y = startY + (row * (drawH + gap));
+
+                        let cardDataUrl = img.dataUrl;
+                        // ponytail: auto-rotate 90° if portrait card (e.g. 55x91mm or 69x97mm) is placed on horizontal pre-cut slot
+                        if (isPrecutSheet && cardW < cardH) {
+                            cardDataUrl = await rotateImage90(img.dataUrl);
+                        }
+
+                        pdf.addImage(cardDataUrl, 'PNG', x, y, drawW, drawH);
+
+                        if (drawCropMarks) {
+                            drawPageCropMarks(pdf, x, y, drawW, drawH, col, row, cols, rows, gap);
+                        }
                     } else {
-                        scaleFactor = Math.min(availW / cardW, availH / cardH);
-                        drawW = cardW * scaleFactor;
-                        drawH = cardH * scaleFactor;
-                        cols = 1;
-                        rows = 1;
-                    }
-                }
+                        const htmlImg = await loadImage(img.dataUrl);
+                        const sourceW = htmlImg.naturalWidth || htmlImg.width || window.studioConfig.canvasWidth;
+                        const sourceH = htmlImg.naturalHeight || htmlImg.height || window.studioConfig.canvasHeight;
+                        const chunkSourceW = sourceW / splitCols;
+                        const chunkSourceH = sourceH / splitRows;
 
-                const tilingContainer = document.getElementById('pdf-tiling-container');
-                const isTilingVisible = tilingContainer && !tilingContainer.classList.contains('hidden');
-                const tilingMode = (isTilingVisible && document.getElementById('pdf_tiling')) ? document.getElementById('pdf_tiling').value : 'fit';
+                        for (let r = 0; r < splitRows; r++) {
+                            for (let c = 0; c < splitCols; c++) {
+                                if (pageIndex > 0) {
+                                    pdf.addPage(pdfFormat, pdfOrientation);
+                                }
+                                pageIndex++;
 
-                const gridW = (cols * drawW) + ((cols - 1) * gap);
-                const gridH = (rows * drawH) + ((rows - 1) * gap);
-                startX = (isTilingVisible && tilingMode === 'actual_1page') ? (pageW - drawW) / 2 : margin + ((availW - gridW) / 2);
-                startY = (isTilingVisible && tilingMode === 'actual_1page') ? (pageH - drawH) / 2 : margin + ((availH - gridH) / 2);
-            }
+                                const x = (pageW - drawW) / 2;
+                                const y = (pageH - drawH) / 2;
 
-            const cardsPerPage = cols * rows;
+                                const chunkSourceX = c * chunkSourceW;
+                                const chunkSourceY = r * chunkSourceH;
 
-            let pageIndex = 0;
-            for (let index = 0; index < cardImages.length; index++) {
-                const img = cardImages[index];
+                                const tempCanvas = document.createElement('canvas');
+                                tempCanvas.width = chunkSourceW;
+                                tempCanvas.height = chunkSourceH;
+                                const tempCtx = tempCanvas.getContext('2d');
 
-                if (!isTiled) {
-                    if (index > 0 && index % cardsPerPage === 0) {
-                        pdf.addPage(pdfFormat, pdfOrientation);
-                    }
+                                tempCtx.drawImage(htmlImg, chunkSourceX, chunkSourceY, chunkSourceW, chunkSourceH, 0, 0, chunkSourceW, chunkSourceH);
+                                const slicedDataUrl = tempCanvas.toDataURL('image/png');
 
-                    const pageCardIndex = index % cardsPerPage;
-                    const col = pageCardIndex % cols;
-                    const row = Math.floor(pageCardIndex / cols);
+                                pdf.addImage(slicedDataUrl, 'PNG', x, y, drawW, drawH);
 
-                    const x = startX + (col * (drawW + gap));
-                    const y = startY + (row * (drawH + gap));
+                                if (drawCropMarks) {
+                                    drawPageCropMarks(pdf, x, y, drawW, drawH);
+                                }
 
-                    let cardDataUrl = img.dataUrl;
-                    // ponytail: auto-rotate 90° if portrait card (e.g. 55x91mm or 69x97mm) is placed on horizontal pre-cut slot
-                    if (isPrecutSheet && cardW < cardH) {
-                        cardDataUrl = await rotateImage90(img.dataUrl);
-                    }
-
-                    pdf.addImage(cardDataUrl, 'PNG', x, y, drawW, drawH);
-
-                    if (drawCropMarks) {
-                        drawPageCropMarks(pdf, x, y, drawW, drawH, col, row, cols, rows, gap);
-                    }
-                } else {
-                    const sourceW = window.studioConfig.canvasWidth;
-                    const sourceH = window.studioConfig.heightMm;
-                    const chunkSourceW = sourceW / splitCols;
-                    const chunkSourceH = sourceH / splitRows;
-
-                    const htmlImg = await loadImage(img.dataUrl);
-
-                    for (let r = 0; r < splitRows; r++) {
-                        for (let c = 0; c < splitCols; c++) {
-                            if (pageIndex > 0) {
-                                pdf.addPage(pageSize, orientation);
+                                drawOverlapGuidelines(pdf, x, y, drawW, drawH, c, r, splitCols, splitRows);
                             }
-                            pageIndex++;
-
-                            const x = margin + ((availW - drawW) / 2);
-                            const y = margin + ((availH - drawH) / 2);
-
-                            const chunkSourceX = c * chunkSourceW;
-                            const chunkSourceY = r * chunkSourceH;
-
-                            const tempCanvas = document.createElement('canvas');
-                            tempCanvas.width = chunkSourceW;
-                            tempCanvas.height = chunkSourceH;
-                            const tempCtx = tempCanvas.getContext('2d');
-
-                            tempCtx.drawImage(htmlImg, chunkSourceX, chunkSourceY, chunkSourceW, chunkSourceH, 0, 0, chunkSourceW, chunkSourceH);
-                            const slicedDataUrl = tempCanvas.toDataURL('image/png');
-
-                            pdf.addImage(slicedDataUrl, 'PNG', x, y, drawW, drawH);
-
-                            if (drawCropMarks) {
-                                drawPageCropMarks(pdf, x, y, drawW, drawH);
-                            }
-
-                            drawOverlapGuidelines(pdf, x, y, drawW, drawH, c, r, splitCols, splitRows);
                         }
                     }
                 }
-            }
 
-            pdf.save(`${window.studioConfig.templateName.replace(/[^a-zA-Z0-9_\-]/g, '_')}_print_play.pdf`);
-            resolve();
+                pdf.save(`${window.studioConfig.templateName.replace(/[^a-zA-Z0-9_\-]/g, '_')}_print_play.pdf`);
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
         });
     }
 
