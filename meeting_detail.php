@@ -250,7 +250,7 @@ require_once __DIR__ . '/templates/header.php';
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Topics List -->
         <div class="lg:col-span-2 space-y-4">
-            <h3 class="text-xl font-bold text-slate-200 mb-4">Meeting Agenda Topics</h3>
+            <h3 class="text-xl font-bold text-slate-200 mb-4">Agenda for <?php echo SecurityHelper::escape($meeting->getTitle()); ?> meeting</h3>
 
             <?php if (empty($topics)): ?>
                 <div class="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-12 text-center text-slate-400">
