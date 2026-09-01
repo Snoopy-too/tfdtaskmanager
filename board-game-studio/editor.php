@@ -118,40 +118,41 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
     <?php endif; ?>
 
-    <!-- Top editor status/controls -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-slate-800">
-        <div class="flex items-center space-x-3">
-            <a href="index.php?project_id=<?php echo $template->getProjectId(); ?>" class="p-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition">
+    <!-- ponytail: streamlined top editor header preventing button clipping on all screen widths -->
+    <div class="flex items-center justify-between gap-2 pb-2 border-b border-slate-800 min-w-0 w-full">
+        <!-- Left: Project/Template Info & Metadata -->
+        <div class="flex items-center space-x-2.5 min-w-0 flex-shrink">
+            <a href="index.php?project_id=<?php echo $template->getProjectId(); ?>" class="p-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition flex-shrink-0" title="Back to Project Dashboard">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             </a>
-            <div>
+            <div class="min-w-0">
                 <?php
                 $isLandscape = $template->getCanvasWidthPx() > $template->getCanvasHeightPx();
                 $widthMm = round(\App\Domain\Entities\BgTemplate::pxToMm($template->getCanvasWidthPx()), 1);
                 $heightMm = round(\App\Domain\Entities\BgTemplate::pxToMm($template->getCanvasHeightPx()), 1);
                 ?>
-                <h1 class="text-xl font-bold text-white flex items-center space-x-2">
-                    <span id="template-title-display"><?php echo SecurityHelper::escape($template->getName()); ?></span>
+                <h1 class="text-base font-bold text-white flex items-center gap-1.5 leading-tight truncate">
+                    <span id="template-title-display" class="truncate max-w-[180px] xl:max-w-xs" title="<?php echo SecurityHelper::escape($template->getName()); ?>"><?php echo SecurityHelper::escape($template->getName()); ?></span>
                     <?php if (!$isViewMode): ?>
-                        <button onclick="promptRenameTemplate(<?php echo $template->getId(); ?>, '<?php echo SecurityHelper::escape(addslashes($template->getName())); ?>')" class="text-slate-400 hover:text-amber-400 transition p-1" title="Rename Template">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        <button onclick="promptRenameTemplate(<?php echo $template->getId(); ?>, '<?php echo SecurityHelper::escape(addslashes($template->getName())); ?>')" class="text-slate-400 hover:text-amber-400 transition p-0.5 flex-shrink-0" title="Rename Template">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                         </button>
                     <?php endif; ?>
-                    <span class="text-xs uppercase font-extrabold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 truncate max-w-[130px] flex-shrink-0" title="<?php echo $compType ? SecurityHelper::escape($compType->getName()) : 'Component'; ?>">
                         <?php echo $compType ? SecurityHelper::escape($compType->getName()) : 'Component'; ?>
                     </span>
-                    <span id="template-orientation-badge" class="text-xs font-semibold px-2 py-0.5 rounded <?php echo $isLandscape ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700'; ?>">
+                    <span id="template-orientation-badge" class="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 <?php echo $isLandscape ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700'; ?>">
                         <?php echo $isLandscape ? 'Landscape' : 'Portrait'; ?>
                     </span>
                 </h1>
-                <p class="text-xs text-slate-400 flex items-center space-x-1.5 flex-wrap">
-                    <span>Project: <?php echo SecurityHelper::escape($project->getName()); ?></span>
-                    <span>|</span>
-                    <span class="flex items-center space-x-1">
-                        <span>Size: <span id="template-size-display"><?php echo $widthMm; ?>x<?php echo $heightMm; ?> mm (<?php echo $template->getCanvasWidthPx(); ?>x<?php echo $template->getCanvasHeightPx(); ?> px)</span></span>
+                <p class="text-[11px] text-slate-400 flex items-center space-x-1 flex-nowrap truncate">
+                    <span class="truncate max-w-[110px]">Project: <?php echo SecurityHelper::escape($project->getName()); ?></span>
+                    <span>•</span>
+                    <span class="flex items-center space-x-1 flex-shrink-0">
+                        <span><span id="template-size-display"><?php echo $widthMm; ?>x<?php echo $heightMm; ?> mm (<?php echo $template->getCanvasWidthPx(); ?>x<?php echo $template->getCanvasHeightPx(); ?> px)</span></span>
                         <?php if (!$isViewMode): ?>
                             <button onclick="openChangeSizeModal()" class="text-slate-400 hover:text-amber-400 transition p-0.5" title="Change Canvas / Template Size">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                             </button>
                         <?php endif; ?>
                     </span>
@@ -159,74 +160,78 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
         </div>
 
-        <div class="flex items-center space-x-3">
+        <!-- Center & Right Controls -->
+        <div class="flex items-center space-x-2 flex-shrink-0">
             <!-- Auto-save Status Indicator -->
-            <div id="save-status" class="flex items-center space-x-1.5 text-xs text-slate-400 bg-slate-900/60 border border-slate-800 px-3 py-1.5 rounded-lg">
-                <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span id="save-status-text">All changes saved</span>
+            <div id="save-status" class="hidden lg:flex items-center space-x-1.5 text-[11px] text-slate-400 bg-slate-900/60 border border-slate-800 px-2 py-1 rounded-lg shrink-0">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="save-status-text">Saved</span>
             </div>
 
             <?php if (!$isViewMode): ?>
                 <!-- Orientation Switch Button -->
-                <button id="btn-toggle-orientation" onclick="toggleCanvasOrientation()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 rounded transition flex items-center gap-1.5" title="Switch Canvas Orientation (Portrait ↔ Landscape)">
-                    <svg id="orient-btn-icon" class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button id="btn-toggle-orientation" onclick="toggleCanvasOrientation()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition flex items-center gap-1.5 shrink-0" title="Switch Canvas Orientation (Portrait ↔ Landscape)">
+                    <svg id="orient-btn-icon" class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    <span id="orient-btn-text">Switch to <?php echo $isLandscape ? 'Portrait' : 'Landscape'; ?></span>
+                    <span id="orient-btn-text" class="hidden xl:inline">Switch to <?php echo $isLandscape ? 'Portrait' : 'Landscape'; ?></span>
                 </button>
             <?php endif; ?>
 
             <!-- Guides Toggle -->
-            <button id="btn-toggle-guides" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">
+            <button id="btn-toggle-guides" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition shrink-0" title="Toggle Guidelines">
                 Guides: ON
             </button>
 
             <!-- History controls -->
-            <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+            <div class="flex items-center space-x-0.5 bg-slate-900 border border-slate-800 rounded-lg p-0.5 shrink-0">
                 <button id="btn-undo" class="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent rounded transition" title="Undo (Ctrl+Z)" disabled>
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                     </svg>
                 </button>
                 <button id="btn-redo" class="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent rounded transition" title="Redo (Ctrl+Y)" disabled>
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/>
                     </svg>
                 </button>
             </div>
 
             <!-- Zoom controls -->
-            <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
-                <button id="btn-zoom-out" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded" title="Zoom Out">-</button>
-                <input type="text" id="zoom-value" class="text-xs font-semibold text-center text-slate-300 bg-transparent w-12 border-none focus:outline-none focus:ring-0 p-0" value="100%">
-                <button id="btn-zoom-in" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded" title="Zoom In">+</button>
-                <button id="btn-zoom-fit" class="p-1 hover:bg-slate-800 text-slate-500 hover:text-white rounded text-[10px] font-bold px-1.5" title="Fit to View">FIT</button>
+            <div class="flex items-center space-x-0.5 bg-slate-900 border border-slate-800 rounded-lg p-0.5 shrink-0">
+                <button id="btn-zoom-out" class="px-1.5 py-0.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs" title="Zoom Out">-</button>
+                <input type="text" id="zoom-value" class="text-xs font-semibold text-center text-slate-300 bg-transparent w-10 border-none focus:outline-none focus:ring-0 p-0" value="100%">
+                <button id="btn-zoom-in" class="px-1.5 py-0.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs" title="Zoom In">+</button>
+                <button id="btn-zoom-fit" class="py-0.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-[10px] font-bold px-1.5" title="Fit to View">FIT</button>
             </div>
 
             <!-- Sidebar Toggle Controls -->
-            <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
-                <button id="btn-toggle-left-sidebar" onclick="toggleSidebar('left-layers-panel')" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs px-2 flex items-center space-x-1" title="Toggle Left Layers Panel">
+            <div class="flex items-center space-x-0.5 bg-slate-900 border border-slate-800 rounded-lg p-0.5 shrink-0">
+                <button id="btn-toggle-left-sidebar" onclick="toggleSidebar('left-layers-panel')" class="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs flex items-center space-x-1" title="Toggle Left Layers Panel">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
-                    <span>Layers</span>
+                    <span class="hidden xl:inline">Layers</span>
                 </button>
-                <button id="btn-toggle-right-sidebar" onclick="toggleSidebar('right-inspector-panel')" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs px-2 flex items-center space-x-1" title="Toggle Right Inspector Panel">
-                    <span>Inspector</span>
+                <button id="btn-toggle-right-sidebar" onclick="toggleSidebar('right-inspector-panel')" class="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded text-xs flex items-center space-x-1" title="Toggle Right Inspector Panel">
+                    <span class="hidden xl:inline">Inspector</span>
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
                 </button>
             </div>
 
             <!-- Preview -->
-            <button type="button" onclick="showFullscreenPreview()" class="px-4 py-1.5 bg-slate-900 border border-slate-800 text-slate-350 hover:text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5" title="Full Screen Preview">
+            <button type="button" onclick="showFullscreenPreview()" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5 shrink-0" title="Full Screen Preview">
                 <svg class="h-3.5 w-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                <span>Preview</span>
+                <span class="hidden sm:inline">Preview</span>
             </button>
+
             <!-- Copy -->
-            <button type="button" onclick="makeCopy()" class="px-4 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold rounded-lg shadow transition">
+            <button type="button" onclick="makeCopy()" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold rounded-lg shadow transition shrink-0 whitespace-nowrap" title="Duplicate Template">
                 Make a Copy
             </button>
+
             <!-- Export -->
-            <a href="export.php?project_id=<?php echo $template->getProjectId(); ?>&template_id=<?php echo $template->getId(); ?>" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow transition">
-                Export Studio
+            <a href="export.php?project_id=<?php echo $template->getProjectId(); ?>&template_id=<?php echo $template->getId(); ?>" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg shadow transition shrink-0 whitespace-nowrap flex items-center gap-1.5" title="Open Export Studio">
+                <svg class="w-3.5 h-3.5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                <span>Export Studio</span>
             </a>
         </div>
     </div>
