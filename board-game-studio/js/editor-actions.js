@@ -4,16 +4,17 @@
  */
 
 function promptRenameTemplate(templateId, currentName) {
+    const activeName = (window.studioConfig && window.studioConfig.templateName) || currentName || '';
     const handleName = (newName) => {
-        if (newName && newName.trim() !== "" && newName.trim() !== currentName) {
+        if (newName && newName.trim() !== "" && newName.trim() !== activeName) {
             performRenameTemplate(templateId, newName.trim());
         }
     };
 
     if (typeof window.studioPrompt === 'function') {
-        window.studioPrompt("Enter a new name for the design template:", currentName, "Rename Template").then(handleName);
+        window.studioPrompt("Enter a new name for the design template:", activeName, "Rename Template").then(handleName);
     } else {
-        const newName = prompt("Enter a new name for the design template:", currentName);
+        const newName = prompt("Enter a new name for the design template:", activeName);
         handleName(newName);
     }
 }
@@ -25,7 +26,7 @@ function performRenameTemplate(templateId, newName) {
     formData.append('name', newName);
     formData.append('csrf_token', window.studioConfig ? window.studioConfig.csrfToken : '');
 
-    fetch('api.php', {
+    fetch('api.php?action=rename_template', {
         method: 'POST',
         body: formData
     })
@@ -34,7 +35,10 @@ function performRenameTemplate(templateId, newName) {
         if (data.success) {
             if (window.studioConfig) window.studioConfig.templateName = data.name;
             const titleEl = document.getElementById('template-title-display');
-            if (titleEl) titleEl.innerText = data.name;
+            if (titleEl) {
+                titleEl.innerText = data.name;
+                titleEl.title = data.name;
+            }
             if (typeof window.studioAlert === 'function') {
                 window.studioAlert("Template renamed successfully.", "Success");
             }

@@ -181,6 +181,7 @@ class BgTemplateService
             $template->getCreatedBy(),
             $template->getCreatedAt()
         );
+        $updated->setRowFilter($template->getRowFilter());
         if ($template->getCanvasJson() !== null) {
             $updated->setCanvasJson($template->getCanvasJson());
         }

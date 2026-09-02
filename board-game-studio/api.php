@@ -29,7 +29,7 @@ $rulebookService = $container->get(BgRulebookService::class);
 $projectService = $container->get(ProjectService::class);
 
 $currentUserId = (int)($_SESSION['user_id'] ?? 0);
-$action = $_GET['action'] ?? '';
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
