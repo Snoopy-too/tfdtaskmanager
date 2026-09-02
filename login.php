@@ -110,10 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </button>
             </form>
         </div>
-        
-        <div class="text-center mt-6 text-xs text-slate-500">
-            <p>Seeded Credentials: admin@tfdtaskmgr.local / AdminPass123!</p>
-        </div>
     </div>
 
 </body>
