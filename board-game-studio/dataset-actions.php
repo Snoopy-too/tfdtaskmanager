@@ -279,6 +279,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Rename Column Action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'rename_dataset_column') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $datasetId = isset($_POST['dataset_id']) ? (int)$_POST['dataset_id'] : 0;
+        $oldName = trim($_POST['old_column_name'] ?? '');
+        $newName = preg_replace('/[^a-zA-Z0-9_\-]/', '', trim($_POST['new_column_name'] ?? ''));
+
+        try {
+            if ($oldName === '' || $newName === '') {
+                throw new \Exception("Invalid column name.");
+            }
+            $dataset = $datasetService->getDatasetById($datasetId);
+            if (!$dataset) {
+                throw new \Exception("Dataset not found.");
+            }
+
+            $columnMap = $dataset->getColumnMap();
+            $colIndex = array_search($oldName, $columnMap, true);
+            if ($colIndex === false) {
+                throw new \Exception("Column '$oldName' not found.");
+            }
+            if ($oldName !== $newName && in_array($newName, $columnMap, true)) {
+                throw new \Exception("Column '$newName' already exists.");
+            }
+
+            // ponytail: in-place rename in columnMap and rowData keys
+            $columnMap[$colIndex] = $newName;
+            $rowData = $dataset->getRowData();
+            if ($oldName !== $newName) {
+                foreach ($rowData as &$row) {
+                    if (array_key_exists($oldName, $row)) {
+                        $row[$newName] = $row[$oldName];
+                        unset($row[$oldName]);
+                    }
+                }
+            }
+
+            $datasetService->updateDataset($datasetId, $dataset->getName(), $columnMap, $rowData);
+            $success = "Column '$oldName' renamed to '$newName'.";
+        } catch (\Exception $e) {
+            $error = "Failed to rename column: " . $e->getMessage();
+        }
+    }
+}
+
+
 // Handle Add Row Action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_dataset_row') {
     $submittedToken = $_POST['csrf_token'] ?? '';

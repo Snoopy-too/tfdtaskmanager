@@ -54,6 +54,14 @@ use App\Infrastructure\Security\SecurityHelper;
                             <input type="hidden" name="column_name" value="">
                             <button type="submit" class="text-xs uppercase font-bold px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl transition">+ Column</button>
                         </form>
+
+                        <form id="form-rename-column" action="" method="POST" class="hidden m-0">
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                            <input type="hidden" name="action" value="rename_dataset_column">
+                            <input type="hidden" name="dataset_id" value="<?php echo $inspectDataset->getId(); ?>">
+                            <input type="hidden" name="old_column_name" value="">
+                            <input type="hidden" name="new_column_name" value="">
+                        </form>
                         
                         <form action="" method="POST" class="m-0">
                             <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
@@ -112,7 +120,22 @@ use App\Infrastructure\Security\SecurityHelper;
                                 <th class="p-3 font-semibold w-12 text-center sticky left-0 top-0 z-30 bg-slate-950 border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.5)]">Row</th>
                                 <?php foreach ($inspectDataset->getColumnMap() as $col): ?>
                                     <th class="p-3 font-semibold relative group pr-6 bg-slate-950">
-                                        <span><?php echo SecurityHelper::escape($col); ?></span>
+                                        <?php if (!$isDatasetLocked): ?>
+                                            <span class="cursor-pointer hover:text-white hover:underline decoration-dotted transition"
+                                                  title="Click to rename column"
+                                                  onclick="window.studioPrompt('Rename column:', '<?php echo SecurityHelper::escape($col); ?>', 'Rename Column').then(n => {
+                                                      if (n && (n = n.trim()) && n !== '<?php echo SecurityHelper::escape($col); ?>') {
+                                                          const f = document.getElementById('form-rename-column');
+                                                          f.elements['old_column_name'].value = '<?php echo SecurityHelper::escape($col); ?>';
+                                                          f.elements['new_column_name'].value = n;
+                                                          f.submit();
+                                                      }
+                                                  });">
+                                                <?php echo SecurityHelper::escape($col); ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span><?php echo SecurityHelper::escape($col); ?></span>
+                                        <?php endif; ?>
                                         <?php if (!$isDatasetLocked): ?>
                                             <form action="" method="POST" class="absolute right-1 top-2.5 m-0 inline" onsubmit="event.preventDefault(); window.studioConfirm('Remove column: <?php echo SecurityHelper::escape($col); ?>? This will delete all cell values for this column.', 'Remove', 'Remove Column').then((confirmed) => { if (confirmed) this.submit(); });">
                                                 <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
