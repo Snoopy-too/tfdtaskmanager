@@ -293,7 +293,7 @@ require_once __DIR__ . '/../templates/header.php';
                     <label for="editor-dataset-select" class="text-xs font-semibold text-slate-300">
                         Dataset:
                     </label>
-                    <select id="editor-dataset-select" onchange="if(window.templateEngine && typeof window.templateEngine.switchDataset === 'function') window.templateEngine.switchDataset(this.value);" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-1.5 focus:ring-indigo-500 focus:border-indigo-500">
+                    <select id="editor-dataset-select" onchange="if(window.templateEngine && typeof window.templateEngine.switchDataset === 'function') window.templateEngine.switchDataset(this.value);" class="bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-1.5 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">No Dataset Bound</option>
                         <?php foreach ($projectDatasets as $ds): ?>
                             <option value="<?php echo $ds->getId(); ?>" <?php echo ($template->getDatasetId() === $ds->getId()) ? 'selected' : ''; ?>>
@@ -303,7 +303,7 @@ require_once __DIR__ . '/../templates/header.php';
                     </select>
                 </div>
 
-                <div id="dataset-filter-container" class="flex items-center space-x-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 <?php echo $dataset ? '' : 'hidden'; ?>">
+                <div id="dataset-filter-container" class="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2 py-1 <?php echo $dataset ? '' : 'hidden'; ?>">
                     <label for="template-row-filter" class="text-xs font-semibold text-slate-400">Rows Filter:</label>
                     <input type="text" id="template-row-filter" 
                            value="<?php echo SecurityHelper::escape($template->getRowFilter() ?? ''); ?>" 
@@ -313,13 +313,13 @@ require_once __DIR__ . '/../templates/header.php';
                 </div>
 
                 <div id="dataset-nav-controls" class="flex items-center space-x-3 <?php echo $dataset ? '' : 'hidden'; ?>">
-                    <button id="btn-row-prev" class="p-1 bg-slate-950 border border-slate-800 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
+                    <button id="btn-row-prev" class="p-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition shadow-sm" title="Previous Row">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     </button>
                     <span id="row-indicator" class="text-xs text-slate-300 font-bold min-w-[70px] text-center">
                         Row 1 of <?php echo $dataset ? count($dataset->getRowData()) : 1; ?>
                     </span>
-                    <button id="btn-row-next" class="p-1 bg-slate-950 border border-slate-800 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
+                    <button id="btn-row-next" class="p-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition shadow-sm" title="Next Row">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>

@@ -23,16 +23,16 @@ use App\Infrastructure\Security\SecurityHelper;
                 <div class="grid grid-cols-3 gap-3">
                     <div class="col-span-1">
                         <label for="prop-canvas-bg" class="block text-xs font-semibold text-slate-400 mb-1">Color</label>
-                        <input type="color" id="prop-canvas-bg" value="#ffffff" class="w-full h-8 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer p-0.5">
+                        <input type="color" id="prop-canvas-bg" value="#ffffff" class="w-full h-8 bg-slate-900 border border-slate-800 rounded-lg cursor-pointer p-0.5">
                     </div>
                     <div class="col-span-2">
                         <label for="prop-canvas-bg-hex" class="block text-xs font-semibold text-slate-400 mb-1">Hex Value</label>
-                        <input type="text" id="prop-canvas-bg-hex" value="#ffffff" placeholder="#ffffff" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 uppercase focus:ring-indigo-500">
+                        <input type="text" id="prop-canvas-bg-hex" value="#ffffff" placeholder="#ffffff" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 uppercase focus:ring-indigo-500">
                     </div>
                 </div>
 
                 <div class="flex items-center space-x-2.5 pt-1">
-                    <input type="checkbox" id="prop-canvas-transparent" class="h-4 w-4 bg-slate-950 border border-slate-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-950 rounded">
+                    <input type="checkbox" id="prop-canvas-transparent" class="h-4 w-4 bg-slate-900 border border-slate-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 rounded">
                     <label for="prop-canvas-transparent" class="text-xs font-medium text-slate-400 cursor-pointer">Transparent Canvas</label>
                 </div>
             </div>
@@ -210,11 +210,11 @@ use App\Infrastructure\Security\SecurityHelper;
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label for="prop-text-color" class="block text-xs font-semibold text-slate-400 mb-1">Font Color</label>
-                        <input type="color" id="prop-text-color" class="w-full h-8 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
+                        <input type="color" id="prop-text-color" class="w-full h-8 bg-slate-900 border border-slate-800 rounded-lg cursor-pointer">
                     </div>
                     <div>
                         <label for="prop-text-align" class="block text-xs font-semibold text-slate-400 mb-1">Align</label>
-                        <select id="prop-text-align" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                        <select id="prop-text-align" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                             <option value="left">Left</option>
                             <option value="center">Center</option>
                             <option value="right">Right</option>
@@ -225,11 +225,11 @@ use App\Infrastructure\Security\SecurityHelper;
 
                 <div>
                     <label class="inline-flex items-center text-xs font-semibold text-slate-400 cursor-pointer">
-                        <input type="checkbox" id="prop-font-bold" class="rounded border-slate-800 text-indigo-600 bg-slate-950 focus:ring-indigo-500 mr-2">
+                        <input type="checkbox" id="prop-font-bold" class="rounded border-slate-800 text-indigo-600 bg-slate-900 focus:ring-indigo-500 mr-2">
                         Bold
                     </label>
                     <label class="inline-flex items-center text-xs font-semibold text-slate-400 cursor-pointer ml-4">
-                        <input type="checkbox" id="prop-font-italic" class="rounded border-slate-800 text-indigo-600 bg-slate-950 focus:ring-indigo-500 mr-2">
+                        <input type="checkbox" id="prop-font-italic" class="rounded border-slate-800 text-indigo-600 bg-slate-900 focus:ring-indigo-500 mr-2">
                         Italic
                     </label>
                 </div>
@@ -240,11 +240,11 @@ use App\Infrastructure\Security\SecurityHelper;
                 <div id="prop-shape-fill-group" class="grid grid-cols-2 gap-3">
                     <div>
                         <label for="prop-fill-color" class="block text-xs font-semibold text-slate-400 mb-1">Fill Color</label>
-                        <input type="color" id="prop-fill-color" class="w-full h-8 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
+                        <input type="color" id="prop-fill-color" class="w-full h-8 bg-slate-900 border border-slate-800 rounded-lg cursor-pointer">
                     </div>
                     <div class="flex items-end pl-2">
                         <label class="inline-flex items-center text-xs font-semibold text-slate-400 cursor-pointer">
-                            <input type="checkbox" id="prop-fill-transparent" class="rounded border-slate-800 text-indigo-600 bg-slate-950 focus:ring-indigo-500 mr-2">
+                            <input type="checkbox" id="prop-fill-transparent" class="rounded border-slate-800 text-indigo-600 bg-slate-900 focus:ring-indigo-500 mr-2">
                             Transparent
                         </label>
                     </div>
@@ -253,7 +253,7 @@ use App\Infrastructure\Security\SecurityHelper;
                 <div id="prop-shape-opacity-group" class="grid grid-cols-2 gap-3">
                     <div>
                         <label for="prop-fill-opacity" class="block text-xs font-semibold text-slate-400 mb-1">Fill Opacity (%)</label>
-                        <input type="number" id="prop-fill-opacity" min="0" max="100" step="5" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                        <input type="number" id="prop-fill-opacity" min="0" max="100" step="5" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                     </div>
                 </div>
 
@@ -261,24 +261,24 @@ use App\Infrastructure\Security\SecurityHelper;
                 <div id="prop-rect-corners-group" class="grid grid-cols-2 gap-3 hidden">
                     <div>
                         <label for="prop-rect-rx" class="block text-xs font-semibold text-slate-400 mb-1">Corner Radius (px)</label>
-                        <input type="number" id="prop-rect-rx" min="0" max="500" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                        <input type="number" id="prop-rect-rx" min="0" max="500" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label for="prop-stroke-color" class="block text-xs font-semibold text-slate-400 mb-1">Stroke Color</label>
-                        <input type="color" id="prop-stroke-color" class="w-full h-8 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
+                        <input type="color" id="prop-stroke-color" class="w-full h-8 bg-slate-900 border border-slate-800 rounded-lg cursor-pointer">
                     </div>
                     <div>
                         <label for="prop-stroke-width" class="block text-xs font-semibold text-slate-400 mb-1">Stroke Width (px)</label>
-                        <input type="number" id="prop-stroke-width" min="0" max="50" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                        <input type="number" id="prop-stroke-width" min="0" max="50" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                     </div>
                 </div>
 
                 <div class="pt-2 border-t border-slate-800/60">
                     <label for="prop-shape-bind" class="block text-xs font-semibold text-slate-400 mb-1">Dataset Visibility / Source Binding</label>
-                    <select id="prop-shape-bind" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
+                    <select id="prop-shape-bind" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2">
                         <option value="">No Binding (Always Visible)</option>
                         <?php if ($dataset): ?>
                             <?php foreach ($dataset->getColumnMap() as $colName): ?>
@@ -293,7 +293,7 @@ use App\Infrastructure\Security\SecurityHelper;
 
             <!-- Image-Specific Properties -->
             <div id="inspector-image-section" class="space-y-3 pb-4 border-b border-slate-800/80 hidden">
-                <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
+                <div class="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
                     <span class="text-slate-400 truncate max-w-[120px]" id="prop-image-filename">No image selected</span>
                     <button type="button" id="btn-inspector-change-image" class="px-2 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition">Change</button>
                 </div>

@@ -279,10 +279,25 @@
                 canvas.renderAll();
             });
 
-            // Small type indicator badge
+            // Small type indicator badge with semantic color coding
             const typeBadge = document.createElement('span');
-            typeBadge.className = 'px-1.5 py-0.5 rounded bg-slate-950 text-[9px] font-bold uppercase tracking-wider text-slate-400 border border-slate-800 shrink-0';
-            typeBadge.textContent = (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') ? 'TXT' : (obj.type === 'image' ? 'IMG' : (obj.type === 'line' ? 'LN' : 'SHP'));
+            let badgeStyle = 'bg-slate-800 text-slate-300 border-slate-700';
+            let typeCode = 'SHP';
+            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                typeCode = 'TXT';
+                badgeStyle = 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30';
+            } else if (obj.type === 'image') {
+                typeCode = 'IMG';
+                badgeStyle = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+            } else if (obj.type === 'line') {
+                typeCode = 'LN';
+                badgeStyle = 'bg-sky-500/15 text-sky-400 border-sky-500/30';
+            } else {
+                typeCode = 'SHP';
+                badgeStyle = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+            }
+            typeBadge.className = `px-1.5 py-0.5 rounded ${badgeStyle} text-[9px] font-bold uppercase tracking-wider border shrink-0`;
+            typeBadge.textContent = typeCode;
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'truncate text-xs font-semibold text-slate-100 flex-1 min-w-0';

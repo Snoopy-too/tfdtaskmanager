@@ -34,7 +34,7 @@ $project = $project ?? null;
             <div class="space-y-3">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Add Rulebook Block</h3>
                 <div class="grid grid-cols-1 gap-2">
-                    <button onclick="addBlock('markdown')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                    <button onclick="addBlock('markdown')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200 shadow-sm">
                         <span class="p-2 rounded-lg bg-amber-500/10 text-amber-400">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
                         </span>
@@ -44,7 +44,7 @@ $project = $project ?? null;
                         </div>
                     </button>
 
-                    <button onclick="addBlock('setup')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                    <button onclick="addBlock('setup')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200 shadow-sm">
                         <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
                         </span>
@@ -54,7 +54,7 @@ $project = $project ?? null;
                         </div>
                     </button>
 
-                    <button onclick="addBlock('component_list')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                    <button onclick="addBlock('component_list')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200 shadow-sm">
                         <span class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
                         </span>
@@ -64,7 +64,7 @@ $project = $project ?? null;
                         </div>
                     </button>
 
-                    <button onclick="addBlock('anatomy')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                    <button onclick="addBlock('anatomy')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200 shadow-sm">
                         <span class="p-2 rounded-lg bg-rose-500/10 text-rose-400">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
                         </span>
@@ -74,7 +74,7 @@ $project = $project ?? null;
                         </div>
                     </button>
 
-                    <button onclick="addBlock('page_break')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200">
+                    <button onclick="addBlock('page_break')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-3 rounded-xl flex items-center space-x-3 transition duration-200 shadow-sm">
                         <span class="p-2 rounded-lg bg-teal-500/10 text-teal-400">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 5h16M4 12h16M4 19h16"/></svg>
                         </span>

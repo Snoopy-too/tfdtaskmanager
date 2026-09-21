@@ -17,18 +17,18 @@ $activeProjectId = $activeProjectId ?? null;
             <input type="hidden" name="type" value="<?php echo SecurityHelper::escape($typeFilter); ?>">
             
             <div class="relative w-full md:max-w-xs">
-                <input type="text" name="search" value="<?php echo SecurityHelper::escape($searchQuery); ?>" placeholder="Search filename or tag..." class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 pl-9 pr-4 py-2">
+                <input type="text" name="search" value="<?php echo SecurityHelper::escape($searchQuery); ?>" placeholder="Search filename or tag..." class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 pl-9 pr-4 py-2">
                 <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
 
             <div class="flex items-center space-x-1.5">
-                <a href="?project_id=<?php echo $activeProjectId; ?>&type=all&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'all' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
+                <a href="?project_id=<?php echo $activeProjectId; ?>&type=all&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'all' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'; ?> transition">
                     All Assets
                 </a>
-                <a href="?project_id=<?php echo $activeProjectId; ?>&type=image&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'image' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
+                <a href="?project_id=<?php echo $activeProjectId; ?>&type=image&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'image' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'; ?> transition">
                     Images
                 </a>
-                <a href="?project_id=<?php echo $activeProjectId; ?>&type=font&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'font' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800/80'; ?> transition">
+                <a href="?project_id=<?php echo $activeProjectId; ?>&type=font&search=<?php echo urlencode($searchQuery); ?>&sort=<?php echo urlencode($sort); ?>" class="px-3 py-1.5 rounded-lg text-xs font-semibold <?php echo $typeFilter === 'font' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'; ?> transition">
                     Fonts
                 </a>
             </div>
@@ -36,11 +36,11 @@ $activeProjectId = $activeProjectId ?? null;
             <!-- Sort Selector -->
             <div class="flex items-center space-x-1.5">
                 <label for="sort-select" class="text-slate-400 text-xs font-medium whitespace-nowrap">Sort:</label>
-                <select id="sort-select" name="sort" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-1 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
-                    <option value="date_desc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'date_desc' ? 'selected' : ''; ?>>Newest First</option>
-                    <option value="date_asc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'date_asc' ? 'selected' : ''; ?>>Oldest First</option>
-                    <option value="name_asc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>Name (A → Z)</option>
-                    <option value="name_desc" class="bg-slate-950 text-slate-100" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Name (Z → A)</option>
+                <select id="sort-select" name="sort" onchange="this.form.submit()" class="bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-1 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
+                    <option value="date_desc" class="bg-slate-900 text-slate-100" <?php echo $sort === 'date_desc' ? 'selected' : ''; ?>>Newest First</option>
+                    <option value="date_asc" class="bg-slate-900 text-slate-100" <?php echo $sort === 'date_asc' ? 'selected' : ''; ?>>Oldest First</option>
+                    <option value="name_asc" class="bg-slate-900 text-slate-100" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>Name (A → Z)</option>
+                    <option value="name_desc" class="bg-slate-900 text-slate-100" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Name (Z → A)</option>
                 </select>
             </div>
             
@@ -55,7 +55,7 @@ $activeProjectId = $activeProjectId ?? null;
         <div id="batch-action-bar" class="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 transition">
             <div class="flex items-center space-x-3">
                 <label class="flex items-center space-x-2 text-xs font-semibold text-slate-200 cursor-pointer select-none">
-                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAllAssets(this)" class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
+                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAllAssets(this)" class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
                     <span>Select All (<span id="selected-count" class="text-indigo-400 font-bold">0</span> / <?php echo count($assets); ?>)</span>
                 </label>
                 <button type="button" onclick="clearAssetSelection()" class="text-[11px] text-slate-400 hover:text-slate-200 underline">Clear</button>
@@ -133,11 +133,11 @@ $activeProjectId = $activeProjectId ?? null;
                 <div class="bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-slate-700 hover:shadow-lg transition group relative" id="asset-card-<?php echo $asset->getId(); ?>">
                     <!-- Checkbox selector -->
                     <label class="absolute top-2.5 left-2.5 z-20 flex items-center justify-center cursor-pointer p-1 rounded-lg bg-slate-900/90 hover:bg-slate-900 border border-slate-700/80 transition shadow select-none" title="Select asset">
-                        <input type="checkbox" name="asset_select" value="<?php echo $asset->getId(); ?>" class="asset-item-checkbox rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer" onchange="updateBatchActionBar()">
+                        <input type="checkbox" name="asset_select" value="<?php echo $asset->getId(); ?>" class="asset-item-checkbox rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer" onchange="updateBatchActionBar()">
                     </label>
 
                     <!-- Preview Box -->
-                    <div class="bg-slate-950 h-44 flex items-center justify-center relative overflow-hidden p-4 border-b border-slate-800/60 group-hover:bg-slate-900/40 transition">
+                    <div class="bg-slate-900/50 h-44 flex items-center justify-center relative overflow-hidden p-4 border-b border-slate-800/60 group-hover:bg-slate-900/70 transition">
                         <?php if ($isImage): ?>
                             <div class="w-full h-full flex items-center justify-center p-2 rounded-xl bg-slate-900/70 border border-slate-800/60 shadow-inner">
                                 <img src="<?php echo $fileUrl; ?>" alt="<?php echo SecurityHelper::escape($asset->getOriginalFilename()); ?>" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300 filter drop-shadow-[0_0_1.5px_rgba(255,255,255,0.75)]" onerror="if(!this.dataset.triedBackup){this.dataset.triedBackup='1';this.src='icons/<?php echo urlencode($asset->getOriginalFilename()); ?>';}">
@@ -182,7 +182,7 @@ $activeProjectId = $activeProjectId ?? null;
                             <input type="hidden" name="action" value="update_tag">
                             <input type="hidden" name="asset_id" value="<?php echo $asset->getId(); ?>">
                             
-                            <input type="text" name="tag" value="<?php echo SecurityHelper::escape($asset->getTag() ?? ''); ?>" placeholder="Add tag [icon]" class="bg-slate-950 border border-slate-800 text-slate-300 text-[11px] rounded-lg px-2 py-1 w-full focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="text" name="tag" value="<?php echo SecurityHelper::escape($asset->getTag() ?? ''); ?>" placeholder="Add tag [icon]" class="bg-slate-900 border border-slate-800 text-slate-300 text-[11px] rounded-lg px-2 py-1 w-full focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
                             <button type="submit" class="p-1 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/5 border border-indigo-500/10 hover:border-indigo-500/30 rounded-lg transition" title="Save tag">
                                 Save
                             </button>
@@ -195,7 +195,14 @@ $activeProjectId = $activeProjectId ?? null;
                                 <input type="hidden" name="action" value="update_asset_project">
                                 <input type="hidden" name="asset_id" value="<?php echo $asset->getId(); ?>">
                                 
-                                <select name="target_project_id" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-300 text-[11px] rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer w-full" title="Change asset scope (Global or assign to a specific project)">
+                                <select name="target_project_id" onchange="this.form.submit()" class="bg-slate-900 border border-slate-800 text-slate-300 text-[11px] rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer w-full" title="Change asset scope (Global or assign to a specific project)">
+                                    <option value="" <?php echo $asset->getProjectId() === null ? 'selected' : ''; ?>>🌐 Global</option>
+                                    <?php foreach ($projects as $p): ?>
+                                        <option value="<?php echo $p->getId(); ?>" <?php echo $asset->getProjectId() === $p->getId() ? 'selected' : ''; ?>>
+                                            📁 <?php echo SecurityHelper::escape($p->getName()); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                                     <option value="" <?php echo $asset->getProjectId() === null ? 'selected' : ''; ?>>🌐 Global</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?php echo $p->getId(); ?>" <?php echo $asset->getProjectId() === $p->getId() ? 'selected' : ''; ?>>

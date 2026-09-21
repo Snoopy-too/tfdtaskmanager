@@ -76,3 +76,23 @@ body.view-only-mode #tab-layers-view .grid {
     box-shadow: 0 0 25px rgba(99, 102, 241, 0.4) !important;
     transition: outline-offset 0.15s ease, box-shadow 0.15s ease;
 }
+
+/* Modern Color Input Swatch Styling */
+input[type="color"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+input[type="color"]::-webkit-color-swatch {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 0.375rem;
+}
+input[type="color"]::-moz-color-swatch {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 0.375rem;
+}

@@ -31,13 +31,13 @@ use App\Infrastructure\Security\SecurityHelper;
 
             <div>
                 <label for="tag" class="block text-sm font-medium text-slate-300 mb-1">Asset Tag (Optional)</label>
-                <input type="text" id="tag" name="tag" placeholder="e.g. icon_health or font_title" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                <input type="text" id="tag" name="tag" placeholder="e.g. icon_health or font_title" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
                 <p class="text-[10px] text-slate-500 mt-1">Tags let you insert dynamic icons via text boxes (e.g. [icon_health]).</p>
             </div>
 
             <?php if ($activeProjectId !== null): ?>
                 <div class="flex items-center space-x-2 py-1">
-                    <input type="checkbox" id="is_global" name="is_global" value="1" class="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
+                    <input type="checkbox" id="is_global" name="is_global" value="1" class="rounded bg-slate-900 border-slate-800 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
                     <label for="is_global" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Make Global (available to all projects)</label>
                 </div>
             <?php endif; ?>
@@ -60,7 +60,7 @@ use App\Infrastructure\Security\SecurityHelper;
         <form action="" method="POST" class="m-0">
             <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
             <input type="hidden" name="action" value="sync_builtin_icons">
-            <button type="submit" class="w-full bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 font-medium text-xs rounded-xl py-2.5 px-4 transition flex items-center justify-center space-x-2 cursor-pointer shadow">
+            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-800 hover:border-slate-700 font-medium text-xs rounded-xl py-2.5 px-4 transition flex items-center justify-center space-x-2 cursor-pointer shadow-sm">
                 <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 <span>Sync / Import Built-in Icons</span>
             </button>
