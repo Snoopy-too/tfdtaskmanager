@@ -105,7 +105,7 @@ require_once __DIR__ . '/../templates/header.php';
 <!-- CSS for Editor Grid -->
 <link rel="stylesheet" href="css/editor.css?v=<?php echo filemtime(__DIR__ . '/css/editor.css'); ?>">
 
-<div class="space-y-4 flex-grow flex flex-col min-h-0">
+<div id="editor-root" class="space-y-3 flex-grow flex flex-col min-h-0 h-full overflow-hidden">
     <?php if ($isViewMode): ?>
         <div class="bg-rose-500/10 border border-rose-500/20 text-rose-450 p-3 rounded-xl text-sm flex items-center justify-between gap-4">
             <div class="flex items-center space-x-2">
@@ -384,6 +384,18 @@ function toggleSidebar(panelId) {
         if (fitBtn) fitBtn.click();
     }, 150);
 }
+
+// Ensure outer layout fits viewport perfectly without page scrolling
+(function() {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+        mainEl.classList.remove('py-8', 'max-w-7xl', 'px-4', 'sm:px-6', 'lg:px-8');
+        mainEl.classList.add('editor-main-layout');
+        if (mainEl.parentElement) {
+            mainEl.parentElement.classList.add('editor-content-wrapper');
+        }
+    }
+})();
 </script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>

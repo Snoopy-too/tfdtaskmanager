@@ -12,7 +12,7 @@ use App\Infrastructure\Security\SecurityHelper;
     </div>
 
     <!-- Content Area -->
-    <div class="flex-grow overflow-y-auto p-3 space-y-3">
+    <div id="left-layers-scroll" class="flex-grow overflow-y-auto p-3 space-y-3 custom-scrollbar">
         
         <!-- Layers Tab View -->
         <div id="tab-layers-view" class="space-y-3">
@@ -53,7 +53,7 @@ use App\Infrastructure\Security\SecurityHelper;
             <!-- Layers list container -->
             <div class="space-y-2">
                 <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Layers Stack (Top-down)</div>
-                <div id="layers-list" class="space-y-1.5 min-h-[200px] border border-dashed border-slate-800/80 rounded-xl p-2 bg-slate-900/40">
+                <div id="layers-list" class="space-y-1.5 min-h-[120px] pb-8 border border-dashed border-slate-800/80 rounded-xl p-2 bg-slate-900/40">
                     <!-- Populated by JS -->
                 </div>
             </div>
