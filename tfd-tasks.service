@@ -1,0 +1,16 @@
+[Unit]
+Description=TFD Tasks Service
+After=network.target
+
+[Service]
+Type=simple
+User=josh
+WorkingDirectory=/var/www/tfd/tasks
+ExecStart=/usr/bin/php -d upload_max_filesize=32M -d post_max_size=32M -d memory_limit=256M -S 127.0.0.1:4003 router.php
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

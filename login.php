@@ -14,7 +14,12 @@ if (SecurityHelper::isLoggedIn()) {
     exit();
 }
 
-$error = '';
+if (!empty($_SESSION['error'])) {
+    $error = (string)$_SESSION['error'];
+    unset($_SESSION['error']);
+} else {
+    $error = '';
+}
 $csrfToken = SecurityHelper::generateCsrfToken();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -29,14 +34,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $authService = $container->get(AuthService::class);
             $user = $authService->login($email, $password);
 
-            session_regenerate_id(true);
+            if ($user->getRole() !== 'super_admin') {
+                $error = 'Access restricted: Task Manager is only available to administrators.';
+            } else {
+                session_regenerate_id(true);
 
-            $_SESSION['user_id'] = $user->getId();
-            $_SESSION['user_name'] = $user->getName();
-            $_SESSION['role'] = $user->getRole();
+                $_SESSION['user_id'] = $user->getId();
+                $_SESSION['user_name'] = $user->getName();
+                $_SESSION['role'] = $user->getRole();
 
-            header('Location: index.php');
-            exit();
+                header('Location: index.php');
+                exit();
+            }
         } catch (ValidationException $e) {
             $error = $e->getMessage();
         }
@@ -49,20 +58,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - TFD Task Manager</title>
+    <!-- Early Universal Theme Initializer to prevent theme flash -->
+    <script>
+    (function() {
+        try {
+            var cookieMatch = document.cookie.match(/(?:^|;\s*)tfd_theme=([^;]+)/);
+            var pref = cookieMatch ? decodeURIComponent(cookieMatch[1]) : (localStorage.getItem('tfd-theme-preference') || localStorage.getItem('tfd-theme') || 'auto');
+            var theme = pref;
+            if (pref === 'auto' || !pref) {
+                theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'arcade';
+            }
+            if (theme === 'dark') theme = 'arcade';
+            document.documentElement.setAttribute('data-theme', theme);
+        } catch(e) {}
+    })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://theflyingdutchmen.games/stylesheets/tfd-nav.css">
+    <link rel="stylesheet" href="css/tasks-theme.css?v=<?php echo file_exists(__DIR__ . '/css/tasks-theme.css') ? filemtime(__DIR__ . '/css/tasks-theme.css') : '1'; ?>">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #0f172a;
         }
     </style>
 </head>
-<body class="text-slate-100 min-h-screen flex items-center justify-center p-4">
+<body class="text-slate-100 min-h-screen flex flex-col">
 
-    <div class="w-full max-w-md">
+    <!-- Shared Top Navigation Bar (Managed by tfd-navbar.js) -->
+    <header id="tfd-navbar" class="tfd-navbar" data-active="tasks"></header>
+
+    <main class="flex-grow flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
         <div class="text-center mb-8">
             <h1 class="text-3xl font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
                 TFD Task Manager
@@ -109,8 +138,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     Sign In
                 </button>
             </form>
+
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-slate-800"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-slate-900 text-slate-400">or</span>
+                </div>
+            </div>
+
+            <?php
+            $host = $_SERVER['HTTP_HOST'] ?? 'tasks.theflyingdutchmen.games';
+            $tfdDomain = (strpos($host, 'theflyingdutchmen.com') !== false) ? 'theflyingdutchmen.com' : 'theflyingdutchmen.games';
+            $oauthUrl = "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=https://tasks.{$tfdDomain}/auth_callback.php&scope=openid%20profile%20email";
+            ?>
+            <a href="<?php echo htmlspecialchars($oauthUrl); ?>" 
+                class="w-full inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-medium py-2.5 rounded-lg border border-slate-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+                <span>🎮</span> Sign in with The Flying Dutchmen
+            </a>
         </div>
     </div>
+    </main>
 
+    <script src="https://theflyingdutchmen.games/javascripts/tfd-navbar.js"></script>
 </body>
 </html>

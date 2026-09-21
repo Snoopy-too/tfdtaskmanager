@@ -16,7 +16,7 @@ class SecurityHelper
                 header("Strict-Transport-Security: max-age=63072000; includeSubDomains; preload");
             }
             
-            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' cdn.tailwindcss.com cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: blob: https://*; connect-src 'self' cdnjs.cloudflare.com;");
+            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' cdn.tailwindcss.com cdnjs.cloudflare.com https://theflyingdutchmen.games; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.jsdelivr.net https://theflyingdutchmen.games; font-src 'self' fonts.gstatic.com cdn.jsdelivr.net https://theflyingdutchmen.games; img-src 'self' data: blob: https:; connect-src 'self' cdnjs.cloudflare.com https://theflyingdutchmen.games https://*.theflyingdutchmen.games;");
         }
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -47,6 +47,9 @@ class SecurityHelper
             exit();
         }
         $_SESSION['last_activity'] = time();
+
+        // Seamless Single Sign-On sync from theflyingdutchmen.games
+        SSOHelper::checkAndSyncSession();
     }
 
     public static function destroySession(): void
@@ -112,6 +115,18 @@ class SecurityHelper
             $inStudio = basename(dirname($_SERVER['PHP_SELF'] ?? '')) === 'board-game-studio';
             $loginPath = ($inStudio ? '../' : '') . 'login.php';
             header('Location: ' . $loginPath);
+            exit();
+        }
+
+        // Restrict Tasks access strictly to administrators
+        if (self::getCurrentUserRole() !== 'super_admin') {
+            http_response_code(403);
+            $templatePath = __DIR__ . '/../../../templates/access_denied.php';
+            if (file_exists($templatePath)) {
+                require $templatePath;
+            } else {
+                echo '<!DOCTYPE html><html><head><title>403 Access Denied</title></head><body style="background:#0f172a;color:#f8fafc;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><h1>403 - Access Denied</h1><p>The Task Manager is restricted to administrators only.</p><p><a href="https://theflyingdutchmen.games/" style="color:#818cf8;">Return to Home</a></p></div></body></html>';
+            }
             exit();
         }
     }

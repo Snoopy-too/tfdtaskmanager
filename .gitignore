@@ -1,5 +1,10 @@
 # Sensitive configurations
 config.php
+config/
+*.sql
+*.sql.gz
+*.tar.gz
+*.zip
 
 # PHP & Local server
 .env

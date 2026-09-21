@@ -139,6 +139,48 @@ declare(strict_types=1);
             <p>&copy; <?php echo date('Y'); ?> TFD Task Manager. Designed for The Flying Dutchmen Studios.</p>
         </div>
     </footer>
+    </div> <!-- Close .flex-1 min-w-0 flex flex-col (content wrapper) -->
+</div> <!-- Close .flex flex-1 min-h-[calc(100vh-48px)] w-full (layout container) -->
 
+    <!-- Mobile Sidebar Drawer Toggle Script -->
+    <script>
+    (function() {
+        const toggleBtn = document.getElementById('tasks-sidebar-toggle');
+        const closeBtn = document.getElementById('tasks-sidebar-close');
+        const sidebar = document.getElementById('tasks-sidebar');
+        const overlay = document.getElementById('tasks-sidebar-overlay');
+
+        function openSidebar() {
+            if (sidebar) sidebar.classList.remove('-translate-x-full');
+            if (overlay) overlay.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden', 'md:overflow-auto');
+        }
+
+        function closeSidebar() {
+            if (sidebar) sidebar.classList.add('-translate-x-full');
+            if (overlay) overlay.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden', 'md:overflow-auto');
+        }
+
+        if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+        if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+        if (overlay) overlay.addEventListener('click', closeSidebar);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                closeSidebar();
+            }
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768 && overlay && !overlay.classList.contains('hidden')) {
+                closeSidebar();
+            }
+        });
+    })();
+    </script>
+
+    <!-- TFD Universal Navigation Script -->
+    <script src="https://theflyingdutchmen.games/javascripts/tfd-navbar.js"></script>
 </body>
 </html>

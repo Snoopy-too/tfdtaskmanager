@@ -1,0 +1,370 @@
+/* ==========================================================================
+   TFD TASKS - UNIVERSAL THEMES INTEGRATION
+   Bridges Tasks with the central TFD theme manager (Arcade, Light, Midnight, Casino)
+   ========================================================================== */
+
+/* Smooth Transition on Theme Switch */
+html.theme-transitioning *,
+html.theme-transitioning *:before,
+html.theme-transitioning *:after {
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+/* ==========================================================================
+   1. GLOBAL BASE & LAYOUT MAPPINGS
+   ========================================================================== */
+
+body,
+.tasks-app-body {
+    background-color: var(--color-background, #090d16) !important;
+    color: var(--color-text, #e2e8f0) !important;
+    min-height: 100vh;
+}
+
+/* Main Content Wrapper */
+[data-theme] .flex-1.min-w-0.bg-slate-950,
+[data-theme] .bg-darkbg,
+[data-theme] body.bg-slate-950 {
+    background-color: var(--color-background, #090d16) !important;
+}
+
+/* Background Atmosphere Gradients */
+[data-theme="arcade"] body {
+    background-image: 
+        radial-gradient(circle at 12% 10%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 88% 90%, rgba(244, 63, 94, 0.05) 0%, transparent 45%);
+    background-attachment: fixed;
+}
+
+[data-theme="light"] body {
+    background-color: #f8fafc !important;
+    background-image: 
+        radial-gradient(circle at 12% 10%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 88% 90%, rgba(124, 58, 237, 0.03) 0%, transparent 45%);
+    background-attachment: fixed;
+}
+
+[data-theme="midnight"] body {
+    background-color: #140d07 !important;
+    background-image: 
+        radial-gradient(circle at 12% 10%, rgba(217, 119, 6, 0.09) 0%, transparent 40%),
+        radial-gradient(circle at 88% 90%, rgba(200, 100, 20, 0.05) 0%, transparent 45%);
+    background-attachment: fixed;
+}
+
+[data-theme="casino"] body {
+    background-color: #062c1b !important;
+    background-image: 
+        radial-gradient(circle at 12% 10%, rgba(16, 185, 129, 0.09) 0%, transparent 40%),
+        radial-gradient(circle at 88% 90%, rgba(245, 158, 11, 0.05) 0%, transparent 45%);
+    background-attachment: fixed;
+}
+
+/* ==========================================================================
+   2. SIDEBAR NAVIGATION THEME STYLES
+   ========================================================================== */
+
+[data-theme] #tasks-sidebar {
+    background-color: var(--sidebar-bg, var(--color-surface, #131b2e)) !important;
+    border-color: var(--sidebar-border, var(--color-border, #243452)) !important;
+}
+
+[data-theme] #tasks-sidebar div,
+[data-theme] #tasks-sidebar aside,
+[data-theme] #tasks-sidebar footer {
+    border-color: var(--color-border, #243452);
+}
+
+[data-theme] #tasks-sidebar .border-slate-800 {
+    border-color: var(--color-border, #243452) !important;
+}
+
+[data-theme] #tasks-sidebar .bg-slate-950\/40,
+[data-theme] #tasks-sidebar .bg-slate-950 {
+    background-color: var(--color-surface-muted, #1e2942) !important;
+}
+
+[data-theme] #tasks-sidebar .bg-slate-900\/80,
+[data-theme] #tasks-sidebar .bg-slate-900 {
+    background-color: var(--color-surface, #131b2e) !important;
+}
+
+[data-theme] #tasks-sidebar a.text-slate-300 {
+    color: var(--color-text, #e2e8f0) !important;
+}
+
+[data-theme] #tasks-sidebar a:hover:not([class*="bg-indigo-600"]) {
+    background-color: var(--color-surface-muted, #1e2942) !important;
+    color: var(--color-heading, #ffffff) !important;
+}
+
+[data-theme] #tasks-sidebar a[class*="bg-indigo-600"] {
+    background-color: var(--color-primary-soft, rgba(99, 102, 241, 0.2)) !important;
+    color: var(--color-primary, #a5b4fc) !important;
+    border-color: var(--color-primary, #6366f1) !important;
+}
+
+[data-theme] #tasks-sidebar .text-slate-400 {
+    color: var(--color-text-muted, #94a3b8) !important;
+}
+
+[data-theme] #tasks-sidebar .text-slate-200 {
+    color: var(--color-heading, #f1f5f9) !important;
+}
+
+/* Mobile Sub-Header */
+[data-theme] .md\:hidden.sticky {
+    background-color: var(--color-surface, #131b2e) !important;
+    border-color: var(--color-border, #243452) !important;
+}
+
+/* Custom Sleek Scrollbar */
+#tasks-sidebar nav::-webkit-scrollbar,
+.tasks-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+#tasks-sidebar nav::-webkit-scrollbar-track,
+.tasks-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+#tasks-sidebar nav::-webkit-scrollbar-thumb,
+.tasks-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong, rgba(148, 163, 184, 0.3));
+    border-radius: 4px;
+}
+#tasks-sidebar nav::-webkit-scrollbar-thumb:hover,
+.tasks-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary, #06b6d4);
+}
+
+/* ==========================================================================
+   3. SURFACES, CARDS & CONTAINERS
+   ========================================================================== */
+
+[data-theme] .bg-slate-900,
+[data-theme] .bg-cardbg,
+[data-theme] [class*="bg-slate-900/"] {
+    background-color: var(--color-surface, #131b2e) !important;
+}
+
+[data-theme] .bg-slate-800,
+[data-theme] [class*="bg-slate-800/"] {
+    background-color: var(--color-surface-muted, #1e2942) !important;
+}
+
+[data-theme] .border-slate-800,
+[data-theme] [class*="border-slate-800/"],
+[data-theme] .border-slate-700 {
+    border-color: var(--color-border, #243452) !important;
+}
+
+/* Light Theme Card Shadows for Depth */
+[data-theme="light"] .bg-slate-900,
+[data-theme="light"] [class*="bg-slate-900/"] {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .bg-slate-800,
+[data-theme="light"] [class*="bg-slate-800/"] {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================================================================
+   4. TYPOGRAPHY & HEADINGS
+   ========================================================================== */
+
+[data-theme] h1,
+[data-theme] h2,
+[data-theme] h3,
+[data-theme] h4,
+[data-theme] h5,
+[data-theme] .text-slate-100,
+[data-theme] .text-slate-200 {
+    color: var(--color-heading, #ffffff) !important;
+}
+
+[data-theme] .text-slate-300 {
+    color: var(--color-text, #e2e8f0) !important;
+}
+
+[data-theme] .text-slate-400 {
+    color: var(--color-text-muted, #94a3b8) !important;
+}
+
+[data-theme] .text-slate-500 {
+    color: var(--color-text-soft, #64748b) !important;
+}
+
+/* Neutral white text adaptation for Light Theme */
+[data-theme="light"] .text-white:not(button):not(.text-white-force) {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .hover\:text-white:hover {
+    color: #0f172a !important;
+}
+
+/* ==========================================================================
+   5. BRAND & GRADIENTS PER THEME
+   ========================================================================== */
+
+[data-theme="arcade"] .bg-gradient-to-r.from-indigo-400 {
+    background-image: linear-gradient(to right, #22d3ee, #06b6d4, #f43f5e) !important;
+}
+
+[data-theme="light"] .bg-gradient-to-r.from-indigo-400 {
+    background-image: linear-gradient(to right, #4f46e5, #7c3aed) !important;
+}
+
+[data-theme="midnight"] .bg-gradient-to-r.from-indigo-400 {
+    background-image: linear-gradient(to right, #fbbf24, #d97706, #c86414) !important;
+}
+
+[data-theme="casino"] .bg-gradient-to-r.from-indigo-400 {
+    background-image: linear-gradient(to right, #fbbf24, #10b981, #059669) !important;
+}
+
+/* Primary text & icons */
+[data-theme] .text-indigo-400,
+[data-theme] .text-indigo-300,
+[data-theme] .text-indigo-500 {
+    color: var(--color-primary, #6366f1) !important;
+}
+
+[data-theme] [class*="text-indigo-400"] i,
+[data-theme] [class*="text-indigo-400"] svg {
+    color: var(--color-primary, #6366f1) !important;
+}
+
+/* Primary soft backgrounds */
+[data-theme] [class*="bg-indigo-600/"],
+[data-theme] [class*="bg-indigo-500/"] {
+    background-color: var(--color-primary-soft, rgba(99, 102, 241, 0.18)) !important;
+}
+
+[data-theme] [class*="border-indigo-500/"],
+[data-theme] [class*="border-indigo-600/"] {
+    border-color: var(--color-primary-muted, var(--color-primary)) !important;
+}
+
+/* ==========================================================================
+   6. BUTTONS & ACTIONS
+   ========================================================================== */
+
+/* Primary CTA Buttons */
+[data-theme] .bg-indigo-600,
+[data-theme] button.bg-indigo-600,
+[data-theme] a.bg-indigo-600 {
+    background-color: var(--color-primary, #4f46e5) !important;
+    color: var(--color-primary-contrast, #ffffff) !important;
+    border-color: var(--color-primary-strong, #4338ca) !important;
+}
+
+[data-theme] .bg-indigo-600:hover,
+[data-theme] .hover\:bg-indigo-500:hover,
+[data-theme] button.bg-indigo-600:hover,
+[data-theme] a.bg-indigo-600:hover {
+    background-color: var(--color-primary-strong, #4338ca) !important;
+    color: var(--color-primary-contrast, #ffffff) !important;
+}
+
+/* Secondary Buttons */
+[data-theme] .bg-slate-800,
+[data-theme] button.bg-slate-800,
+[data-theme] a.bg-slate-800 {
+    background-color: var(--color-surface-muted, #1e2942) !important;
+    border-color: var(--color-border, #243452) !important;
+    color: var(--color-text, #e2e8f0) !important;
+}
+
+[data-theme] .bg-slate-800:hover,
+[data-theme] .hover\:bg-slate-700:hover {
+    background-color: var(--color-border, #243452) !important;
+    color: var(--color-heading, #ffffff) !important;
+}
+
+/* ==========================================================================
+   7. FORM CONTROLS (Inputs, Selects, Textareas)
+   ========================================================================== */
+
+[data-theme] input[type="text"],
+[data-theme] input[type="email"],
+[data-theme] input[type="password"],
+[data-theme] input[type="number"],
+[data-theme] input[type="search"],
+[data-theme] select,
+[data-theme] textarea {
+    background-color: var(--color-surface-alt, var(--color-surface-muted, #1e2942)) !important;
+    border: 1px solid var(--color-border-strong, var(--color-border, #33476e)) !important;
+    color: var(--color-text, #e2e8f0) !important;
+}
+
+[data-theme] input::placeholder,
+[data-theme] textarea::placeholder {
+    color: var(--color-text-soft, #64748b) !important;
+}
+
+[data-theme] select option {
+    background-color: var(--color-surface, #131b2e);
+    color: var(--color-text, #e2e8f0);
+}
+
+[data-theme] input:focus,
+[data-theme] select:focus,
+[data-theme] textarea:focus {
+    border-color: var(--color-primary, #6366f1) !important;
+    box-shadow: 0 0 0 2px var(--color-primary-soft, rgba(99, 102, 241, 0.25)) !important;
+    outline: none !important;
+}
+
+/* ==========================================================================
+   8. MODALS & DIALOGS
+   ========================================================================== */
+
+[data-theme] #global_confirm_modal > div,
+[data-theme] #global_alert_modal > div,
+[data-theme] #global_prompt_modal > div,
+[data-theme] [id*="modal"] > div {
+    background-color: var(--color-surface, #131b2e) !important;
+    border-color: var(--color-border, #243452) !important;
+    color: var(--color-text, #e2e8f0) !important;
+}
+
+/* ==========================================================================
+   9. KANBAN BOARD & TASK CARDS
+   ========================================================================== */
+
+[data-theme] .kanban-column,
+[data-theme] .space-y-4 > .bg-slate-900\/50,
+[data-theme] .space-y-4 > .bg-slate-900 {
+    background-color: var(--color-surface, #131b2e) !important;
+    border-color: var(--color-border, #243452) !important;
+}
+
+/* Task Cards inside columns */
+[data-theme] .task-card,
+[data-theme] [id^="task-card-"],
+[data-theme] a.block.bg-slate-900,
+[data-theme] a.block[class*="bg-slate-900/"],
+[data-theme] div.bg-slate-900\/80 {
+    background-color: var(--color-surface-muted, #1e2942) !important;
+    border-color: var(--color-border, #243452) !important;
+}
+
+[data-theme] .task-card:hover,
+[data-theme] [id^="task-card-"]:hover,
+[data-theme] a.block.bg-slate-900:hover {
+    border-color: var(--color-primary, #6366f1) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* ==========================================================================
+   10. FOOTER
+   ========================================================================== */
+
+[data-theme] footer.bg-slate-900,
+[data-theme] footer {
+    background-color: var(--color-surface, #131b2e) !important;
+    border-color: var(--color-border, #243452) !important;
+    color: var(--color-text-muted, #94a3b8) !important;
+}
