@@ -9,7 +9,7 @@ header.sticky, footer {
 }
 
 /* Constrain editor outer flex containers to available screen height (100vh - 48px navbar) */
-body:has(#editor-root) .flex.flex-1,
+body:has(#editor-root) > .flex.flex-1,
 .editor-content-wrapper {
     height: calc(100vh - 48px) !important;
     height: calc(100dvh - 48px) !important;
