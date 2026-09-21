@@ -1,6 +1,9 @@
 # Sensitive configurations
 config.php
-config/
+config/*
+!config/EXAMPLE.env.deploy
+config/.env.deploy
+.env.deploy
 *.sql
 *.sql.gz
 *.tar.gz
