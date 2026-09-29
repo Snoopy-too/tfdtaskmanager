@@ -106,14 +106,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $currentUserId = (int)($_SESSION['user_id'] ?? 0);
 
         $boxParams = [
-            'box_type'         => $_POST['box_type'] ?? 'double_wall_tray',
-            'box_part'         => $_POST['box_part'] ?? 'base',
-            'box_width_mm'     => isset($_POST['box_width_mm']) ? (float)$_POST['box_width_mm'] : 120.0,
-            'box_length_mm'    => isset($_POST['box_length_mm']) ? (float)$_POST['box_length_mm'] : 160.0,
-            'box_height_mm'    => isset($_POST['box_height_mm']) ? (float)$_POST['box_height_mm'] : 40.0,
-            'box_clearance_mm' => isset($_POST['box_clearance_mm']) ? (float)$_POST['box_clearance_mm'] : 1.5,
-            'box_show_labels'  => isset($_POST['box_show_labels']) && $_POST['box_show_labels'] === '1',
-            'box_fill_style'   => $_POST['box_fill_style'] ?? 'stencil',
+            'box_type'            => $_POST['box_type'] ?? 'double_wall_tray',
+            'box_part'            => $_POST['box_part'] ?? 'base',
+            'box_width_mm'        => isset($_POST['box_width_mm']) ? (float)$_POST['box_width_mm'] : 120.0,
+            'box_length_mm'       => isset($_POST['box_length_mm']) ? (float)$_POST['box_length_mm'] : 160.0,
+            'box_height_mm'       => isset($_POST['box_height_mm']) ? (float)$_POST['box_height_mm'] : 40.0,
+            'box_stock_mm'        => isset($_POST['box_stock_mm']) ? (float)$_POST['box_stock_mm'] : 0.6,
+            'box_lid_height_mode' => $_POST['box_lid_height_mode'] ?? 'full_coverage',
+            'box_clearance_mm'    => isset($_POST['box_clearance_mm']) && $_POST['box_clearance_mm'] !== '' ? (float)$_POST['box_clearance_mm'] : null,
+            'box_show_labels'     => isset($_POST['box_show_labels']) && $_POST['box_show_labels'] === '1',
+            'box_fill_style'      => $_POST['box_fill_style'] ?? 'stencil',
         ];
 
         try {

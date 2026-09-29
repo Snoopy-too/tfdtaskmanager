@@ -21,6 +21,41 @@ class BgBoxDielineService
     public const PART_LID  = 'lid';
     public const PART_PAIR = 'pair';
 
+    public const LID_HEIGHT_FULL  = 'full_coverage';
+    public const LID_HEIGHT_THUMB = 'thumb_reveal';
+    public const LID_HEIGHT_EXACT = 'exact';
+
+    /**
+     * Calculates the recommended horizontal Lid clearance per side (in mm)
+     * based on the box wall fold structure and cardboard stock caliper (t).
+     */
+    public static function calculateRecommendedClearance(string $boxType, float $stockThicknessMm): float
+    {
+        if ($boxType === self::TYPE_DOUBLE_WALL_TRAY) {
+            return round(($stockThicknessMm * 2.5) + 0.2, 1);
+        }
+        if ($boxType === self::TYPE_ROLL_END_TRAY) {
+            return round(($stockThicknessMm * 2.2) + 0.2, 1);
+        }
+        return round(($stockThicknessMm * 1.5) + 0.2, 1);
+    }
+
+    /**
+     * Calculates the effective vertical wall height (H) for a telescoping Top Lid
+     * so its side walls compensate for floor + rollover ceiling thickness (+3t)
+     * and reach the bottom of the base without falling short.
+     */
+    public static function calculateLidEffectiveHeight(float $baseH, float $stockThicknessMm, string $lidHeightMode): float
+    {
+        if ($lidHeightMode === self::LID_HEIGHT_EXACT) {
+            return round($baseH, 1);
+        }
+        if ($lidHeightMode === self::LID_HEIGHT_THUMB) {
+            return max(8.0, round($baseH + (3.0 * $stockThicknessMm) - 3.0, 1));
+        }
+        return round($baseH + (3.0 * $stockThicknessMm), 1);
+    }
+
     /**
      * Returns metadata for all supported box types ordered by sturdiness.
      *
@@ -70,6 +105,8 @@ class BgBoxDielineService
      *   widthMm: float,
      *   lengthMm: float,
      *   heightMm: float,
+     *   stockThicknessMm: float,
+     *   lidHeightMode: string,
      *   clearanceMm: float,
      *   showLabels: bool,
      *   fillStyle: string
@@ -91,7 +128,22 @@ class BgBoxDielineService
         $widthMm = isset($params['box_width_mm']) ? (float)$params['box_width_mm'] : 120.0;
         $lengthMm = isset($params['box_length_mm']) ? (float)$params['box_length_mm'] : 160.0;
         $heightMm = isset($params['box_height_mm']) ? (float)$params['box_height_mm'] : 40.0;
-        $clearanceMm = isset($params['box_clearance_mm']) ? (float)$params['box_clearance_mm'] : 1.5;
+        $stockThicknessMm = isset($params['box_stock_mm']) && $params['box_stock_mm'] !== ''
+            ? (float)$params['box_stock_mm']
+            : 0.6;
+
+        if ($stockThicknessMm < 0.1 || $stockThicknessMm > 10.0) {
+            throw new ValidationException('Cardboard / Stock Thickness must be between 0.1 mm and 10.0 mm.');
+        }
+
+        $lidHeightMode = isset($params['box_lid_height_mode']) ? trim((string)$params['box_lid_height_mode']) : self::LID_HEIGHT_FULL;
+        if (!in_array($lidHeightMode, [self::LID_HEIGHT_FULL, self::LID_HEIGHT_THUMB, self::LID_HEIGHT_EXACT], true)) {
+            $lidHeightMode = self::LID_HEIGHT_FULL;
+        }
+
+        $clearanceMm = isset($params['box_clearance_mm']) && $params['box_clearance_mm'] !== ''
+            ? (float)$params['box_clearance_mm']
+            : self::calculateRecommendedClearance($boxType, $stockThicknessMm);
 
         if ($widthMm < 15.0 || $widthMm > 1000.0) {
             throw new ValidationException('Finished Box Width must be between 15 mm and 1000 mm.');
@@ -102,8 +154,8 @@ class BgBoxDielineService
         if ($heightMm < 8.0 || $heightMm > 500.0) {
             throw new ValidationException('Finished Box Height/Depth must be between 8 mm and 500 mm.');
         }
-        if ($clearanceMm < 0.0 || $clearanceMm > 15.0) {
-            throw new ValidationException('Cardboard Lid Clearance must be between 0 mm and 15 mm.');
+        if ($clearanceMm < 0.0 || $clearanceMm > 25.0) {
+            throw new ValidationException('Cardboard Lid Clearance must be between 0 mm and 25 mm.');
         }
 
         $showLabels = !isset($params['box_show_labels']) || (bool)$params['box_show_labels'];
@@ -112,14 +164,16 @@ class BgBoxDielineService
             : 'stencil';
 
         return [
-            'boxType'     => $boxType,
-            'boxPart'     => $boxPart,
-            'widthMm'     => round($widthMm, 1),
-            'lengthMm'    => round($lengthMm, 1),
-            'heightMm'    => round($heightMm, 1),
-            'clearanceMm' => round($clearanceMm, 1),
-            'showLabels'  => $showLabels,
-            'fillStyle'   => $fillStyle,
+            'boxType'          => $boxType,
+            'boxPart'          => $boxPart,
+            'widthMm'          => round($widthMm, 1),
+            'lengthMm'         => round($lengthMm, 1),
+            'heightMm'         => round($heightMm, 1),
+            'stockThicknessMm' => round($stockThicknessMm, 2),
+            'lidHeightMode'    => $lidHeightMode,
+            'clearanceMm'      => round($clearanceMm, 1),
+            'showLabels'       => $showLabels,
+            'fillStyle'        => $fillStyle,
         ];
     }
 
@@ -137,23 +191,26 @@ class BgBoxDielineService
         $baseW = (float)($config['widthMm'] ?? 120.0);
         $baseL = (float)($config['lengthMm'] ?? 160.0);
         $baseH = (float)($config['heightMm'] ?? 40.0);
-        $clearance = (float)($config['clearanceMm'] ?? 1.5);
+        $stockMm = (float)($config['stockThicknessMm'] ?? 0.6);
+        $lidHeightMode = (string)($config['lidHeightMode'] ?? self::LID_HEIGHT_FULL);
+        $clearance = (float)($config['clearanceMm'] ?? self::calculateRecommendedClearance($boxType, $stockMm));
 
         // If generating a telescoping Lid for a tray, add 2 * clearance to Width and Length
+        // and compensate vertical Lid height (+3t) so the Lid sides reach the bottom of the Base.
         $isLid = ($piece === self::PART_LID && $boxType !== self::TYPE_TUCK_TOP_BOX);
         $W = $isLid ? round($baseW + ($clearance * 2.0), 1) : $baseW;
         $L = $isLid ? round($baseL + ($clearance * 2.0), 1) : $baseL;
-        $H = $baseH;
+        $H = $isLid ? self::calculateLidEffectiveHeight($baseH, $stockMm, $lidHeightMode) : $baseH;
 
         $padMm = 6.0; // Outer safety padding around cut line on canvas
 
         if ($boxType === self::TYPE_DOUBLE_WALL_TRAY) {
             $flapH = round($H * 0.75, 1);
-            $shoulder = round(min(4.0, max(2.0, $H * 0.08)), 1);
+            $shoulder = round(max(1.2, min(12.0, $stockMm * 2.2)), 1);
             $flatWidthMm = round($W + (4.0 * $H) + (2.0 * $shoulder) + (2.0 * $padMm), 1);
             $flatHeightMm = round($L + (2.0 * $H) + (2.0 * $flapH) + (2.0 * $padMm), 1);
         } elseif ($boxType === self::TYPE_ROLL_END_TRAY) {
-            $shoulder = round(min(3.5, max(1.5, $H * 0.07)), 1);
+            $shoulder = round(max(1.2, min(10.0, $stockMm * 2.0)), 1);
             $flatWidthMm = round($W + (4.0 * $H) + (2.0 * $shoulder) + (2.0 * $padMm), 1);
             $flatHeightMm = round($L + (2.0 * $H) + (2.0 * $padMm), 1);
             $flapH = 0.0;
@@ -176,24 +233,26 @@ class BgBoxDielineService
         $heightPx = BgTemplate::mmToPx($flatHeightMm, 300);
 
         return [
-            'boxType'       => $boxType,
-            'piece'         => $isLid ? self::PART_LID : self::PART_BASE,
-            'finishedW'     => $baseW,
-            'finishedL'     => $baseL,
-            'finishedH'     => $baseH,
-            'effectiveW'    => $W,
-            'effectiveL'    => $L,
-            'effectiveH'    => $H,
-            'clearanceMm'   => $clearance,
-            'padMm'         => $padMm,
-            'flapHMm'       => $flapH,
-            'shoulderMm'    => $shoulder,
-            'flatWidthMm'   => $flatWidthMm,
-            'flatHeightMm'  => $flatHeightMm,
-            'canvasWidthPx' => $widthPx,
-            'canvasHeightPx'=> $heightPx,
-            'showLabels'    => (bool)($config['showLabels'] ?? true),
-            'fillStyle'     => (string)($config['fillStyle'] ?? 'stencil'),
+            'boxType'               => $boxType,
+            'piece'                 => $isLid ? self::PART_LID : self::PART_BASE,
+            'finishedW'             => $baseW,
+            'finishedL'             => $baseL,
+            'finishedH'             => $baseH,
+            'effectiveW'            => $W,
+            'effectiveL'            => $L,
+            'effectiveH'            => $H,
+            'stockThicknessMm'      => $stockMm,
+            'lidHeightMode'         => $lidHeightMode,
+            'clearanceMm'           => $clearance,
+            'padMm'                 => $padMm,
+            'flapHMm'               => $flapH,
+            'shoulderMm'            => $shoulder,
+            'flatWidthMm'           => $flatWidthMm,
+            'flatHeightMm'          => $flatHeightMm,
+            'canvasWidthPx'         => $widthPx,
+            'canvasHeightPx'        => $heightPx,
+            'showLabels'            => (bool)($config['showLabels'] ?? true),
+            'fillStyle'             => (string)($config['fillStyle'] ?? 'stencil'),
             'companionTemplateId'   => isset($config['companionTemplateId']) ? (int)$config['companionTemplateId'] : null,
             'companionTemplateName' => isset($config['companionTemplateName']) ? (string)$config['companionTemplateName'] : null,
         ];
@@ -214,6 +273,7 @@ class BgBoxDielineService
         $W = (float)$geom['effectiveW'];
         $L = (float)$geom['effectiveL'];
         $H = (float)$geom['effectiveH'];
+        $stockMm = (float)($geom['stockThicknessMm'] ?? 0.6);
         $pad = (float)$geom['padMm'];
         $flapH = (float)$geom['flapHMm'];
         $shoulder = (float)$geom['shoulderMm'];
@@ -224,7 +284,7 @@ class BgBoxDielineService
         $foldPathStr = '';
         $labels = [];
 
-        $slotMm = max(1.2, min(2.2, round($H * 0.04, 2)));
+        $slotMm = max(1.0, min(8.0, round($stockMm * 1.25, 2)));
         $halfSlot = $slotMm / 2.0;
 
         if ($boxType === self::TYPE_DOUBLE_WALL_TRAY) {

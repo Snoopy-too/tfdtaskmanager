@@ -40,7 +40,7 @@ use App\Infrastructure\Security\SecurityHelper;
 
             <div>
                 <label for="box_type" class="block text-xs font-semibold text-slate-300 mb-1">Box Type (by Sturdiness)</label>
-                <select id="box_type" name="box_type" onchange="updateDimensionsPreview()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2">
+                <select id="box_type" name="box_type" onchange="autoCalibrateSidebarClearance()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2">
                     <option value="double_wall_tray" selected>⭐⭐⭐⭐⭐ Heavy-Duty Double-Wall Tray (Image Style)</option>
                     <option value="roll_end_tray">⭐⭐⭐⭐ Standard Roll-End Tuck Tray (Self-Locking)</option>
                     <option value="tuck_top_box">⭐⭐⭐ One-Piece Hinged Tuck-Top Box (All-in-One)</option>
@@ -75,10 +75,45 @@ use App\Infrastructure\Security\SecurityHelper;
                 </div>
             </div>
 
+            <!-- Cardboard / Stock Thickness (t) & Calibration -->
+            <div class="p-2.5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-2.5">
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                        <label for="box_stock_preset" class="block text-[11px] font-semibold text-amber-300 mb-1">Cardboard / Stock Material</label>
+                        <select id="box_stock_preset" onchange="handleBoxStockPresetChange()" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:ring-indigo-500">
+                            <option value="0.4">Heavy Cardstock 300–350gsm (0.4 mm)</option>
+                            <option value="0.6" selected>Thick Paperboard / Carton (0.6 mm)</option>
+                            <option value="1.0">Rigid Chipboard / Greyboard (1.0 mm)</option>
+                            <option value="1.6">E-Flute Micro-Corrugated Tray (1.6 mm)</option>
+                            <option value="2.8">B-Flute Corrugated Cardboard (2.8 mm)</option>
+                            <option value="custom">Custom Stock Thickness (mm)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="box_stock_mm" class="block text-[11px] font-medium text-slate-300 mb-1" title="Thickness (caliper t) of a single sheet of your cardboard stock">Stock t (mm)</label>
+                        <input type="number" id="box_stock_mm" name="box_stock_mm" min="0.1" max="10" step="0.05" value="0.6" oninput="handleBoxStockInputChange()" class="w-full bg-slate-950 border border-slate-800 text-amber-300 font-mono text-xs rounded-lg p-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div id="box_lid_fit_section" class="space-y-2 pt-1 border-t border-slate-800/80">
+                    <div>
+                        <label for="box_lid_height_mode" class="block text-[11px] font-medium text-slate-300 mb-1">Top Lid Vertical Wall Coverage</label>
+                        <select id="box_lid_height_mode" name="box_lid_height_mode" onchange="updateDimensionsPreview()" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:ring-indigo-500">
+                            <option value="full_coverage" selected>Full Side Coverage — Flush to Bottom (Auto +3t Height)</option>
+                            <option value="thumb_reveal">Thumb-Grip Reveal — 3mm Bottom Gap for Easy Opening</option>
+                            <option value="exact">Uncompensated — Exact Same Wall Height H as Base</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-2.5">
                 <div id="box_clearance_wrap">
-                    <label for="box_clearance_mm" class="block text-[11px] font-medium text-slate-300 mb-1" title="Cardboard thickness allowance per side for Telescoping Lid">Lid Clearance (mm)</label>
-                    <input type="number" id="box_clearance_mm" name="box_clearance_mm" min="0" max="15" step="0.5" value="1.5" oninput="updateDimensionsPreview()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:ring-indigo-500">
+                    <label for="box_clearance_mm" class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center justify-between" title="Horizontal clearance added per side to the Top Lid so it slides snugly over the folded Base walls">
+                        <span>Lid Clearance / Side</span>
+                        <button type="button" onclick="autoCalibrateSidebarClearance()" class="text-[10px] text-indigo-400 hover:text-indigo-300 underline">Auto</button>
+                    </label>
+                    <input type="number" id="box_clearance_mm" name="box_clearance_mm" min="0" max="25" step="0.1" value="1.7" oninput="updateDimensionsPreview()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:ring-indigo-500">
                 </div>
                 <div>
                     <label for="box_fill_style" class="block text-[11px] font-medium text-slate-300 mb-1">Canvas Base Fill</label>
@@ -94,7 +129,7 @@ use App\Infrastructure\Security\SecurityHelper;
                 <label for="box_show_labels" class="text-xs text-slate-300 cursor-pointer select-none">Show panel labels &amp; dimensions on canvas</label>
             </div>
 
-            <div id="box_sheet_estimate" class="text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg">
+            <div id="box_sheet_estimate" class="text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg space-y-0.5">
                 Unfolded flat template ready for A4 / A5 single or multi-sheet printing.
             </div>
         </div>
@@ -166,20 +201,67 @@ use App\Infrastructure\Security\SecurityHelper;
                 return Math.round((mm / 25.4) * 300);
             }
 
-            function calculateFlatBoxSize(boxType, part, baseW, baseL, H, clearance) {
+            function getRecommendedClearance(boxType, stockMm) {
+                if (boxType === 'double_wall_tray') return +(stockMm * 2.5 + 0.2).toFixed(1);
+                if (boxType === 'roll_end_tray') return +(stockMm * 2.2 + 0.2).toFixed(1);
+                return +(stockMm * 1.5 + 0.2).toFixed(1);
+            }
+
+            function getEffectiveLidHeight(baseH, stockMm, lidHeightMode) {
+                if (lidHeightMode === 'exact') return +baseH.toFixed(1);
+                if (lidHeightMode === 'thumb_reveal') return +Math.max(8.0, baseH + 3.0 * stockMm - 3.0).toFixed(1);
+                return +(baseH + 3.0 * stockMm).toFixed(1);
+            }
+
+            function handleBoxStockPresetChange() {
+                const presetEl = document.getElementById('box_stock_preset');
+                const stockInput = document.getElementById('box_stock_mm');
+                if (!presetEl || !stockInput) return;
+                if (presetEl.value !== 'custom') {
+                    stockInput.value = presetEl.value;
+                    autoCalibrateSidebarClearance();
+                }
+                updateDimensionsPreview();
+            }
+
+            function handleBoxStockInputChange() {
+                const presetEl = document.getElementById('box_stock_preset');
+                const stockInput = document.getElementById('box_stock_mm');
+                if (presetEl && stockInput) {
+                    const val = parseFloat(stockInput.value);
+                    const match = Array.from(presetEl.options).find(o => o.value !== 'custom' && Math.abs(parseFloat(o.value) - val) < 0.01);
+                    presetEl.value = match ? match.value : 'custom';
+                }
+                autoCalibrateSidebarClearance();
+                updateDimensionsPreview();
+            }
+
+            function autoCalibrateSidebarClearance() {
+                const boxType = document.getElementById('box_type')?.value || 'double_wall_tray';
+                const stockMm = parseFloat(document.getElementById('box_stock_mm')?.value) || 0.6;
+                const clearEl = document.getElementById('box_clearance_mm');
+                if (clearEl) {
+                    clearEl.value = String(getRecommendedClearance(boxType, stockMm));
+                }
+                updateDimensionsPreview();
+            }
+
+            function calculateFlatBoxSize(boxType, part, baseW, baseL, baseH, clearance, stockMm, lidHeightMode) {
+                const t = stockMm || 0.6;
                 const isLid = (part === 'lid' && boxType !== 'tuck_top_box');
                 const W = isLid ? +(baseW + clearance * 2).toFixed(1) : baseW;
                 const L = isLid ? +(baseL + clearance * 2).toFixed(1) : baseL;
+                const H = isLid ? getEffectiveLidHeight(baseH, t, lidHeightMode || 'full_coverage') : baseH;
                 const pad = 6.0;
-                let flatW = 0, flatH = 0;
+                let flatW = 0, flatH = 0, shoulder = 0;
 
                 if (boxType === 'double_wall_tray') {
                     const flapH = +(H * 0.75).toFixed(1);
-                    const shoulder = +(Math.min(4.0, Math.max(2.0, H * 0.08))).toFixed(1);
+                    shoulder = +(Math.min(12.0, Math.max(1.2, t * 2.2))).toFixed(1);
                     flatW = +(W + 4 * H + 2 * shoulder + 2 * pad).toFixed(1);
                     flatH = +(L + 2 * H + 2 * flapH + 2 * pad).toFixed(1);
                 } else if (boxType === 'roll_end_tray') {
-                    const shoulder = +(Math.min(3.5, Math.max(1.5, H * 0.07))).toFixed(1);
+                    shoulder = +(Math.min(10.0, Math.max(1.2, t * 2.0))).toFixed(1);
                     flatW = +(W + 4 * H + 2 * shoulder + 2 * pad).toFixed(1);
                     flatH = +(L + 2 * H + 2 * pad).toFixed(1);
                 } else if (boxType === 'tuck_top_box') {
@@ -191,7 +273,7 @@ use App\Infrastructure\Security\SecurityHelper;
                     flatW = +(W + 2 * H + 2 * pad).toFixed(1);
                     flatH = +(L + 2 * H + 2 * pad).toFixed(1);
                 }
-                return { flatW, flatH, effW: W, effL: L };
+                return { flatW, flatH, effW: W, effL: L, effH: H, shoulder };
             }
 
             function estimateSheetsNeeded(flatW, flatH, pageW, pageH) {
@@ -265,7 +347,9 @@ use App\Infrastructure\Security\SecurityHelper;
                     const bw = parseFloat(document.getElementById('box_width_mm')?.value) || 120;
                     const bl = parseFloat(document.getElementById('box_length_mm')?.value) || 160;
                     const bh = parseFloat(document.getElementById('box_height_mm')?.value) || 40;
-                    const bc = parseFloat(document.getElementById('box_clearance_mm')?.value) || 1.5;
+                    const stockMm = parseFloat(document.getElementById('box_stock_mm')?.value) || 0.6;
+                    const lidHeightMode = document.getElementById('box_lid_height_mode')?.value || 'full_coverage';
+                    const bc = parseFloat(document.getElementById('box_clearance_mm')?.value) || getRecommendedClearance(boxType, stockMm);
 
                     const meta = BOX_TYPE_META[boxType] || BOX_TYPE_META.double_wall_tray;
                     const badgeEl = document.getElementById('box_sturdiness_badge');
@@ -275,13 +359,15 @@ use App\Infrastructure\Security\SecurityHelper;
 
                     const partWrap = document.getElementById('box_part_container');
                     const clearWrap = document.getElementById('box_clearance_wrap');
+                    const lidFitSection = document.getElementById('box_lid_fit_section');
                     if (partWrap) partWrap.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
                     if (clearWrap) clearWrap.style.display = (boxType === 'tuck_top_box' || boxPart === 'base') ? 'none' : 'block';
+                    if (lidFitSection) lidFitSection.style.display = (boxType === 'tuck_top_box' || boxPart === 'base') ? 'none' : 'block';
 
                     const estEl = document.getElementById('box_sheet_estimate');
                     if (boxPart === 'pair' && boxType !== 'tuck_top_box') {
-                        const baseCalc = calculateFlatBoxSize(boxType, 'base', bw, bl, bh, bc);
-                        const lidCalc = calculateFlatBoxSize(boxType, 'lid', bw, bl, bh, bc);
+                        const baseCalc = calculateFlatBoxSize(boxType, 'base', bw, bl, bh, bc, stockMm, lidHeightMode);
+                        const lidCalc = calculateFlatBoxSize(boxType, 'lid', bw, bl, bh, bc, stockMm, lidHeightMode);
                         if (previewLabel) previewLabel.textContent = '2 Templates (Base + Lid):';
                         if (previewElem) {
                             previewElem.textContent = `Base ${baseCalc.flatW}×${baseCalc.flatH}mm • Lid ${lidCalc.flatW}×${lidCalc.flatH}mm`;
@@ -289,10 +375,10 @@ use App\Infrastructure\Security\SecurityHelper;
                         if (estEl) {
                             const baseA4 = estimateSheetsNeeded(baseCalc.flatW, baseCalc.flatH, 210, 297);
                             const lidA4 = estimateSheetsNeeded(lidCalc.flatW, lidCalc.flatH, 210, 297);
-                            estEl.innerHTML = `<strong>Base:</strong> ${baseCalc.effW}×${baseCalc.effL}×${bh}mm &bull; <strong>Lid:</strong> ${lidCalc.effW}×${lidCalc.effL}×${bh}mm &bull; <strong>Print:</strong> ${baseA4 + lidA4}× A4 sheets total`;
+                            estEl.innerHTML = `<div><strong>Base:</strong> ${baseCalc.effW}×${baseCalc.effL}×${baseCalc.effH}mm &bull; <strong>Snug Lid:</strong> ${lidCalc.effW}×${lidCalc.effL}×${lidCalc.effH}mm</div><div class="text-[10px] text-emerald-200/80">Stock t=${stockMm}mm (Shoulder ${baseCalc.shoulder}mm, +${bc}mm/side clearance) &bull; ${baseA4 + lidA4}× A4 sheets total</div>`;
                         }
                     } else {
-                        const calc = calculateFlatBoxSize(boxType, boxPart, bw, bl, bh, bc);
+                        const calc = calculateFlatBoxSize(boxType, boxPart, bw, bl, bh, bc, stockMm, lidHeightMode);
                         const wPx = mmToPx(calc.flatW);
                         const hPx = mmToPx(calc.flatH);
 
@@ -303,7 +389,8 @@ use App\Infrastructure\Security\SecurityHelper;
                         if (estEl) {
                             const a4Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 210, 297);
                             const a5Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 148, 210);
-                            estEl.innerHTML = `<strong>Finished Box:</strong> ${calc.effW}×${calc.effL}×${bh}mm &bull; <strong>Print:</strong> ${a4Sheets}× A4 sheet${a4Sheets > 1 ? 's' : ''} or ${a5Sheets}× A5 sheet${a5Sheets > 1 ? 's' : ''}`;
+                            const heightNote = (boxPart === 'lid' && calc.effH !== bh) ? ` (auto +${+(calc.effH - bh).toFixed(1)}mm height for ${stockMm}mm stock)` : '';
+                            estEl.innerHTML = `<div><strong>Finished Piece:</strong> ${calc.effW}×${calc.effL}×${calc.effH}mm${heightNote}</div><div class="text-[10px] text-emerald-200/80">Stock t=${stockMm}mm${calc.shoulder ? ` (Shoulder ${calc.shoulder}mm)` : ''} &bull; <strong>Print:</strong> ${a4Sheets}× A4 or ${a5Sheets}× A5 sheets</div>`;
                         }
                     }
                     return;

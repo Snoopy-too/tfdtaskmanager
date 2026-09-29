@@ -35,6 +35,18 @@
 
     let stencilPreviewActive = false;
 
+    function getRecommendedClearance(boxType, stockMm) {
+        if (boxType === 'double_wall_tray') return +(stockMm * 2.5 + 0.2).toFixed(1);
+        if (boxType === 'roll_end_tray') return +(stockMm * 2.2 + 0.2).toFixed(1);
+        return +(stockMm * 1.5 + 0.2).toFixed(1);
+    }
+
+    function getEffectiveLidHeight(baseH, stockMm, lidHeightMode) {
+        if (lidHeightMode === 'exact') return +baseH.toFixed(1);
+        if (lidHeightMode === 'thumb_reveal') return +Math.max(8.0, baseH + 3.0 * stockMm - 3.0).toFixed(1);
+        return +(baseH + 3.0 * stockMm).toFixed(1);
+    }
+
     /**
      * Strict runtime schema validator for 3D Box parameters.
      */
@@ -50,7 +62,11 @@
         const finishedW = Number(raw.finishedW);
         const finishedL = Number(raw.finishedL);
         const finishedH = Number(raw.finishedH);
-        const clearanceMm = Number(raw.clearanceMm ?? 1.5);
+        const stockThicknessMm = Number(raw.stockThicknessMm ?? 0.6);
+        const lidHeightMode = ['full_coverage', 'thumb_reveal', 'exact'].includes(raw.lidHeightMode)
+            ? raw.lidHeightMode
+            : 'full_coverage';
+        const clearanceMm = Number(raw.clearanceMm ?? getRecommendedClearance(boxType, stockThicknessMm));
 
         if (!Number.isFinite(finishedW) || finishedW < 15 || finishedW > 1000) {
             throw new Error('Finished Box Width (W) must be between 15 mm and 1000 mm.');
@@ -61,8 +77,11 @@
         if (!Number.isFinite(finishedH) || finishedH < 8 || finishedH > 500) {
             throw new Error('Finished Box Height (H) must be between 8 mm and 500 mm.');
         }
-        if (!Number.isFinite(clearanceMm) || clearanceMm < 0 || clearanceMm > 15) {
-            throw new Error('Cardboard Lid Clearance must be between 0 mm and 15 mm.');
+        if (!Number.isFinite(stockThicknessMm) || stockThicknessMm < 0.1 || stockThicknessMm > 10) {
+            throw new Error('Cardboard / Stock Thickness (t) must be between 0.1 mm and 10 mm.');
+        }
+        if (!Number.isFinite(clearanceMm) || clearanceMm < 0 || clearanceMm > 25) {
+            throw new Error('Cardboard Lid Clearance must be between 0 mm and 25 mm.');
         }
 
         return {
@@ -71,6 +90,8 @@
             finishedW: Math.round(finishedW * 10) / 10,
             finishedL: Math.round(finishedL * 10) / 10,
             finishedH: Math.round(finishedH * 10) / 10,
+            stockThicknessMm: Math.round(stockThicknessMm * 100) / 100,
+            lidHeightMode,
             clearanceMm: Math.round(clearanceMm * 10) / 10,
             showLabels: Boolean(raw.showLabels ?? true),
             fillStyle: raw.fillStyle === 'kraft' ? 'kraft' : 'stencil'
@@ -82,20 +103,22 @@
     }
 
     function calculateFlatDimensions(cfg) {
+        const t = Number(cfg.stockThicknessMm ?? 0.6);
+        const lidHeightMode = cfg.lidHeightMode || 'full_coverage';
         const isLid = (cfg.piece === 'lid' && cfg.boxType !== 'tuck_top_box');
         const W = isLid ? +(cfg.finishedW + cfg.clearanceMm * 2).toFixed(1) : cfg.finishedW;
         const L = isLid ? +(cfg.finishedL + cfg.clearanceMm * 2).toFixed(1) : cfg.finishedL;
-        const H = cfg.finishedH;
+        const H = isLid ? getEffectiveLidHeight(cfg.finishedH, t, lidHeightMode) : cfg.finishedH;
         const pad = 6.0;
-        let flatW = 0, flatH = 0;
+        let flatW = 0, flatH = 0, shoulder = 0;
 
         if (cfg.boxType === 'double_wall_tray') {
             const flapH = +(H * 0.75).toFixed(1);
-            const shoulder = +(Math.min(4.0, Math.max(2.0, H * 0.08))).toFixed(1);
+            shoulder = +(Math.min(12.0, Math.max(1.2, t * 2.2))).toFixed(1);
             flatW = +(W + 4 * H + 2 * shoulder + 2 * pad).toFixed(1);
             flatH = +(L + 2 * H + 2 * flapH + 2 * pad).toFixed(1);
         } else if (cfg.boxType === 'roll_end_tray') {
-            const shoulder = +(Math.min(3.5, Math.max(1.5, H * 0.07))).toFixed(1);
+            shoulder = +(Math.min(10.0, Math.max(1.2, t * 2.0))).toFixed(1);
             flatW = +(W + 4 * H + 2 * shoulder + 2 * pad).toFixed(1);
             flatH = +(L + 2 * H + 2 * pad).toFixed(1);
         } else if (cfg.boxType === 'tuck_top_box') {
@@ -112,6 +135,7 @@
             effectiveW: W,
             effectiveL: L,
             effectiveH: H,
+            shoulderMm: shoulder,
             flatWidthMm: flatW,
             flatHeightMm: flatH,
             canvasWidthPx: mmToPx(flatW),
@@ -253,6 +277,39 @@
         canvas.requestRenderAll();
     }
 
+    function handleModalStockPresetChange() {
+        const presetEl = document.getElementById('modal-box-stock-preset');
+        const stockEl = document.getElementById('modal-box-stock');
+        if (!presetEl || !stockEl) return;
+        if (presetEl.value !== 'custom') {
+            stockEl.value = presetEl.value;
+            autoCalibrateModalClearance();
+        }
+        updateModalBoxPreview();
+    }
+
+    function handleModalStockInputChange() {
+        const presetEl = document.getElementById('modal-box-stock-preset');
+        const stockEl = document.getElementById('modal-box-stock');
+        if (presetEl && stockEl) {
+            const val = parseFloat(stockEl.value);
+            const match = Array.from(presetEl.options).find(o => o.value !== 'custom' && Math.abs(parseFloat(o.value) - val) < 0.01);
+            presetEl.value = match ? match.value : 'custom';
+        }
+        autoCalibrateModalClearance();
+        updateModalBoxPreview();
+    }
+
+    function autoCalibrateModalClearance() {
+        const boxType = document.getElementById('modal-box-type')?.value || 'double_wall_tray';
+        const stockMm = parseFloat(document.getElementById('modal-box-stock')?.value) || 0.6;
+        const cEl = document.getElementById('modal-box-clearance');
+        if (cEl) {
+            cEl.value = String(getRecommendedClearance(boxType, stockMm));
+        }
+        updateModalBoxPreview();
+    }
+
     function openBoxDielineModal() {
         const modal = document.getElementById('modal-box-dieline');
         if (!modal) return;
@@ -264,6 +321,9 @@
             const wEl = document.getElementById('modal-box-width');
             const lEl = document.getElementById('modal-box-length');
             const hEl = document.getElementById('modal-box-height');
+            const stockEl = document.getElementById('modal-box-stock');
+            const presetEl = document.getElementById('modal-box-stock-preset');
+            const lidModeEl = document.getElementById('modal-box-lid-height-mode');
             const cEl = document.getElementById('modal-box-clearance');
             const fillEl = document.getElementById('modal-box-fill');
             const lblEl = document.getElementById('modal-box-labels');
@@ -273,6 +333,14 @@
             if (wEl && cfg.finishedW) wEl.value = cfg.finishedW;
             if (lEl && cfg.finishedL) lEl.value = cfg.finishedL;
             if (hEl && cfg.finishedH) hEl.value = cfg.finishedH;
+            if (stockEl && cfg.stockThicknessMm !== undefined) {
+                stockEl.value = cfg.stockThicknessMm;
+                if (presetEl) {
+                    const match = Array.from(presetEl.options).find(o => o.value !== 'custom' && Math.abs(parseFloat(o.value) - Number(cfg.stockThicknessMm)) < 0.01);
+                    presetEl.value = match ? match.value : 'custom';
+                }
+            }
+            if (lidModeEl && cfg.lidHeightMode) lidModeEl.value = cfg.lidHeightMode;
             if (cEl && cfg.clearanceMm !== undefined) cEl.value = cfg.clearanceMm;
             if (fillEl && cfg.fillStyle) fillEl.value = cfg.fillStyle;
             if (lblEl) lblEl.checked = cfg.showLabels !== false;
@@ -293,7 +361,9 @@
         const finishedW = parseFloat(document.getElementById('modal-box-width')?.value) || 120;
         const finishedL = parseFloat(document.getElementById('modal-box-length')?.value) || 160;
         const finishedH = parseFloat(document.getElementById('modal-box-height')?.value) || 40;
-        const clearanceMm = parseFloat(document.getElementById('modal-box-clearance')?.value) || 1.5;
+        const stockThicknessMm = parseFloat(document.getElementById('modal-box-stock')?.value) || 0.6;
+        const lidHeightMode = document.getElementById('modal-box-lid-height-mode')?.value || 'full_coverage';
+        const clearanceMm = parseFloat(document.getElementById('modal-box-clearance')?.value) || getRecommendedClearance(boxType, stockThicknessMm);
 
         const meta = BOX_TYPES[boxType] || BOX_TYPES.double_wall_tray;
         const badgeEl = document.getElementById('modal-box-sturdiness-badge');
@@ -303,14 +373,18 @@
 
         const partGroup = document.getElementById('modal-box-part-group');
         const clearGroup = document.getElementById('modal-box-clearance-group');
+        const lidHeightGroup = document.getElementById('modal-box-lid-height-group');
         const companionBtn = document.getElementById('btn-create-companion-box');
         const fitmentNote = document.getElementById('modal-box-fitment-note');
 
         if (partGroup) partGroup.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
         if (clearGroup) clearGroup.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
+        if (lidHeightGroup) lidHeightGroup.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
 
         const lidW = +(finishedW + clearanceMm * 2).toFixed(1);
         const lidL = +(finishedL + clearanceMm * 2).toFixed(1);
+        const lidH = getEffectiveLidHeight(finishedH, stockThicknessMm, lidHeightMode);
+        const deltaH = +(lidH - finishedH).toFixed(1);
 
         if (companionBtn) {
             if (boxType === 'tuck_top_box') {
@@ -320,18 +394,8 @@
                 if (piece === 'lid') {
                     companionBtn.textContent = `➕ Create Matching Bottom Box (${finishedW}×${finishedL}×${finishedH}mm)`;
                 } else {
-                    companionBtn.textContent = `➕ Create Fitting Top Lid (${lidW}×${lidL}×${finishedH}mm)`;
+                    companionBtn.textContent = `➕ Create Fitting Top Lid (${lidW}×${lidL}×${lidH}mm)`;
                 }
-            }
-        }
-
-        if (fitmentNote) {
-            if (boxType === 'tuck_top_box') {
-                fitmentNote.innerHTML = `<span class="text-emerald-300 font-semibold">All-in-One Box:</span> Includes both the Bottom Base and attached Hinged Top Lid on a single sheet.`;
-            } else if (piece === 'lid') {
-                fitmentNote.innerHTML = `<span class="text-indigo-300 font-semibold">Telescoping Top Lid:</span> Effective footprint is <strong>${lidW} × ${lidL} × ${finishedH} mm</strong> (+${clearanceMm}mm clearance per side) so it slides smoothly over a <strong>${finishedW} × ${finishedL} mm</strong> Bottom Box.`;
-            } else {
-                fitmentNote.innerHTML = `<span class="text-amber-300 font-semibold">Bottom Box (Base):</span> Exact <strong>${finishedW} × ${finishedL} × ${finishedH} mm</strong> base. Its matching Top Lid (+${clearanceMm}mm clearance/side) will be <strong>${lidW} × ${lidL} × ${finishedH} mm</strong>.`;
             }
         }
 
@@ -341,8 +405,21 @@
             finishedW,
             finishedL,
             finishedH,
+            stockThicknessMm,
+            lidHeightMode,
             clearanceMm
         });
+
+        if (fitmentNote) {
+            if (boxType === 'tuck_top_box') {
+                fitmentNote.innerHTML = `<span class="text-emerald-300 font-semibold">All-in-One Box:</span> Includes both the Bottom Base and attached Hinged Top Lid on a single sheet (Stock t=${stockThicknessMm}mm).`;
+            } else if (piece === 'lid') {
+                const heightExplain = deltaH !== 0 ? ` (${deltaH > 0 ? '+' : ''}${deltaH}mm vertical height compensation for ${stockThicknessMm}mm stock so sides cover the Base)` : '';
+                fitmentNote.innerHTML = `<span class="text-indigo-300 font-semibold">Telescoping Top Lid:</span> Effective size <strong>${lidW} × ${lidL} × ${lidH} mm</strong> (+${clearanceMm}mm/side horizontal clearance${heightExplain}) to slide snugly over a <strong>${finishedW} × ${finishedL} × ${finishedH} mm</strong> Base.`;
+            } else {
+                fitmentNote.innerHTML = `<span class="text-amber-300 font-semibold">Bottom Box (Base):</span> Exact <strong>${finishedW} × ${finishedL} × ${finishedH} mm</strong> base (Stock t=${stockThicknessMm}mm, Shoulder ${dims.shoulderMm}mm). Its matching Top Lid will be <strong>${lidW} × ${lidL} × ${lidH} mm</strong>.`;
+            }
+        }
 
         const flatPreview = document.getElementById('modal-box-flat-preview');
         if (flatPreview) {
@@ -357,7 +434,9 @@
             finishedW: parseFloat(document.getElementById('modal-box-width')?.value),
             finishedL: parseFloat(document.getElementById('modal-box-length')?.value),
             finishedH: parseFloat(document.getElementById('modal-box-height')?.value),
-            clearanceMm: parseFloat(document.getElementById('modal-box-clearance')?.value ?? '1.5'),
+            stockThicknessMm: parseFloat(document.getElementById('modal-box-stock')?.value ?? '0.6'),
+            lidHeightMode: document.getElementById('modal-box-lid-height-mode')?.value || 'full_coverage',
+            clearanceMm: parseFloat(document.getElementById('modal-box-clearance')?.value ?? '1.7'),
             fillStyle: document.getElementById('modal-box-fill')?.value || 'stencil',
             showLabels: Boolean(document.getElementById('modal-box-labels')?.checked ?? true)
         };
@@ -389,6 +468,8 @@
         formData.append('box_width_mm', String(validated.finishedW));
         formData.append('box_length_mm', String(validated.finishedL));
         formData.append('box_height_mm', String(validated.finishedH));
+        formData.append('box_stock_mm', String(validated.stockThicknessMm));
+        formData.append('box_lid_height_mode', validated.lidHeightMode);
         formData.append('box_clearance_mm', String(validated.clearanceMm));
         formData.append('box_fill_style', validated.fillStyle);
         formData.append('box_show_labels', validated.showLabels ? '1' : '0');
@@ -449,7 +530,9 @@
                 finishedW: parseFloat(document.getElementById('modal-box-width')?.value),
                 finishedL: parseFloat(document.getElementById('modal-box-length')?.value),
                 finishedH: parseFloat(document.getElementById('modal-box-height')?.value),
-                clearanceMm: parseFloat(document.getElementById('modal-box-clearance')?.value ?? '1.5'),
+                stockThicknessMm: parseFloat(document.getElementById('modal-box-stock')?.value ?? '0.6'),
+                lidHeightMode: document.getElementById('modal-box-lid-height-mode')?.value || 'full_coverage',
+                clearanceMm: parseFloat(document.getElementById('modal-box-clearance')?.value ?? '1.7'),
                 fillStyle: document.getElementById('modal-box-fill')?.value || 'stencil',
                 showLabels: Boolean(document.getElementById('modal-box-labels')?.checked)
             });
@@ -476,6 +559,8 @@
         formData.append('box_width_mm', String(validated.finishedW));
         formData.append('box_length_mm', String(validated.finishedL));
         formData.append('box_height_mm', String(validated.finishedH));
+        formData.append('box_stock_mm', String(validated.stockThicknessMm));
+        formData.append('box_lid_height_mode', validated.lidHeightMode);
         formData.append('box_clearance_mm', String(validated.clearanceMm));
         formData.append('box_fill_style', validated.fillStyle);
         formData.append('box_show_labels', validated.showLabels ? '1' : '0');
@@ -593,6 +678,9 @@
         openBoxDielineModal,
         closeBoxDielineModal,
         updateModalBoxPreview,
+        handleModalStockPresetChange,
+        handleModalStockInputChange,
+        autoCalibrateModalClearance,
         applyBoxDielineFromModal,
         createCompanionPieceTemplate,
         getActiveBoxConfig

@@ -228,12 +228,13 @@
 
             const subRow = document.createElement('div');
             subRow.className = 'text-[10px] text-slate-400 leading-snug';
+            const stockT = boxCfg.stockThicknessMm ?? 0.6;
             if (boxCfg.boxType === 'tuck_top_box') {
-                subRow.textContent = 'All-in-one hinged top lid & bottom base. Cut & fold lines stay over your design.';
+                subRow.textContent = `All-in-one hinged box (Stock t=${stockT}mm). Cut & fold lines stay over your design.`;
             } else if (isLid) {
-                subRow.textContent = `Telescoping Top Lid (+${boxCfg.clearanceMm ?? 1.5}mm clearance/side to slide over ${boxCfg.finishedW}×${boxCfg.finishedL}mm Base).`;
+                subRow.textContent = `Telescoping Top Lid (Stock t=${stockT}mm, +${boxCfg.clearanceMm ?? 1.7}mm/side clearance over ${boxCfg.finishedW}×${boxCfg.finishedL}×${boxCfg.finishedH}mm Base).`;
             } else {
-                subRow.textContent = 'Bottom Box tray. Cut & fold lines stay aligned over your design layers.';
+                subRow.textContent = `Bottom Box tray (Stock t=${stockT}mm, Shoulder ${boxCfg.shoulderMm ?? 1.3}mm). Cut & fold lines stay over your design.`;
             }
 
             boxBanner.appendChild(titleRow);
@@ -252,12 +253,17 @@
                     const companionBtn = document.createElement('button');
                     companionBtn.type = 'button';
                     companionBtn.className = 'w-full mt-1 py-1 px-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-[10px] font-semibold text-indigo-300 hover:text-white transition flex items-center justify-center gap-1';
-                    const clearance = boxCfg.clearanceMm ?? 1.5;
+                    const clearance = boxCfg.clearanceMm ?? 1.7;
                     const lidW = +((boxCfg.finishedW || 120) + clearance * 2).toFixed(1);
                     const lidL = +((boxCfg.finishedL || 160) + clearance * 2).toFixed(1);
+                    const lidMode = boxCfg.lidHeightMode || 'full_coverage';
+                    const baseH = Number(boxCfg.finishedH || 40);
+                    const lidH = lidMode === 'exact'
+                        ? baseH
+                        : (lidMode === 'thumb_reveal' ? +Math.max(8, baseH + 3 * stockT - 3).toFixed(1) : +(baseH + 3 * stockT).toFixed(1));
                     companionBtn.textContent = isLid
-                        ? `➕ Create Matching Bottom Box (${boxCfg.finishedW}×${boxCfg.finishedL}mm)`
-                        : `➕ Create Fitting Top Lid (${lidW}×${lidL}mm)`;
+                        ? `➕ Create Matching Bottom Box (${boxCfg.finishedW}×${boxCfg.finishedL}×${baseH}mm)`
+                        : `➕ Create Fitting Top Lid (${lidW}×${lidL}×${lidH}mm)`;
                     companionBtn.addEventListener('click', () => {
                         if (window.boxDieline && typeof window.boxDieline.createCompanionPieceTemplate === 'function') {
                             window.boxDieline.createCompanionPieceTemplate(boxCfg);

@@ -155,7 +155,7 @@ $compTypes = $compTypes ?? [];
                     <label for="modal-box-type" class="block text-xs font-semibold text-slate-300">Box Type (by Sturdiness)</label>
                     <span id="modal-box-sturdiness-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">⭐⭐⭐⭐⭐ Max Sturdiness (5/5)</span>
                 </div>
-                <select id="modal-box-type" onchange="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500">
+                <select id="modal-box-type" onchange="if(window.boxDieline) window.boxDieline.autoCalibrateModalClearance();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="double_wall_tray">⭐⭐⭐⭐⭐ Heavy-Duty Double-Wall Tray (Image Style)</option>
                     <option value="roll_end_tray">⭐⭐⭐⭐ Standard Roll-End Tuck Tray (Self-Locking)</option>
                     <option value="tuck_top_box">⭐⭐⭐ One-Piece Hinged Tuck-Top Box (All-in-One)</option>
@@ -189,10 +189,43 @@ $compTypes = $compTypes ?? [];
                 </div>
             </div>
 
+            <!-- Cardboard / Stock Thickness (t) & Lid Wall Coverage -->
+            <div class="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+                <div class="grid grid-cols-3 gap-2.5">
+                    <div class="col-span-2">
+                        <label for="modal-box-stock-preset" class="block text-xs font-semibold text-amber-300 mb-1">Cardboard / Stock Material</label>
+                        <select id="modal-box-stock-preset" onchange="if(window.boxDieline) window.boxDieline.handleModalStockPresetChange();" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2 focus:ring-indigo-500">
+                            <option value="0.4">Heavy Cardstock 300–350gsm (0.4 mm)</option>
+                            <option value="0.6" selected>Thick Paperboard / Carton (0.6 mm)</option>
+                            <option value="1.0">Rigid Chipboard / Greyboard (1.0 mm)</option>
+                            <option value="1.6">E-Flute Micro-Corrugated Tray (1.6 mm)</option>
+                            <option value="2.8">B-Flute Corrugated Cardboard (2.8 mm)</option>
+                            <option value="custom">Custom Stock Thickness (mm)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="modal-box-stock" class="block text-xs font-medium text-slate-300 mb-1" title="Thickness (caliper t) of a single sheet of your cardboard stock">Stock t (mm)</label>
+                        <input type="number" id="modal-box-stock" min="0.1" max="10" step="0.05" value="0.6" oninput="if(window.boxDieline) window.boxDieline.handleModalStockInputChange();" class="w-full bg-slate-900 border border-slate-800 text-amber-300 font-mono text-xs rounded-xl p-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div id="modal-box-lid-height-group">
+                    <label for="modal-box-lid-height-mode" class="block text-xs font-medium text-slate-300 mb-1">Top Lid Vertical Wall Coverage</label>
+                    <select id="modal-box-lid-height-mode" onchange="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2 focus:ring-indigo-500">
+                        <option value="full_coverage" selected>Full Side Coverage — Flush to Bottom (Auto +3t Height)</option>
+                        <option value="thumb_reveal">Thumb-Grip Reveal — 3mm Bottom Gap for Easy Opening</option>
+                        <option value="exact">Uncompensated — Exact Same Wall Height H as Base</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-3">
                 <div id="modal-box-clearance-group">
-                    <label for="modal-box-clearance" class="block text-xs font-medium text-slate-300 mb-1">Lid Clearance per Side (mm)</label>
-                    <input type="number" id="modal-box-clearance" min="0" max="15" step="0.5" value="1.5" oninput="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl p-2.5 focus:ring-indigo-500">
+                    <label for="modal-box-clearance" class="block text-xs font-medium text-slate-300 mb-1 flex items-center justify-between">
+                        <span>Lid Clearance / Side (mm)</span>
+                        <button type="button" onclick="if(window.boxDieline) window.boxDieline.autoCalibrateModalClearance();" class="text-[10px] text-indigo-400 hover:text-indigo-300 underline">Auto-Calibrate</button>
+                    </label>
+                    <input type="number" id="modal-box-clearance" min="0" max="25" step="0.1" value="1.7" oninput="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl p-2.5 focus:ring-indigo-500">
                 </div>
                 <div>
                     <label for="modal-box-fill" class="block text-xs font-medium text-slate-300 mb-1">Canvas Base Fill</label>
