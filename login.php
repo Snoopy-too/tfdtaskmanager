@@ -17,3 +17,4 @@ if (SecurityHelper::isLoggedIn()) {
 // Redirect immediately to central OAuth login.
 header('Location: ' . SSOHelper::getCentralLoginUrl());
 exit();
+
