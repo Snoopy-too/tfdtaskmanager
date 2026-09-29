@@ -646,8 +646,12 @@ try {
 
             $companionTemplate = $templateService->createBoxTemplate(
                 $template->getProjectId(),
-                $companionName,
                 $template->getComponentTypeId(),
+                $companionName,
+                $template->getBleedMm(),
+                $template->getSafeMarginMm(),
+                $template->getDatasetId(),
+                $currentUserId,
                 [
                     'box_type'         => $_POST['box_type'] ?? 'double_wall_tray',
                     'box_part'         => $targetPiece,
@@ -657,9 +661,7 @@ try {
                     'box_clearance_mm' => $cMm,
                     'box_show_labels'  => isset($_POST['box_show_labels']) ? ($_POST['box_show_labels'] === '1' || $_POST['box_show_labels'] === 'true') : true,
                     'box_fill_style'   => $_POST['box_fill_style'] ?? 'stencil',
-                ],
-                $template->getBleedMm(),
-                $template->getSafeMarginMm()
+                ]
             );
 
             echo json_encode([

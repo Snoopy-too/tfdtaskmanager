@@ -161,7 +161,7 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
 
         <!-- Center & Right Controls -->
-        <div class="flex flex-wrap items-center justify-end gap-1.5 flex-shrink-0">
+        <div class="flex flex-wrap items-center justify-end gap-1 min-w-0 max-w-full">
             <!-- Auto-save Status Indicator -->
             <div id="save-status" class="hidden lg:flex items-center space-x-1.5 text-[11px] text-slate-400 bg-slate-900/60 border border-slate-800 px-2 py-1 rounded-lg shrink-0" title="Auto-Save Status">
                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
