@@ -197,14 +197,16 @@ declare(strict_types=1);
             if (sidebar) sidebar.classList.remove('-translate-x-full');
             if (overlay) overlay.classList.remove('hidden');
             if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
-            document.body.classList.add('overflow-hidden', 'md:overflow-auto');
+            document.documentElement.classList.add('sidebar-open');
+            document.body.classList.add('sidebar-open');
         }
 
         function closeSidebar() {
             if (sidebar) sidebar.classList.add('-translate-x-full');
             if (overlay) overlay.classList.add('hidden');
             if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
-            document.body.classList.remove('overflow-hidden', 'md:overflow-auto');
+            document.documentElement.classList.remove('sidebar-open');
+            document.body.classList.remove('sidebar-open');
         }
 
         if (toggleBtn) toggleBtn.addEventListener('click', function() {
@@ -216,6 +218,68 @@ declare(strict_types=1);
         });
         if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
         if (overlay) overlay.addEventListener('click', closeSidebar);
+
+        // Prevent touchmove propagation on overlay so background page does not scroll
+        if (overlay) {
+            overlay.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+        }
+
+        // Isolate sidebar scrolling completely from the page behind it
+        if (sidebar) {
+            // Prevent touchmove propagation on non-scrollable header area
+            const sidebarHeader = sidebar.querySelector('.border-b') || sidebar.firstElementChild;
+            if (sidebarHeader) {
+                sidebarHeader.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                }, { passive: false });
+            }
+
+            // Desktop wheel handling: scrolling over any part of the sidebar never scrolls the page behind it
+            sidebar.addEventListener('wheel', function(e) {
+                const nav = sidebar.querySelector('nav');
+                if (!nav) return;
+
+                // Wheeling over non-nav parts (like header) routes scroll into the nav
+                if (!nav.contains(e.target)) {
+                    nav.scrollTop += e.deltaY;
+                    e.preventDefault();
+                    return;
+                }
+
+                // If inside nav, prevent scroll chaining to the page when reaching top or bottom boundary
+                const isAtTop = nav.scrollTop <= 0;
+                const isAtBottom = Math.ceil(nav.scrollTop + nav.clientHeight) >= nav.scrollHeight;
+                if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            // Mobile touch boundary handling inside sidebar nav: prevent overscroll chaining to background
+            let sidebarTouchStartY = 0;
+            sidebar.addEventListener('touchstart', function(e) {
+                if (e.touches && e.touches.length === 1) {
+                    sidebarTouchStartY = e.touches[0].clientY;
+                }
+            }, { passive: true });
+
+            sidebar.addEventListener('touchmove', function(e) {
+                const nav = sidebar.querySelector('nav');
+                if (!nav) return;
+                if (!nav.contains(e.target)) {
+                    e.preventDefault();
+                    return;
+                }
+                const touchCurrentY = e.touches[0].clientY;
+                const deltaY = sidebarTouchStartY - touchCurrentY;
+                const isAtTop = nav.scrollTop <= 0;
+                const isAtBottom = Math.ceil(nav.scrollTop + nav.clientHeight) >= nav.scrollHeight;
+                if ((deltaY < 0 && isAtTop) || (deltaY > 0 && isAtBottom)) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        }
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && sidebar && !sidebar.classList.contains('-translate-x-full')) {

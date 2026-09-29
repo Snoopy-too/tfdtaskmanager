@@ -124,10 +124,33 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
             width: 16rem !important;
             height: calc(100vh - var(--sidebar-top-offset, 48px)) !important;
             height: calc(100dvh - var(--sidebar-top-offset, 48px)) !important;
+            overscroll-behavior: contain !important;
+        }
+        #tasks-sidebar nav {
+            overscroll-behavior: contain !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+        html.sidebar-open, body.sidebar-open {
+            overflow: hidden !important;
+            touch-action: none !important;
+            overscroll-behavior: none !important;
         }
         @media (min-width: 768px) {
             .flex-1.min-w-0.flex.flex-col {
                 margin-left: 16rem !important;
+            }
+        }
+        @media (max-width: 767.98px) {
+            #tasks-sidebar {
+                top: 0 !important;
+                height: 100vh !important;
+                height: 100dvh !important;
+                width: min(280px, calc(100vw - 56px)) !important;
+                max-width: calc(100vw - 56px) !important;
+                box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4) !important;
+            }
+            #tasks-sidebar nav {
+                touch-action: pan-y !important;
             }
         }
     </style>
@@ -239,8 +262,8 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
             </nav>
         </aside>
 
-        <!-- Mobile Sidebar Backdrop Overlay -->
-        <div id="tasks-sidebar-overlay" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300"></div>
+        <!-- Mobile Sidebar Backdrop Overlay (translucent with no blur so page behind remains visible like Stats app) -->
+        <div id="tasks-sidebar-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden transition-opacity duration-300"></div>
 
         <!-- Content Area Wrapper -->
         <div class="flex-1 min-w-0 flex flex-col bg-slate-950 md:ml-64">

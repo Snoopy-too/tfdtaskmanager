@@ -117,6 +117,19 @@ body:has(.tfd-mobile-drawer.open) .sidebar-toggle,
     width: 16rem !important;
     height: calc(100vh - var(--sidebar-top-offset, 48px)) !important;
     height: calc(100dvh - var(--sidebar-top-offset, 48px)) !important;
+    overscroll-behavior: contain !important;
+}
+
+#tasks-sidebar nav {
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+html.sidebar-open,
+body.sidebar-open {
+    overflow: hidden !important;
+    touch-action: none !important;
+    overscroll-behavior: none !important;
 }
 
 @media (min-width: 768px) {
@@ -129,6 +142,7 @@ body:has(.tfd-mobile-drawer.open) .sidebar-toggle,
         height: calc(100dvh - var(--sidebar-top-offset, 48px)) !important;
         transform: none !important;
         z-index: 30 !important;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15) !important;
     }
     .flex-1.min-w-0.flex.flex-col {
         margin-left: 16rem !important;
@@ -142,8 +156,13 @@ body:has(.tfd-mobile-drawer.open) .sidebar-toggle,
         left: 0 !important;
         height: 100vh !important;
         height: 100dvh !important;
-        width: 280px !important;
+        width: min(280px, calc(100vw - 56px)) !important;
+        max-width: calc(100vw - 56px) !important;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4) !important;
         z-index: 100005 !important;
+    }
+    #tasks-sidebar nav {
+        touch-action: pan-y !important;
     }
     #tasks-sidebar-overlay {
         position: fixed !important;
@@ -153,6 +172,9 @@ body:has(.tfd-mobile-drawer.open) .sidebar-toggle,
         bottom: 0 !important;
         height: 100vh !important;
         height: 100dvh !important;
+        background-color: rgba(15, 23, 42, 0.5) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
         z-index: 100004 !important;
     }
 }
