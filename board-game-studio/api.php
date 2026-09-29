@@ -533,6 +533,75 @@ try {
             ]);
             break;
 
+        case 'generate_box_dieline':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found or access denied.']);
+                exit;
+            }
+
+            if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
+                http_response_code(423);
+                echo json_encode(['error' => 'Template is currently locked by another user.']);
+                exit;
+            }
+
+            $boxService = $templateService->getBoxDielineService();
+            $config = $boxService->validateConfig([
+                'box_type'         => $_POST['box_type'] ?? 'double_wall_tray',
+                'box_part'         => $_POST['box_part'] ?? 'base',
+                'box_width_mm'     => $_POST['box_width_mm'] ?? 120,
+                'box_length_mm'    => $_POST['box_length_mm'] ?? 160,
+                'box_height_mm'    => $_POST['box_height_mm'] ?? 40,
+                'box_clearance_mm' => $_POST['box_clearance_mm'] ?? 1.5,
+                'box_show_labels'  => isset($_POST['box_show_labels']) ? ($_POST['box_show_labels'] === '1' || $_POST['box_show_labels'] === 'true') : true,
+                'box_fill_style'   => $_POST['box_fill_style'] ?? 'stencil',
+            ]);
+
+            $piece = ($config['boxPart'] === 'lid') ? 'lid' : 'base';
+            $geom = $boxService->calculateGeometry($config, $piece);
+            $payload = $boxService->buildFabricCanvasPayload($geom);
+            $decodedPayload = json_decode($payload['canvasJson'], true);
+
+            $updatedTemplate = $templateService->updateTemplateDimensions(
+                $templateId,
+                (int)$geom['canvasWidthPx'],
+                (int)$geom['canvasHeightPx']
+            );
+
+            echo json_encode([
+                'success'      => true,
+                'id'           => $updatedTemplate->getId(),
+                'canvasWidth'  => $updatedTemplate->getCanvasWidthPx(),
+                'canvasHeight' => $updatedTemplate->getCanvasHeightPx(),
+                'widthMm'      => $geom['flatWidthMm'],
+                'heightMm'     => $geom['flatHeightMm'],
+                'orientation'  => ($updatedTemplate->getCanvasWidthPx() > $updatedTemplate->getCanvasHeightPx()) ? 'landscape' : 'portrait',
+                'boxConfig'    => $geom,
+                'dielineObjects' => $decodedPayload['objects'] ?? []
+            ]);
+            break;
+
         default:
             if (!handleDatasetApiAction($action, $method, $datasetService, $projectService) && !handleRulebookApiAction($action, $method, $rulebookService, $projectService)) {
                 http_response_code(400);

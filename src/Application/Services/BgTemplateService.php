@@ -19,17 +19,25 @@ class BgTemplateService
     private BgTemplateLayerRepositoryInterface $layerRepository;
     private BgComponentTypeRepositoryInterface $componentTypeRepository;
     private ?BgRulebookRepositoryInterface $rulebookRepository;
+    private BgBoxDielineService $boxDielineService;
 
     public function __construct(
         BgTemplateRepositoryInterface $templateRepository,
         BgTemplateLayerRepositoryInterface $layerRepository,
         BgComponentTypeRepositoryInterface $componentTypeRepository,
-        ?BgRulebookRepositoryInterface $rulebookRepository = null
+        ?BgRulebookRepositoryInterface $rulebookRepository = null,
+        ?BgBoxDielineService $boxDielineService = null
     ) {
         $this->templateRepository = $templateRepository;
         $this->layerRepository = $layerRepository;
         $this->componentTypeRepository = $componentTypeRepository;
         $this->rulebookRepository = $rulebookRepository;
+        $this->boxDielineService = $boxDielineService ?? new BgBoxDielineService();
+    }
+
+    public function getBoxDielineService(): BgBoxDielineService
+    {
+        return $this->boxDielineService;
     }
 
     public function getTemplatesByProject(int $projectId): array
@@ -62,7 +70,8 @@ class BgTemplateService
         int $createdByUserId,
         ?float $customWidthMm = null,
         ?float $customHeightMm = null,
-        string $orientation = 'portrait'
+        string $orientation = 'portrait',
+        ?array $boxParams = null
     ): BgTemplate {
         $name = trim($name);
         if (empty($name)) {
@@ -72,6 +81,19 @@ class BgTemplateService
         $compType = $this->componentTypeRepository->findById($componentTypeId);
         if (!$compType) {
             throw new ValidationException("Invalid component type.");
+        }
+
+        if (str_contains($compType->getName(), 'Board Game Box') && is_array($boxParams)) {
+            return $this->createBoxTemplate(
+                $projectId,
+                $componentTypeId,
+                $name,
+                $bleedMm,
+                $safeMarginMm,
+                $datasetId,
+                $createdByUserId,
+                $boxParams
+            );
         }
 
         $widthMm = $compType->getWidthMm();
@@ -114,6 +136,109 @@ class BgTemplateService
         );
 
         return $this->templateRepository->save($template);
+    }
+
+    /**
+     * Creates an unfolded flat Board Game Box template (or both Base + Lid templates if 'pair' is selected)
+     * with pre-populated cut & fold die-line layers.
+     *
+     * @param array<string, mixed> $boxParams
+     */
+    public function createBoxTemplate(
+        int $projectId,
+        int $componentTypeId,
+        string $name,
+        float $bleedMm,
+        float $safeMarginMm,
+        ?int $datasetId,
+        int $createdByUserId,
+        array $boxParams
+    ): BgTemplate {
+        $config = $this->boxDielineService->validateConfig($boxParams);
+        $part = $config['boxPart'];
+
+        if ($part === BgBoxDielineService::PART_PAIR && $config['boxType'] !== BgBoxDielineService::TYPE_TUCK_TOP_BOX) {
+            $baseName = $name . ' (Bottom Base)';
+            $lidName  = $name . ' (Top Lid)';
+
+            $baseTemplate = $this->persistSingleBoxPiece(
+                $projectId,
+                $componentTypeId,
+                $baseName,
+                $bleedMm,
+                $safeMarginMm,
+                $datasetId,
+                $createdByUserId,
+                $config,
+                BgBoxDielineService::PART_BASE
+            );
+
+            $this->persistSingleBoxPiece(
+                $projectId,
+                $componentTypeId,
+                $lidName,
+                $bleedMm,
+                $safeMarginMm,
+                $datasetId,
+                $createdByUserId,
+                $config,
+                BgBoxDielineService::PART_LID
+            );
+
+            return $baseTemplate;
+        }
+
+        $singlePiece = ($part === BgBoxDielineService::PART_LID)
+            ? BgBoxDielineService::PART_LID
+            : BgBoxDielineService::PART_BASE;
+
+        return $this->persistSingleBoxPiece(
+            $projectId,
+            $componentTypeId,
+            $name,
+            $bleedMm,
+            $safeMarginMm,
+            $datasetId,
+            $createdByUserId,
+            $config,
+            $singlePiece
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    private function persistSingleBoxPiece(
+        int $projectId,
+        int $componentTypeId,
+        string $name,
+        float $bleedMm,
+        float $safeMarginMm,
+        ?int $datasetId,
+        int $createdByUserId,
+        array $config,
+        string $piece
+    ): BgTemplate {
+        $geom = $this->boxDielineService->calculateGeometry($config, $piece);
+        $payload = $this->boxDielineService->buildFabricCanvasPayload($geom);
+
+        $template = new BgTemplate(
+            null,
+            $projectId,
+            $componentTypeId,
+            $name,
+            (int)$geom['canvasWidthPx'],
+            (int)$geom['canvasHeightPx'],
+            $bleedMm,
+            $safeMarginMm,
+            $datasetId,
+            $createdByUserId
+        );
+
+        $savedTemplate = $this->templateRepository->save($template);
+        $this->saveCanvas((int)$savedTemplate->getId(), $payload['canvasJson'], $payload['layersData']);
+
+        return $this->templateRepository->findById((int)$savedTemplate->getId()) ?? $savedTemplate;
     }
 
     public function updateTemplateDimensions(int $id, int $widthPx, int $heightPx): BgTemplate

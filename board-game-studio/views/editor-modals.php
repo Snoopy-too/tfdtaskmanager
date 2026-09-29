@@ -131,3 +131,99 @@ $compTypes = $compTypes ?? [];
         </div>
     </div>
 </div>
+
+<!-- 3D Board Game Box Die-Line Configurator Modal -->
+<div id="modal-box-dieline" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-base font-bold text-slate-100 flex items-center space-x-2">
+                <span class="text-lg">📦</span>
+                <span>Board Game Box Die-Line Generator</span>
+            </h3>
+            <button type="button" onclick="if(window.boxDieline) window.boxDieline.closeBoxDielineModal();" class="text-slate-400 hover:text-white text-lg font-bold p-1">
+                &times;
+            </button>
+        </div>
+
+        <p class="text-xs text-slate-400">
+            Specify the finished 3D dimensions of your board game box. The studio calculates the exact unfolded flat sheet size and renders solid <strong>Cut Lines</strong> and dashed <strong>Fold / Score Lines</strong> onto your canvas.
+        </p>
+
+        <div class="space-y-3.5">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <label for="modal-box-type" class="block text-xs font-semibold text-slate-300">Box Type (by Sturdiness)</label>
+                    <span id="modal-box-sturdiness-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">⭐⭐⭐⭐⭐ Max Sturdiness (5/5)</span>
+                </div>
+                <select id="modal-box-type" onchange="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="double_wall_tray">⭐⭐⭐⭐⭐ Heavy-Duty Double-Wall Tray (Image Style)</option>
+                    <option value="roll_end_tray">⭐⭐⭐⭐ Standard Roll-End Tuck Tray (Self-Locking)</option>
+                    <option value="tuck_top_box">⭐⭐⭐ One-Piece Hinged Tuck-Top Box (All-in-One)</option>
+                    <option value="simple_tray">⭐⭐ Classic Single-Wall Tray (Corner Glue Tabs)</option>
+                </select>
+                <p id="modal-box-type-desc" class="text-[11px] text-slate-400 mt-1 leading-snug">
+                    Double-folded side &amp; end walls with dual corner dust flaps and shoulder locking lips (no glue required). Matches the uploaded reference box.
+                </p>
+            </div>
+
+            <div id="modal-box-part-group">
+                <label for="modal-box-part" class="block text-xs font-semibold text-slate-300 mb-1">Box Piece</label>
+                <select id="modal-box-part" onchange="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="base">Bottom Box / Single Tray (Exact W × L × H)</option>
+                    <option value="lid">Telescoping Top Lid (+Clearance to fit over Base)</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label for="modal-box-width" class="block text-xs font-medium text-slate-300 mb-1">Width W (mm)</label>
+                    <input type="number" id="modal-box-width" min="15" max="1000" step="0.5" value="120" oninput="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl p-2.5 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="modal-box-length" class="block text-xs font-medium text-slate-300 mb-1">Length L (mm)</label>
+                    <input type="number" id="modal-box-length" min="15" max="1000" step="0.5" value="160" oninput="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl p-2.5 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="modal-box-height" class="block text-xs font-medium text-slate-300 mb-1">Height H (mm)</label>
+                    <input type="number" id="modal-box-height" min="8" max="500" step="0.5" value="40" oninput="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl p-2.5 focus:ring-indigo-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div id="modal-box-clearance-group">
+                    <label for="modal-box-clearance" class="block text-xs font-medium text-slate-300 mb-1">Lid Clearance per Side (mm)</label>
+                    <input type="number" id="modal-box-clearance" min="0" max="15" step="0.5" value="1.5" oninput="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl p-2.5 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="modal-box-fill" class="block text-xs font-medium text-slate-300 mb-1">Canvas Base Fill</label>
+                    <select id="modal-box-fill" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500">
+                        <option value="stencil">White Cut-Out Stencil</option>
+                        <option value="kraft">Kraft Cardboard Preview</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <input type="checkbox" id="modal-box-labels" checked class="rounded border-slate-800 bg-slate-950 text-indigo-600 focus:ring-indigo-500">
+                <label for="modal-box-labels" class="text-xs text-slate-300 cursor-pointer select-none">
+                    Display panel names &amp; millimeter dimensions on canvas
+                </label>
+            </div>
+
+            <div class="flex items-center justify-between bg-slate-950/80 border border-slate-800 px-3 py-2.5 rounded-xl text-xs">
+                <span class="text-slate-400">Unfolded Flat Sheet (300 DPI):</span>
+                <span id="modal-box-flat-preview" class="font-mono font-bold text-amber-400">297.2 × 312 mm (3510 × 3685 px)</span>
+            </div>
+        </div>
+
+        <div class="flex justify-end space-x-3 pt-3 border-t border-slate-800">
+            <button type="button" onclick="if(window.boxDieline) window.boxDieline.closeBoxDielineModal();" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-xl transition">
+                Cancel
+            </button>
+            <button type="button" id="btn-confirm-box-dieline" onclick="if(window.boxDieline) window.boxDieline.applyBoxDielineFromModal();" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white rounded-xl shadow transition">
+                Apply &amp; Generate Unfolded Box
+            </button>
+        </div>
+    </div>
+</div>
+

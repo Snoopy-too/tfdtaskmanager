@@ -233,24 +233,38 @@ require_once __DIR__ . '/../templates/header.php';
                         <!-- PDF specific configurations -->
                         <div id="pdf-settings" class="space-y-4">
                             <?php
-                            $tmplWidth = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasWidthPx()) : ($compType ? $compType->getWidthMm() : 0.0);
-                            $tmplHeight = $activeTemplate ? \App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasHeightPx()) : ($compType ? $compType->getHeightMm() : 0.0);
+                            $tmplWidth = $activeTemplate ? round(\App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasWidthPx()), 1) : ($compType ? $compType->getWidthMm() : 0.0);
+                            $tmplHeight = $activeTemplate ? round(\App\Domain\Entities\BgTemplate::pxToMm($activeTemplate->getCanvasHeightPx()), 1) : ($compType ? $compType->getHeightMm() : 0.0);
                             $isF10A4 = ($compType && str_contains($compType->getName(), 'F10A4-1')) || (abs($tmplWidth - 91.0) < 1.5 && abs($tmplHeight - 55.0) < 1.5) || (abs($tmplWidth - 55.0) < 1.5 && abs($tmplHeight - 91.0) < 1.5);
                             $is51215 = ($compType && (str_contains($compType->getName(), '51215') || str_contains($compType->getName(), 'F8A4-5'))) || (abs($tmplWidth - 97.0) < 1.5 && abs($tmplHeight - 69.0) < 1.5) || (abs($tmplWidth - 69.0) < 1.5 && abs($tmplHeight - 97.0) < 1.5);
+                            $isBoxTemplate = ($compType && str_contains($compType->getName(), 'Board Game Box')) || ($activeTemplate && str_contains((string)$activeTemplate->getCanvasJson(), 'isBoxDieline'));
                             $autoOrientation = ($tmplWidth > $tmplHeight) ? 'landscape' : 'portrait';
                             ?>
                             <div>
                                 <label for="pdf_page_size" class="block text-sm font-medium text-slate-300 mb-1">Page Size & Layout</label>
                                 <select id="pdf_page_size" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <optgroup label="Standard Sheets (Auto Grid)">
+                                    <optgroup label="Standard Paper Sizes">
                                         <option value="a4" <?php echo (!$isF10A4 && !$is51215) ? 'selected' : ''; ?>>A4 (210 x 297 mm)</option>
-                                        <option value="letter">US Letter (8.5 x 11 in)</option>
+                                        <option value="a5">A5 (148 x 210 mm)</option>
+                                        <option value="a3">A3 (297 x 420 mm)</option>
+                                        <option value="letter">US Letter (8.5 x 11 in / 215.9 x 279.4 mm)</option>
                                     </optgroup>
                                     <optgroup label="Pre-cut / Label Sheets">
                                         <option value="f10a4_1" <?php echo $isF10A4 ? 'selected' : ''; ?>>A-one F10A4-1 (A4 10-Card / 91x55 mm)</option>
                                         <option value="a_one_51215" <?php echo $is51215 ? 'selected' : ''; ?>>A-one 51215 / F8A4-5 (A4 8-Card / 97x69 mm)</option>
                                     </optgroup>
                                 </select>
+                            </div>
+
+                            <div>
+                                <label for="pdf_print_mode" class="block text-sm font-medium text-slate-300 mb-1">Print Output Mode</label>
+                                <select id="pdf_print_mode" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
+                                    <option value="full_design" <?php echo !$isBoxTemplate ? 'selected' : ''; ?>>Full Artwork Design + Cut &amp; Fold Lines</option>
+                                    <option value="cutout_stencil" <?php echo $isBoxTemplate ? 'selected' : ''; ?>>Cut-Out Lines Only (Cardboard Template Stencil)</option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Use <strong>Cut-Out Lines Only</strong> to print a clean white stencil with solid cut lines and dashed fold lines to lay onto cardboard.
+                                </p>
                             </div>
 
                             <div id="f10a4-info-badge" class="<?php echo $isF10A4 ? '' : 'hidden '; ?>p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 space-y-1">
@@ -277,7 +291,7 @@ require_once __DIR__ . '/../templates/header.php';
 
                             <div class="flex items-center space-x-2">
                                 <input type="checkbox" id="pdf_crop_marks" checked class="rounded border-slate-800 text-indigo-600 bg-slate-950 focus:ring-indigo-500">
-                                <label for="pdf_crop_marks" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Draw Crop Marks</label>
+                                <label for="pdf_crop_marks" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Draw Crop Marks &amp; Registration Crosshairs</label>
                             </div>
 
                             <div class="flex items-center space-x-2">
@@ -285,14 +299,16 @@ require_once __DIR__ . '/../templates/header.php';
                                 <label for="pdf_draw_bleed" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Include Physical Bleed Margins</label>
                             </div>
 
-                            <div id="pdf-tiling-container" class="space-y-2 hidden">
-                                <label for="pdf_tiling" class="block text-sm font-medium text-slate-300">Print Scale & Component Layout</label>
+                            <div id="pdf-tiling-container" class="space-y-2 <?php echo $isBoxTemplate ? '' : 'hidden'; ?>">
+                                <label for="pdf_tiling" class="block text-sm font-medium text-slate-300">Multi-Sheet Assembly &amp; Print Scale</label>
                                 <select id="pdf_tiling" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <option value="split_2" selected>100% Actual Size — Split into 2 Parts (2 Pages with Margins)</option>
-                                    <option value="actual_1page">100% Actual Size — 1 Page (Full-Bleed 1:1 Scale)</option>
-                                    <option value="fit">Scale to Fit (1 Page) — ⚠️ Shrinks Component (~90% Scale for 10mm Margins)</option>
-                                    <option value="split_3">100% Actual Size — Split into 3 Parts (3 Pages)</option>
-                                    <option value="split_4">100% Actual Size — Split into 4 Parts (2x2 Grid - 4 Pages)</option>
+                                    <option value="split_2" <?php echo !$isBoxTemplate ? 'selected' : ''; ?>>2 Sheets — 100% Actual Size (Split into 2 Parts to Assemble)</option>
+                                    <option value="split_4" <?php echo $isBoxTemplate ? 'selected' : ''; ?>>4 Sheets — 100% Actual Size (2×2 Grid — 4 Parts to Assemble)</option>
+                                    <option value="actual_1page">1 Sheet — 100% Actual Size (Full-Bleed 1:1 Scale)</option>
+                                    <option value="split_3">3 Sheets — 100% Actual Size (Split into 3 Parts)</option>
+                                    <option value="split_6">6 Sheets — 100% Actual Size (2×3 / 3×2 Grid — 6 Parts)</option>
+                                    <option value="split_9">9 Sheets — 100% Actual Size (3×3 Grid — 9 Parts)</option>
+                                    <option value="fit">1 Sheet — Scale to Fit Page (⚠️ Shrinks Component)</option>
                                 </select>
                                 <div id="pdf-tiling-warning" class="p-3 rounded-xl text-xs space-y-1">
                                     <!-- Populated dynamically by JS -->
@@ -341,9 +357,9 @@ require_once __DIR__ . '/../templates/header.php';
                         
                         <div class="grid grid-cols-2 gap-4 text-xs">
                             <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-xl">
-                                <span class="text-slate-500 block font-semibold uppercase tracking-wider text-[10px]">Component Dimension</span>
+                                <span class="text-slate-500 block font-semibold uppercase tracking-wider text-[10px]">Component / Unfolded Dimension</span>
                                 <span class="font-bold text-slate-200 text-sm mt-1 block">
-                                    <?php echo $compType ? $compType->getWidthMm() : 0; ?> x <?php echo $compType ? $compType->getHeightMm() : 0; ?> mm
+                                    <?php echo $tmplWidth; ?> x <?php echo $tmplHeight; ?> mm
                                 </span>
                             </div>
                             <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-xl">

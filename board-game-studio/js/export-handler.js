@@ -43,9 +43,11 @@
             }
         }
         const tilingSelect = document.getElementById('pdf_tiling');
+        const printModeSelect = document.getElementById('pdf_print_mode');
         if (pageSizeSelect) pageSizeSelect.addEventListener('change', checkTilingVisibility);
         if (orientationSelect) orientationSelect.addEventListener('change', checkTilingVisibility);
         if (tilingSelect) tilingSelect.addEventListener('change', checkTilingVisibility);
+        if (printModeSelect) printModeSelect.addEventListener('change', checkTilingVisibility);
 
         const runBtn = document.getElementById('btn-run-export');
         if (runBtn) {
@@ -215,6 +217,14 @@
                     // Remove guides unless bleed checkbox is checked (or they are marked to exclude)
                     const drawBleedEl = document.getElementById('pdf_draw_bleed');
                     const drawBleedCheckbox = drawBleedEl ? drawBleedEl.checked : false;
+                    const formatEl = document.getElementById('export_format');
+                    const printModeEl = document.getElementById('pdf_print_mode');
+                    const isStencilPrint = (formatEl && formatEl.value === 'pdf') && (printModeEl && printModeEl.value === 'cutout_stencil');
+                    const hasBoxDieline = objects.some(o => Boolean(o.isBoxDieline || (o.id && String(o.id).startsWith('box-dieline-'))));
+
+                    if (isStencilPrint) {
+                        canvas.setBackgroundColor('#ffffff', () => {});
+                    }
                     
                     const toRemove = [];
                     const imageSwapPromises = [];
@@ -242,8 +252,57 @@
         objectsList.forEach(obj => {
             if (obj.id === 'safe-zone-guide') {
                 toRemove.push(obj);
+                return;
             } else if (obj.id === 'bleed-zone-guide' && !drawBleedCheckbox) {
                 toRemove.push(obj);
+                return;
+            }
+
+            const isDielineObj = Boolean(obj.isBoxDieline || (obj.id && String(obj.id).startsWith('box-dieline-')));
+
+            if (isStencilPrint && hasBoxDieline) {
+                if (!isDielineObj || obj.excludeFromStencil) {
+                    toRemove.push(obj);
+                    return;
+                }
+                if (obj.id === 'box-dieline-fill' || obj.dielineRole === 'fill') {
+                    obj.set({
+                        fill: '#ffffff',
+                        stroke: 'transparent',
+                        opacity: 1,
+                        visible: true
+                    });
+                } else if (obj.id === 'box-dieline-cut' || obj.dielineRole === 'cut') {
+                    obj.set({
+                        stroke: '#000000',
+                        strokeWidth: Math.max(obj.strokeWidth || 4, 4),
+                        opacity: 1,
+                        visible: true
+                    });
+                } else if (obj.id === 'box-dieline-fold' || obj.dielineRole === 'fold') {
+                    obj.set({
+                        stroke: '#1e293b',
+                        strokeWidth: Math.max(obj.strokeWidth || 3, 3),
+                        opacity: 1,
+                        visible: true
+                    });
+                } else if (obj.dielineRole === 'label' || (obj.id && String(obj.id).startsWith('box-dieline-label-'))) {
+                    obj.set({
+                        fill: '#334155',
+                        opacity: 0.9,
+                        visible: true
+                    });
+                }
+            } else if (!isStencilPrint && hasBoxDieline) {
+                if (obj._preStencilVisible !== undefined) {
+                    obj.set('visible', obj._preStencilVisible);
+                } else if (!isDielineObj && obj.visible === false && !obj.variable_binding) {
+                    obj.set('visible', true);
+                }
+            }
+
+            if (isDielineObj) {
+                return;
             }
 
             if (obj.type === 'group' && typeof obj.getObjects === 'function') {
@@ -393,6 +452,19 @@
                         : Promise.resolve();
 
                     afterImages.then(() => {
+                        if (hasBoxDieline) {
+                            const currentObjs = canvas.getObjects();
+                            const fillObj = currentObjs.find(o => o.id === 'box-dieline-fill' || o.dielineRole === 'fill');
+                            const foldObj = currentObjs.find(o => o.id === 'box-dieline-fold' || o.dielineRole === 'fold');
+                            const cutObj = currentObjs.find(o => o.id === 'box-dieline-cut' || o.dielineRole === 'cut');
+                            const labelObjs = currentObjs.filter(o => o.dielineRole === 'label' || (o.id && String(o.id).startsWith('box-dieline-label-')));
+
+                            if (fillObj) canvas.sendToBack(fillObj);
+                            if (foldObj) canvas.bringToFront(foldObj);
+                            if (cutObj) canvas.bringToFront(cutObj);
+                            labelObjs.forEach(l => canvas.bringToFront(l));
+                        }
+
                         canvas.getObjects().forEach(o => {
                             if (o.type === 'textbox' || o.type === 'text' || o.type === 'i-text') {
                                 if (o._clearCache) o._clearCache();

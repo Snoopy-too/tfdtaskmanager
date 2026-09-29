@@ -19,7 +19,7 @@
         if (historyTimeout) clearTimeout(historyTimeout);
 
         historyTimeout = setTimeout(() => {
-            const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
+            const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
             if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
 
             historyStack.push(json);
@@ -36,7 +36,7 @@
         const canvas = window.editorCanvas;
         if (isUndoingRedoing || !canvas) return;
 
-        const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked']));
+        const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
         if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
 
         historyStack.push(json);

@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $_SESSION['last_project_id'] = $template->getProjectId();
 $compTypes = $templateService->getComponentTypes();
 usort($compTypes, function($a, $b) {
-    $order = ['Poker Card' => 1, 'Tarot Card' => 2, 'Game Board (Medium Square)' => 3, 'Game Board (Square)' => 4, 'Game Board (Rectangular)' => 5, 'Player Board (A5 Landscape)' => 6, 'Player Board (A4 Landscape)' => 7, 'Punchboard' => 8, 'Custom' => 9, 'Japanese Business Card (A-one F10A4-1)' => 10, 'Japanese ID Card / Name Tag (A-one 51215)' => 11];
+    $order = ['Poker Card' => 1, 'Tarot Card' => 2, 'Board Game Box (Unfolded Die-Line)' => 3, 'Game Board (Medium Square)' => 4, 'Game Board (Square)' => 5, 'Game Board (Rectangular)' => 6, 'Player Board (A5 Landscape)' => 7, 'Player Board (A4 Landscape)' => 8, 'Punchboard' => 9, 'Custom' => 10, 'Japanese Business Card (A-one F10A4-1)' => 11, 'Japanese ID Card / Name Tag (A-one 51215)' => 12];
     return ($order[$a->getName()] ?? 99) <=> ($order[$b->getName()] ?? 99);
 });
 $compType = null;
@@ -169,6 +169,17 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
 
             <?php if (!$isViewMode): ?>
+                <!-- Box Die-Line Generator / Configurator Button -->
+                <button id="btn-open-box-dieline" type="button" onclick="if(window.boxDieline) window.boxDieline.openBoxDielineModal();" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition flex items-center gap-1.5 shrink-0" title="Configure 3D Board Game Box Dimensions & Unfolded Die-Line">
+                    <span>📦</span>
+                    <span class="hidden lg:inline">Box Die-Line</span>
+                </button>
+
+                <!-- Design Mode vs. Cut-Out Stencil Toggle (shown when Box Die-Line is active) -->
+                <button id="btn-toggle-box-stencil" type="button" onclick="if(window.boxDieline) window.boxDieline.toggleStencilPreview();" class="hidden px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition shrink-0" title="Toggle between Full Artwork Design Mode and Pure Cut-Out Stencil Mode">
+                    Mode: Box Design
+                </button>
+
                 <!-- Orientation Switch Button -->
                 <button id="btn-toggle-orientation" onclick="toggleCanvasOrientation()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition flex items-center gap-1.5 shrink-0" title="Switch Canvas Orientation (Portrait ↔ Landscape)">
                     <svg id="orient-btn-icon" class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,6 +370,7 @@ require_once __DIR__ . '/../templates/header.php';
 <script src="js/editor-viewport.js?v=<?php echo filemtime(__DIR__ . '/js/editor-viewport.js'); ?>"></script>
 <script src="js/editor-history.js?v=<?php echo filemtime(__DIR__ . '/js/editor-history.js'); ?>"></script>
 <script src="js/editor-importer.js?v=<?php echo filemtime(__DIR__ . '/js/editor-importer.js'); ?>"></script>
+<script src="js/box-dieline.js?v=<?php echo filemtime(__DIR__ . '/js/box-dieline.js'); ?>"></script>
 <script src="js/editor-core.js?v=<?php echo filemtime(__DIR__ . '/js/editor-core.js'); ?>"></script>
 <script src="js/guide-renderer.js?v=<?php echo filemtime(__DIR__ . '/js/guide-renderer.js'); ?>"></script>
 <script src="js/layer-manager.js?v=<?php echo filemtime(__DIR__ . '/js/layer-manager.js'); ?>"></script>

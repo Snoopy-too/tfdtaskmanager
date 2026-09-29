@@ -23,6 +23,12 @@ try {
     if (!$check51215) {
         $db->exec("INSERT INTO `bg_component_types` (`name`, `width_mm`, `height_mm`, `description`) VALUES ('Japanese ID Card / Name Tag (A-one 51215)', 97.00, 69.00, 'Standard Japanese hanging name tag / ID card / A-one 8-card sheet (97x69 mm, Format F8A4-5, Model 51215)')");
     }
+
+    // Auto-migrate Board Game Box (Unfolded Die-Line) preset
+    $checkBox = $db->query("SELECT id FROM `bg_component_types` WHERE `name` LIKE '%Board Game Box%'")->fetch();
+    if (!$checkBox) {
+        $db->exec("INSERT INTO `bg_component_types` (`name`, `width_mm`, `height_mm`, `description`) VALUES ('Board Game Box (Unfolded Die-Line)', 297.20, 312.00, 'Unfolded flat board game box template generated from finished 3D Width, Length, and Height')");
+    }
 } catch (\Exception $e) {
     // Ignore db connection issues here; standard page loads will handle them
 }
@@ -99,6 +105,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $orientation = isset($_POST['orientation']) && $_POST['orientation'] === 'landscape' ? 'landscape' : 'portrait';
         $currentUserId = (int)($_SESSION['user_id'] ?? 0);
 
+        $boxParams = [
+            'box_type'         => $_POST['box_type'] ?? 'double_wall_tray',
+            'box_part'         => $_POST['box_part'] ?? 'base',
+            'box_width_mm'     => isset($_POST['box_width_mm']) ? (float)$_POST['box_width_mm'] : 120.0,
+            'box_length_mm'    => isset($_POST['box_length_mm']) ? (float)$_POST['box_length_mm'] : 160.0,
+            'box_height_mm'    => isset($_POST['box_height_mm']) ? (float)$_POST['box_height_mm'] : 40.0,
+            'box_clearance_mm' => isset($_POST['box_clearance_mm']) ? (float)$_POST['box_clearance_mm'] : 1.5,
+            'box_show_labels'  => isset($_POST['box_show_labels']) && $_POST['box_show_labels'] === '1',
+            'box_fill_style'   => $_POST['box_fill_style'] ?? 'stencil',
+        ];
+
         try {
             if (!$activeProjectId) {
                 throw new ValidationException("No active project selected.");
@@ -113,7 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $currentUserId,
                 $customWidthMm,
                 $customHeightMm,
-                $orientation
+                $orientation,
+                $boxParams
             );
             header("Location: editor.php?id=" . $newTemplate->getId());
             exit;
@@ -236,15 +254,16 @@ if ($activeProjectId) {
         $logicalOrder = [
             'Poker Card' => 1,
             'Tarot Card' => 2,
-            'Game Board (Medium Square)' => 3,
-            'Game Board (Square)' => 4,
-            'Game Board (Rectangular)' => 5,
-            'Player Board (A5 Landscape)' => 6,
-            'Player Board (A4 Landscape)' => 7,
-            'Punchboard' => 8,
-            'Custom' => 9,
-            'Japanese Business Card (A-one F10A4-1)' => 10,
-            'Japanese ID Card / Name Tag (A-one 51215)' => 11
+            'Board Game Box (Unfolded Die-Line)' => 3,
+            'Game Board (Medium Square)' => 4,
+            'Game Board (Square)' => 5,
+            'Game Board (Rectangular)' => 6,
+            'Player Board (A5 Landscape)' => 7,
+            'Player Board (A4 Landscape)' => 8,
+            'Punchboard' => 9,
+            'Custom' => 10,
+            'Japanese Business Card (A-one F10A4-1)' => 11,
+            'Japanese ID Card / Name Tag (A-one 51215)' => 12
         ];
         $aOrder = $logicalOrder[$a->getName()] ?? 99;
         $bOrder = $logicalOrder[$b->getName()] ?? 99;

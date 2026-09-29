@@ -21,6 +21,10 @@
         if (oldBleed) canvas.remove(oldBleed);
         if (oldSafe) canvas.remove(oldSafe);
 
+        if (window.boxDieline && typeof window.boxDieline.syncBoxDielineStack === 'function') {
+            window.boxDieline.syncBoxDielineStack();
+        }
+
         if (!guidesVisible) {
             canvas.renderAll();
             return;

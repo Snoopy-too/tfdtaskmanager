@@ -101,33 +101,106 @@
         }
     }
 
-    // Helper to draw alignment borders
-    function drawOverlapGuidelines(pdf, x, y, w, h, col, row, totalCols, totalRows) {
-        pdf.setDrawColor(200, 200, 200);
+    // Helper to resolve multi-sheet split grid (cols x rows) for a given tiling mode
+    function resolveSplitGrid(tilingMode, cardW, cardH) {
+        let splitCols = 1;
+        let splitRows = 1;
+        if (tilingMode === 'split_2') {
+            if (cardW >= cardH) {
+                splitCols = 2;
+                splitRows = 1;
+            } else {
+                splitCols = 1;
+                splitRows = 2;
+            }
+        } else if (tilingMode === 'split_3') {
+            if (cardW >= cardH) {
+                splitCols = 3;
+                splitRows = 1;
+            } else {
+                splitCols = 1;
+                splitRows = 3;
+            }
+        } else if (tilingMode === 'split_4') {
+            splitCols = 2;
+            splitRows = 2;
+        } else if (tilingMode === 'split_6') {
+            if (cardW >= cardH) {
+                splitCols = 3;
+                splitRows = 2;
+            } else {
+                splitCols = 2;
+                splitRows = 3;
+            }
+        } else if (tilingMode === 'split_9') {
+            splitCols = 3;
+            splitRows = 3;
+        }
+        return { splitCols, splitRows };
+    }
+
+    // Helper to draw alignment registration crosshairs at shared seam corners
+    function drawRegistrationCrosshair(pdf, cx, cy) {
+        const r = 1.6;
+        const arm = 3.0;
+        pdf.setDrawColor(80, 80, 80);
         pdf.setLineWidth(0.2);
+        pdf.setLineDashPattern([], 0);
+        pdf.circle(cx, cy, r, 'S');
+        pdf.line(cx - arm, cy, cx + arm, cy);
+        pdf.line(cx, cy - arm, cx, cy + arm);
+    }
+
+    // Helper to draw alignment borders, registration crosshairs, and sheet assembly labels
+    function drawOverlapGuidelines(pdf, x, y, w, h, col, row, totalCols, totalRows, sheetNum, totalSheets) {
+        pdf.setDrawColor(140, 140, 140);
+        pdf.setLineWidth(0.22);
         pdf.setLineDashPattern([2, 1], 0);
 
         pdf.setFontSize(6);
-        pdf.setTextColor(150, 150, 150);
+        pdf.setTextColor(110, 110, 110);
 
         if (col > 0) {
             pdf.line(x, y, x, y + h);
-            pdf.text("GLUE / TAPE LINE", x + 1.5, y + 10, { angle: 90 });
+            pdf.text("TRIM / TAPE SEAM (JOIN LEFT)", x + 1.8, y + Math.min(14, h / 2), { angle: 90 });
         }
         if (col < totalCols - 1) {
             pdf.line(x + w, y, x + w, y + h);
-            pdf.text("GLUE / TAPE LINE", x + w - 3.5, y + 10, { angle: 90 });
+            pdf.text("TRIM / TAPE SEAM (JOIN RIGHT)", x + w - 3.2, y + Math.min(14, h / 2), { angle: 90 });
         }
         if (row > 0) {
             pdf.line(x, y, x + w, y);
-            pdf.text("GLUE / TAPE LINE", x + 10, y + 3);
+            pdf.text("TRIM / TAPE SEAM (JOIN TOP)", x + Math.min(10, w / 4), y + 2.8);
         }
         if (row < totalRows - 1) {
             pdf.line(x, y + h, x + w, y + h);
-            pdf.text("GLUE / TAPE LINE", x + 10, y + h - 1.5);
+            pdf.text("TRIM / TAPE SEAM (JOIN BOTTOM)", x + Math.min(10, w / 4), y + h - 1.5);
         }
 
         pdf.setLineDashPattern([], 0);
+
+        // Draw corner registration crosshairs on shared interior seams
+        if (col > 0 || row > 0) {
+            drawRegistrationCrosshair(pdf, x, y);
+        }
+        if (col < totalCols - 1 || row > 0) {
+            drawRegistrationCrosshair(pdf, x + w, y);
+        }
+        if (col > 0 || row < totalRows - 1) {
+            drawRegistrationCrosshair(pdf, x, y + h);
+        }
+        if (col < totalCols - 1 || row < totalRows - 1) {
+            drawRegistrationCrosshair(pdf, x + w, y + h);
+        }
+
+        // Draw sheet assembly identification header
+        if (sheetNum && totalSheets) {
+            pdf.setFontSize(6.5);
+            pdf.setTextColor(90, 90, 90);
+            const labelY = Math.max(4.5, y - 2.5);
+            const labelText = `Sheet ${sheetNum} of ${totalSheets} [Row ${row + 1}/${totalRows}, Col ${col + 1}/${totalCols}]  •  100% 1:1 Scale  •  Align crosshairs & dashed seams to assemble`;
+            pdf.text(labelText, Math.max(6, x), labelY);
+        }
     }
 
     // Export PDF Tiled Generation
@@ -146,25 +219,21 @@
                 const is51215 = (pageSize === 'a_one_51215');
                 const isPrecutSheet = isF10A4 || is51215;
                 const pdfFormat = isPrecutSheet ? 'a4' : pageSize;
-                const pdfOrientation = isPrecutSheet ? 'portrait' : orientation;
+                let pdfOrientation = isPrecutSheet ? 'portrait' : orientation;
 
                 const pageDims = {
                     a4: { w: 210, h: 297 },
+                    a5: { w: 148, h: 210 },
+                    a3: { w: 297, h: 420 },
                     letter: { w: 215.9, h: 279.4 }
                 };
 
                 const selectedDims = pageDims[pdfFormat] || pageDims.a4;
-                const pageW = pdfOrientation === 'portrait' ? selectedDims.w : selectedDims.h;
-                const pageH = pdfOrientation === 'portrait' ? selectedDims.h : selectedDims.w;
+                let pageW = pdfOrientation === 'portrait' ? selectedDims.w : selectedDims.h;
+                let pageH = pdfOrientation === 'portrait' ? selectedDims.h : selectedDims.w;
 
                 const cardW = window.studioConfig.widthMm;
                 const cardH = window.studioConfig.heightMm;
-
-                const pdf = new jsPDF({
-                    orientation: pdfOrientation,
-                    unit: 'mm',
-                    format: pdfFormat
-                });
 
                 let margin = 10;
                 let gap = 2;
@@ -177,8 +246,12 @@
                 let splitCols = 1;
                 let splitRows = 1;
                 let isTiled = false;
-                const availW = pageW - (margin * 2);
-                const availH = pageH - (margin * 2);
+                let availW = pageW - (margin * 2);
+                let availH = pageH - (margin * 2);
+
+                const tilingContainer = document.getElementById('pdf-tiling-container');
+                const isTilingVisible = tilingContainer && !tilingContainer.classList.contains('hidden');
+                const tilingMode = (isTilingVisible && document.getElementById('pdf_tiling')) ? document.getElementById('pdf_tiling').value : 'fit';
 
                 if (isF10A4) {
                     // A-one F10A4-1 fixed standard layout (10 cards: 2x5 grid, 91x55mm, 14mm sides, 11mm top/bottom, 0mm gap)
@@ -204,7 +277,8 @@
                     cols = Math.floor((availW + gap) / (drawW + gap));
                     rows = Math.floor((availH + gap) / (drawH + gap));
 
-                    if (cols === 0 || rows === 0) {
+                    // Apply multi-sheet or single-sheet tiling if the component is larger than 1 page OR if the user explicitly chose a multi-sheet split
+                    if (cols === 0 || rows === 0 || (isTilingVisible && tilingMode && tilingMode.startsWith('split_'))) {
                         const tiling = document.getElementById('pdf_tiling') ? document.getElementById('pdf_tiling').value : 'fit';
                         if (tiling === 'actual_1page') {
                             isTiled = false;
@@ -215,26 +289,9 @@
                             rows = 1;
                         } else if (tiling !== 'fit') {
                             isTiled = true;
-                            if (tiling === 'split_2') {
-                                if (cardW >= cardH) {
-                                    splitCols = 2;
-                                    splitRows = 1;
-                                } else {
-                                    splitCols = 1;
-                                    splitRows = 2;
-                                }
-                            } else if (tiling === 'split_3') {
-                                if (cardW >= cardH) {
-                                    splitCols = 3;
-                                    splitRows = 1;
-                                } else {
-                                    splitCols = 1;
-                                    splitRows = 3;
-                                }
-                            } else if (tiling === 'split_4') {
-                                splitCols = 2;
-                                splitRows = 2;
-                            }
+                            const grid = resolveSplitGrid(tiling, cardW, cardH);
+                            splitCols = grid.splitCols;
+                            splitRows = grid.splitRows;
                             const pieceW = cardW / splitCols;
                             const pieceH = cardH / splitRows;
                             scaleFactor = 1.0;
@@ -242,6 +299,17 @@
                             drawH = pieceH;
                             cols = 1;
                             rows = 1;
+
+                            // Auto-orient the sheet if the split tile fits cleanly in the alternate orientation
+                            const fitsCurrent = (drawW <= pageW - 8) && (drawH <= pageH - 8);
+                            const fitsRotated = (drawW <= pageH - 8) && (drawH <= pageW - 8);
+                            if (!fitsCurrent && fitsRotated) {
+                                pdfOrientation = (pdfOrientation === 'portrait') ? 'landscape' : 'portrait';
+                                pageW = pdfOrientation === 'portrait' ? selectedDims.w : selectedDims.h;
+                                pageH = pdfOrientation === 'portrait' ? selectedDims.h : selectedDims.w;
+                                availW = pageW - (margin * 2);
+                                availH = pageH - (margin * 2);
+                            }
                         } else {
                             scaleFactor = Math.min(availW / cardW, availH / cardH);
                             drawW = cardW * scaleFactor;
@@ -251,15 +319,17 @@
                         }
                     }
 
-                    const tilingContainer = document.getElementById('pdf-tiling-container');
-                    const isTilingVisible = tilingContainer && !tilingContainer.classList.contains('hidden');
-                    const tilingMode = (isTilingVisible && document.getElementById('pdf_tiling')) ? document.getElementById('pdf_tiling').value : 'fit';
-
                     const gridW = (cols * drawW) + ((cols - 1) * gap);
                     const gridH = (rows * drawH) + ((rows - 1) * gap);
                     startX = (isTilingVisible && tilingMode === 'actual_1page') ? (pageW - drawW) / 2 : margin + ((availW - gridW) / 2);
                     startY = (isTilingVisible && tilingMode === 'actual_1page') ? (pageH - drawH) / 2 : margin + ((availH - gridH) / 2);
                 }
+
+                const pdf = new jsPDF({
+                    orientation: pdfOrientation,
+                    unit: 'mm',
+                    format: pdfFormat
+                });
 
                 const cardsPerPage = cols * rows;
 
@@ -296,6 +366,8 @@
                         const sourceH = htmlImg.naturalHeight || htmlImg.height || window.studioConfig.canvasHeight;
                         const chunkSourceW = sourceW / splitCols;
                         const chunkSourceH = sourceH / splitRows;
+                        const totalSheets = splitCols * splitRows;
+                        let sheetCounter = 0;
 
                         for (let r = 0; r < splitRows; r++) {
                             for (let c = 0; c < splitCols; c++) {
@@ -303,6 +375,7 @@
                                     pdf.addPage(pdfFormat, pdfOrientation);
                                 }
                                 pageIndex++;
+                                sheetCounter++;
 
                                 const x = (pageW - drawW) / 2;
                                 const y = (pageH - drawH) / 2;
@@ -324,13 +397,15 @@
                                     drawPageCropMarks(pdf, x, y, drawW, drawH);
                                 }
 
-                                drawOverlapGuidelines(pdf, x, y, drawW, drawH, c, r, splitCols, splitRows);
+                                drawOverlapGuidelines(pdf, x, y, drawW, drawH, c, r, splitCols, splitRows, sheetCounter, totalSheets);
                             }
                         }
                     }
                 }
 
-                pdf.save(`${window.studioConfig.templateName.replace(/[^a-zA-Z0-9_\-]/g, '_')}_print_play.pdf`);
+                const printModeEl = document.getElementById('pdf_print_mode');
+                const suffix = (printModeEl && printModeEl.value === 'cutout_stencil') ? '_box_stencil' : '_print_play';
+                pdf.save(`${window.studioConfig.templateName.replace(/[^a-zA-Z0-9_\-]/g, '_')}${suffix}.pdf`);
                 resolve();
             } catch (err) {
                 reject(err);
@@ -346,6 +421,8 @@
         const orientation = document.getElementById('pdf_orientation') ? document.getElementById('pdf_orientation').value : 'portrait';
         const tilingSelect = document.getElementById('pdf_tiling');
         const selectedOption = tilingSelect ? tilingSelect.value : 'split_2';
+        const printModeEl = document.getElementById('pdf_print_mode');
+        const isStencilMode = printModeEl && printModeEl.value === 'cutout_stencil';
 
         const f10Badge = document.getElementById('f10a4-info-badge');
         const f8Badge = document.getElementById('f8a4-info-badge');
@@ -375,8 +452,9 @@
 
         const pageDims = {
             a4: { w: 210, h: 297 },
-            letter: { w: 215.9, h: 279.4 },
-            a3: { w: 297, h: 420 }
+            a5: { w: 148, h: 210 },
+            a3: { w: 297, h: 420 },
+            letter: { w: 215.9, h: 279.4 }
         };
 
         const selectedDims = pageDims[pageSize] || pageDims.a4;
@@ -395,35 +473,62 @@
         const fitScalePercent = Math.round(Math.min(scaleW, scaleH, 1) * 1000) / 10;
 
         if (tilingContainer) {
-            if (cardW > availW || cardH > availH) {
+            if (cardW > availW || cardH > availH || isStencilMode) {
                 tilingContainer.classList.remove('hidden');
 
                 if (warningBox) {
                     if (selectedOption === 'actual_1page') {
-                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
-                        warningBox.innerHTML = `
-                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                <span>✅ 100% Actual 1:1 Physical Scale (1 Sheet)</span>
-                            </div>
-                            <p>Exports at <strong>100% 1:1 physical size</strong> on 1 single sheet of paper (full-bleed). When printing your PDF, select <strong>"Actual Size / 100%"</strong> in your printer dialog (or Borderless printing). Cut-out cards will match perfectly!</p>
-                        `;
+                        const exceedsSheet = (cardW > pageW || cardH > pageH);
+                        if (exceedsSheet) {
+                            warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
+                            warningBox.innerHTML = `
+                                <div class="font-bold flex items-center gap-1.5 text-amber-400">
+                                    <span>⚠️ Template (${cardW}×${cardH} mm) Exceeds 1 ${pageSize.toUpperCase()} Sheet (${pageW}×${pageH} mm)</span>
+                                </div>
+                                <p>Your unfolded template is larger than a single ${pageSize.toUpperCase()} sheet and will clip at the edges. Select <strong>"2 Sheets"</strong> or <strong>"4 Sheets (2×2 Grid)"</strong> above to print across multiple sheets and assemble them!</p>
+                            `;
+                        } else {
+                            warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
+                            warningBox.innerHTML = `
+                                <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                    <span>✅ 100% Actual 1:1 Physical Scale (1 Sheet)</span>
+                                </div>
+                                <p>Exports at <strong>100% 1:1 physical size</strong> on 1 single ${pageSize.toUpperCase()} sheet. When printing your PDF, select <strong>"Actual Size / 100%"</strong> in your printer dialog.</p>
+                            `;
+                        }
                     } else if (selectedOption === 'fit') {
                         warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
                         warningBox.innerHTML = `
                             <div class="font-bold flex items-center gap-1.5 text-amber-400">
                                 <span>⚠️ Scaling Warning (${fitScalePercent}% Scale)</span>
                             </div>
-                            <p>Scale to Fit will shrink your <strong>${cardW}x${cardH}mm</strong> component down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins. Printed cut-out cards will be <strong>larger</strong> than board rectangles!</p>
-                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 card size on 1 sheet, select <strong>"100% Actual Size — 1 Page (Full-Bleed)"</strong>.</p>
+                            <p>Scale to Fit will shrink your <strong>${cardW}×${cardH} mm</strong> template down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins. Do not use if you need 1:1 physical box dimensions!</p>
+                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 physical box dimensions, select <strong>"2 Sheets"</strong> or <strong>"4 Sheets (2×2 Grid)"</strong>.</p>
                         `;
                     } else {
-                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
-                        warningBox.innerHTML = `
-                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                <span>✅ 100% Actual 1:1 Physical Scale (Multi-Page Split)</span>
-                            </div>
-                            <p>Exports at <strong>100% 1:1 physical size</strong> split across multiple pages with 10mm printer margins. Cut-out cards will line up with board rectangles perfectly.</p>
-                        `;
+                        const grid = resolveSplitGrid(selectedOption, cardW, cardH);
+                        const totalSheets = grid.splitCols * grid.splitRows;
+                        const pieceW = Math.round((cardW / grid.splitCols) * 10) / 10;
+                        const pieceH = Math.round((cardH / grid.splitRows) * 10) / 10;
+                        const fitsSheet = (pieceW <= selectedDims.w && pieceH <= selectedDims.h) || (pieceW <= selectedDims.h && pieceH <= selectedDims.w);
+
+                        if (!fitsSheet) {
+                            warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
+                            warningBox.innerHTML = `
+                                <div class="font-bold flex items-center gap-1.5 text-amber-400">
+                                    <span>⚠️ Tile Size (${pieceW}×${pieceH} mm) Exceeds ${pageSize.toUpperCase()} Sheet (${selectedDims.w}×${selectedDims.h} mm)</span>
+                                </div>
+                                <p>Splitting <strong>${cardW}×${cardH} mm</strong> into ${totalSheets} sheets (${grid.splitCols}×${grid.splitRows}) creates ${pieceW}×${pieceH} mm tiles, which are still larger than a single ${pageSize.toUpperCase()} sheet. Choose <strong>4 Sheets</strong>, <strong>6 Sheets</strong>, or <strong>9 Sheets</strong> so every part fits without clipping.</p>
+                            `;
+                        } else {
+                            warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
+                            warningBox.innerHTML = `
+                                <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                    <span>✅ 100% Actual 1:1 Physical Scale (${totalSheets} Sheets — ${grid.splitCols}×${grid.splitRows} Assembly Grid)</span>
+                                </div>
+                                <p>Splits your <strong>${cardW}×${cardH} mm</strong> template into <strong>${totalSheets} sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 physical size</strong> with registration crosshairs and dashed join lines for easy taping and cardboard cutout.</p>
+                            `;
+                        }
                     }
                 }
             } else {

@@ -153,7 +153,8 @@ try {
         (8, 'Game Board (Medium Square)', 300.00, 300.00, 'Medium square game board'),
         (9, 'Custom', 0.00, 0.00, 'Custom dimensions defined by user.'),
         (10, 'Japanese Business Card (A-one F10A4-1)', 91.00, 55.00, 'Standard Japanese business card / A-one 10-card sheet (91x55 mm, Format F10A4-1)'),
-        (11, 'Japanese ID Card / Name Tag (A-one 51215)', 97.00, 69.00, 'Standard Japanese hanging name tag / ID card / A-one 8-card sheet (97x69 mm, Format F8A4-5, Model 51215)');
+        (11, 'Japanese ID Card / Name Tag (A-one 51215)', 97.00, 69.00, 'Standard Japanese hanging name tag / ID card / A-one 8-card sheet (97x69 mm, Format F8A4-5, Model 51215)'),
+        (12, 'Board Game Box (Unfolded Die-Line)', 297.20, 312.00, 'Unfolded flat board game box template generated from finished 3D Width, Length, and Height');
     ");
     // Force reset all default types to their correct details
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Poker Card', `width_mm` = 63.00, `height_mm` = 88.00, `description` = 'Standard poker-size playing card' WHERE `id` = 1");
@@ -167,6 +168,7 @@ try {
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Custom', `width_mm` = 0.00, `height_mm` = 0.00, `description` = 'Custom dimensions defined by user.' WHERE `id` = 9");
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Japanese Business Card (A-one F10A4-1)', `width_mm` = 91.00, `height_mm` = 55.00, `description` = 'Standard Japanese business card / A-one 10-card sheet (91x55 mm, Format F10A4-1)' WHERE `id` = 10");
     $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Japanese ID Card / Name Tag (A-one 51215)', `width_mm` = 97.00, `height_mm` = 69.00, `description` = 'Standard Japanese hanging name tag / ID card / A-one 8-card sheet (97x69 mm, Format F8A4-5, Model 51215)' WHERE `id` = 11");
+    $pdo->exec("UPDATE `bg_component_types` SET `name` = 'Board Game Box (Unfolded Die-Line)', `width_mm` = 297.20, `height_mm` = 312.00, `description` = 'Unfolded flat board game box template generated from finished 3D Width, Length, and Height' WHERE `id` = 12");
     echo "- Seeded default component types.\n";
 
     // 9. Board Game Assets table

@@ -28,6 +28,7 @@ use App\Application\Services\BgExportService;
 use App\Infrastructure\Repository\PDOBgRulebookRepository;
 use App\Infrastructure\Repository\PDOBgGlossaryRepository;
 use App\Application\Services\BgRulebookService;
+use App\Application\Services\BgBoxDielineService;
 use PDO;
 
 class DIContainer
@@ -140,12 +141,17 @@ class DIContainer
             return new BgDatasetService($this->get(PDOBgDatasetRepository::class));
         };
 
+        $this->services[BgBoxDielineService::class] = function() {
+            return new BgBoxDielineService();
+        };
+
         $this->services[BgTemplateService::class] = function() {
             return new BgTemplateService(
                 $this->get(PDOBgTemplateRepository::class),
                 $this->get(PDOBgTemplateLayerRepository::class),
                 $this->get(PDOBgComponentTypeRepository::class),
-                $this->get(PDOBgRulebookRepository::class)
+                $this->get(PDOBgRulebookRepository::class),
+                $this->get(BgBoxDielineService::class)
             );
         };
 

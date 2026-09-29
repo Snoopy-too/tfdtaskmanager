@@ -198,13 +198,45 @@
 
         container.innerHTML = '';
         const objects = canvas.getObjects();
+
+        const boxCfg = (window.boxDieline && typeof window.boxDieline.getActiveBoxConfig === 'function')
+            ? window.boxDieline.getActiveBoxConfig()
+            : null;
+
+        if (boxCfg) {
+            const boxBanner = document.createElement('div');
+            boxBanner.className = 'p-2.5 rounded-xl text-xs bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-1.5 mb-2';
+            const titleRow = document.createElement('div');
+            titleRow.className = 'flex items-center justify-between font-bold text-amber-300';
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = `📦 Box (${boxCfg.effectiveW || boxCfg.finishedW}×${boxCfg.effectiveL || boxCfg.finishedL}×${boxCfg.effectiveH || boxCfg.finishedH}mm)`;
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-[10px] text-amber-200 transition';
+            editBtn.textContent = 'Edit Box';
+            editBtn.addEventListener('click', () => {
+                if (window.boxDieline && typeof window.boxDieline.openBoxDielineModal === 'function') {
+                    window.boxDieline.openBoxDielineModal();
+                }
+            });
+            titleRow.appendChild(titleSpan);
+            titleRow.appendChild(editBtn);
+
+            const subRow = document.createElement('div');
+            subRow.className = 'text-[10px] text-slate-400';
+            subRow.textContent = 'Cut & fold lines stay aligned over your design layers.';
+
+            boxBanner.appendChild(titleRow);
+            boxBanner.appendChild(subRow);
+            container.appendChild(boxBanner);
+        }
         
         // Reverse iterate to display from front (top z-index) to back
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
             
-            // Skip Guides
-            if (obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide') {
+            // Skip Guides & Protected Box Die-Line Overlays
+            if (obj.id === 'safe-zone-guide' || obj.id === 'bleed-zone-guide' || obj.isBoxDieline || (obj.id && String(obj.id).startsWith('box-dieline-'))) {
                 continue;
             }
 

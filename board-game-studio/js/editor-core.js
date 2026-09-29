@@ -179,7 +179,7 @@
         if (isSaving || !canvas) return Promise.resolve();
         isSaving = true;
 
-        const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'original_filename', 'stored_filename', 'asset_url']));
+        const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'original_filename', 'stored_filename', 'asset_url', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
         
         const layers = [];
         canvas.getObjects().forEach((obj, index) => {
@@ -266,7 +266,7 @@
 
     function upgradeLegacyTextLayers() {
         if (!canvas) return;
-        const legacyTextObjects = canvas.getObjects().filter(obj => obj.type === 'i-text' || obj.type === 'text');
+        const legacyTextObjects = canvas.getObjects().filter(obj => (obj.type === 'i-text' || obj.type === 'text') && !obj.isBoxDieline && !(obj.id && String(obj.id).startsWith('box-dieline-')));
         if (legacyTextObjects.length === 0) return;
 
         legacyTextObjects.forEach(obj => {
@@ -379,6 +379,10 @@
                 canvas.loadFromJSON(data.canvas_json, () => {
                     upgradeLegacyTextLayers();
                     upgradeSvgImageLayers();
+
+                    if (window.boxDieline && typeof window.boxDieline.syncBoxDielineStack === 'function') {
+                        window.boxDieline.syncBoxDielineStack();
+                    }
 
                     if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                         window.guideRenderer.renderGuides();
