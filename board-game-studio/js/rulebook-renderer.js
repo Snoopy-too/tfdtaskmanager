@@ -113,8 +113,13 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.locked) {
-                        alert("This rulebook has been locked by another user or your session expired. Entering read-only mode.");
-                        window.location.reload();
+                        const msg = "This rulebook has been locked by another user or your session expired. Entering read-only mode.";
+                        if (typeof window.studioAlert === 'function') {
+                            window.studioAlert(msg, "Rulebook Locked").then(() => window.location.reload());
+                        } else {
+                            alert(msg);
+                            window.location.reload();
+                        }
                     }
                 })
                 .catch(err => console.error('Lock heartbeat failed:', err));
@@ -301,7 +306,13 @@
 
     window.saveRulebook = function(quiet = false) {
         if (window.rulebookConfig.isLocked) {
-            if (!quiet) alert("This rulebook is locked in Read-Only Mode.");
+            if (!quiet) {
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert("This rulebook is locked in Read-Only Mode.", "Read-Only Mode");
+                } else {
+                    alert("This rulebook is locked in Read-Only Mode.");
+                }
+            }
             return;
         }
         const indicator = document.getElementById('status-indicator');
@@ -339,7 +350,13 @@
                 indicator.textContent = 'Error saving changes';
                 indicator.className = 'text-xs text-rose-500 font-bold';
             }
-            if (!quiet) alert('Failed to save rulebook: ' + err.message);
+            if (!quiet) {
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert('Failed to save rulebook: ' + err.message, 'Save Error');
+                } else {
+                    alert('Failed to save rulebook: ' + err.message);
+                }
+            }
         });
     };
 

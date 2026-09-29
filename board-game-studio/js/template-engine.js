@@ -451,7 +451,11 @@
         .then(r => r.json())
         .then(res => {
             if (res.error) {
-                alert(res.error);
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert(res.error, 'Dataset Binding Error');
+                } else {
+                    alert(res.error);
+                }
                 return;
             }
 

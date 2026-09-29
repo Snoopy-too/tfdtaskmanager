@@ -183,7 +183,11 @@
         .then(res => res.json())
         .then(data => {
             if (data.error) {
-                alert(data.error);
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert(data.error, 'Orientation Error');
+                } else {
+                    alert(data.error);
+                }
                 if (window.editorCore) window.editorCore.setSaveStatus('Orientation change failed', 'error');
                 return;
             }
@@ -249,7 +253,11 @@
         })
         .catch(err => {
             console.error('Error switching orientation:', err);
-            alert('Failed to update orientation. Please try again.');
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert('Failed to update orientation. Please try again.', 'Orientation Error');
+            } else {
+                alert('Failed to update orientation. Please try again.');
+            }
             if (window.editorCore) window.editorCore.setSaveStatus('Orientation change failed', 'error');
         });
     }

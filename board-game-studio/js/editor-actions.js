@@ -236,7 +236,11 @@ function applyCanvasResize() {
     const hMm = parseFloat(document.getElementById('resize-height-mm')?.value) || 0;
 
     if (wMm <= 0 || hMm <= 0) {
-        alert('Please enter positive numbers for width and height.');
+        if (typeof window.studioAlert === 'function') {
+            window.studioAlert('Please enter positive numbers for width and height.', 'Validation Error');
+        } else {
+            alert('Please enter positive numbers for width and height.');
+        }
         return;
     }
 
@@ -272,7 +276,11 @@ function applyCanvasResize() {
         }
 
         if (data.error) {
-            alert(data.error);
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert(data.error, 'Resize Error');
+            } else {
+                alert(data.error);
+            }
             return;
         }
 
@@ -351,6 +359,10 @@ function applyCanvasResize() {
             btn.disabled = false;
             btn.textContent = 'Update Size';
         }
-        alert('Failed to update template size. Please try again.');
+        if (typeof window.studioAlert === 'function') {
+            window.studioAlert('Failed to update template size. Please try again.', 'Resize Error');
+        } else {
+            alert('Failed to update template size. Please try again.');
+        }
     });
 }

@@ -112,6 +112,15 @@
 
     window.showCustomConfirm = function(message, form) {
         activeConfirmForm = form;
+        if (typeof window.studioConfirm === 'function') {
+            window.studioConfirm(message, 'Delete', 'Confirm Action').then(confirmed => {
+                if (confirmed && activeConfirmForm) {
+                    activeConfirmForm.submit();
+                    activeConfirmForm = null;
+                }
+            });
+            return false;
+        }
         const modal = document.getElementById('custom-confirm-modal');
         const msgEl = document.getElementById('custom-confirm-message');
         if (modal && msgEl) {
@@ -134,15 +143,29 @@
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                alert(`Successfully imported/updated ${data.count} glossary terms!`);
-                window.location.reload();
+                const msg = `Successfully imported/updated ${data.count} glossary terms!`;
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert(msg, 'Import Complete').then(() => window.location.reload());
+                } else {
+                    alert(msg);
+                    window.location.reload();
+                }
             } else {
-                alert('Error importing CSV: ' + (data.error || 'Unknown error'));
+                const errMsg = 'Error importing CSV: ' + (data.error || 'Unknown error');
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert(errMsg, 'CSV Import Error');
+                } else {
+                    alert(errMsg);
+                }
             }
         })
         .catch(err => {
             console.error('CSV import error:', err);
-            alert('An unexpected error occurred during CSV import.');
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert('An unexpected error occurred during CSV import.', 'CSV Import Error');
+            } else {
+                alert('An unexpected error occurred during CSV import.');
+            }
         });
         return false;
     };
