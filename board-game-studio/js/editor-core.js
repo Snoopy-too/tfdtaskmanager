@@ -258,7 +258,7 @@
         .then(data => {
             isSaving = false;
             if (data.success) {
-                setSaveStatus('All changes saved', 'saved');
+                setSaveStatus('Saved', 'saved');
                 if (window.layerManager && typeof window.layerManager.renderLayersList === 'function') {
                     window.layerManager.renderLayersList();
                 }
@@ -413,7 +413,7 @@
                     }
 
                     canvas.renderAll();
-                    setSaveStatus('All changes saved', 'saved');
+                    setSaveStatus('Saved', 'saved');
                     hideCanvasLoadingOverlay();
                     
                     if (window.editorHistory) window.editorHistory.pushStateImmediate();
@@ -430,7 +430,7 @@
                 if (window.guideRenderer && typeof window.guideRenderer.renderGuides === 'function') {
                     window.guideRenderer.renderGuides();
                 }
-                setSaveStatus('All changes saved', 'saved');
+                setSaveStatus('Saved', 'saved');
                 hideCanvasLoadingOverlay();
                 
                 if (window.editorHistory) window.editorHistory.pushStateImmediate();

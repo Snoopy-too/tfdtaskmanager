@@ -241,11 +241,11 @@
 
         if (btn) {
             if (stencilPreviewActive) {
-                btn.textContent = 'Mode: Cut-Out Stencil';
-                btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition shrink-0';
+                btn.textContent = '✂️ Stencil';
+                btn.className = 'px-2 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition shrink-0';
             } else {
-                btn.textContent = 'Mode: Box Design';
-                btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition shrink-0';
+                btn.textContent = '🎨 Design';
+                btn.className = 'px-2 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition shrink-0';
             }
         }
 
