@@ -90,7 +90,11 @@
             .then(r => r.json())
             .then(data => {
                 if (!data || !data.canvas_json) {
-                    alert('The selected template contains no canvas data.');
+                    if (typeof window.studioAlert === 'function') {
+                        window.studioAlert('The selected template contains no canvas data.', 'Import Error');
+                    } else {
+                        alert('The selected template contains no canvas data.');
+                    }
                     if (window.editorCore) window.editorCore.setSaveStatus('Import failed', 'error');
                     return;
                 }
@@ -100,13 +104,21 @@
                     parsed = JSON.parse(data.canvas_json);
                 } catch (e) {
                     console.error('Failed to parse target template canvas JSON:', e);
-                    alert('Invalid canvas data format in selected template.');
+                    if (typeof window.studioAlert === 'function') {
+                        window.studioAlert('Invalid canvas data format in selected template.', 'Import Error');
+                    } else {
+                        alert('Invalid canvas data format in selected template.');
+                    }
                     if (window.editorCore) window.editorCore.setSaveStatus('Import failed', 'error');
                     return;
                 }
 
                 if (!parsed.objects || !Array.isArray(parsed.objects) || parsed.objects.length === 0) {
-                    alert('The selected template has no elements to import.');
+                    if (typeof window.studioAlert === 'function') {
+                        window.studioAlert('The selected template has no elements to import.', 'Empty Template');
+                    } else {
+                        alert('The selected template has no elements to import.');
+                    }
                     if (window.editorCore) window.editorCore.setSaveStatus('Selected template is empty', 'error');
                     return;
                 }
@@ -209,7 +221,11 @@
             })
             .catch(err => {
                 console.error('Error importing template:', err);
-                alert('Failed to load target template data.');
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert('Failed to load target template data.', 'Import Error');
+                } else {
+                    alert('Failed to load target template data.');
+                }
                 if (window.editorCore) window.editorCore.setSaveStatus('Import failed', 'error');
             });
     }
@@ -353,7 +369,11 @@
                 }
 
                 if (!sourceTemplateId) {
-                    alert('Please select a template to import.');
+                    if (typeof window.studioAlert === 'function') {
+                        window.studioAlert('Please select a template to import.', 'Selection Required');
+                    } else {
+                        alert('Please select a template to import.');
+                    }
                     return;
                 }
 

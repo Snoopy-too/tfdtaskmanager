@@ -153,13 +153,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.saveManualDataset = function(event) {
         const nameInput = document.getElementById('build_name');
         if (!nameInput.value.trim()) {
-            customAlert('Please enter a dataset name.');
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert('Please enter a dataset name.', 'Validation Error');
+            } else {
+                alert('Please enter a dataset name.');
+            }
             event.preventDefault();
             return false;
         }
 
         if (rowData.length === 0) {
-            customAlert('Please add at least one row of data.');
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert('Please add at least one row of data.', 'Validation Error');
+            } else {
+                alert('Please add at least one row of data.');
+            }
             event.preventDefault();
             return false;
         }

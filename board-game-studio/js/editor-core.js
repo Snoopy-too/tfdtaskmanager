@@ -527,8 +527,13 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.locked) {
-                        alert("This design template has been locked by another user or session expired. Entering read-only mode.");
-                        window.location.reload();
+                        const msg = "This design template has been locked by another user or session expired. Entering read-only mode.";
+                        if (typeof window.studioAlert === 'function') {
+                            window.studioAlert(msg, "Template Locked").then(() => window.location.reload());
+                        } else {
+                            alert(msg);
+                            window.location.reload();
+                        }
                     }
                 })
                 .catch(err => console.error('Lock heartbeat failed:', err));

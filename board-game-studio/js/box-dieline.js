@@ -416,7 +416,14 @@
             }
             closeBoxDielineModal();
             const pieceTitle = (companionPiece === 'lid') ? 'Fitting Top Lid' : 'Matching Bottom Box';
-            if (confirm(`Created ${pieceTitle} template:\n"${data.templateName}"\n\nWould you like to open it in the editor now?`)) {
+            const confirmMsg = `Created ${pieceTitle} template:\n"${data.templateName}"\n\nWould you like to open it in the editor now?`;
+            if (typeof window.studioConfirm === 'function') {
+                window.studioConfirm(confirmMsg, 'Open in Editor', `📦 ${pieceTitle} Created`).then(confirmed => {
+                    if (confirmed) {
+                        window.location.href = `editor.php?id=${data.templateId}`;
+                    }
+                });
+            } else if (confirm(confirmMsg)) {
                 window.location.href = `editor.php?id=${data.templateId}`;
             }
         })
@@ -425,7 +432,11 @@
                 companionBtn.disabled = false;
                 updateModalBoxPreview();
             }
-            alert('Failed to create companion box template: ' + err.message);
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert('Failed to create companion box template: ' + err.message, 'Companion Box Error');
+            } else {
+                alert('Failed to create companion box template: ' + err.message);
+            }
         });
     }
 

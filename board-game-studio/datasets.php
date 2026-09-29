@@ -191,8 +191,13 @@ setInterval(() => {
     .then(r => r.json())
     .then(data => {
         if (data.locked) {
-            alert("This dataset has been locked by another user or your session expired. Entering read-only mode.");
-            window.location.reload();
+            const msg = "This dataset has been locked by another user or your session expired. Entering read-only mode.";
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert(msg, "Dataset Locked").then(() => window.location.reload());
+            } else {
+                alert(msg);
+                window.location.reload();
+            }
         }
     })
     .catch(err => console.error('Lock heartbeat failed:', err));
