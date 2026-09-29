@@ -142,27 +142,78 @@ declare(strict_types=1);
     </div> <!-- Close .flex-1 min-w-0 flex flex-col (content wrapper) -->
 </div> <!-- Close .flex flex-1 min-h-[calc(100vh-48px)] w-full (layout container) -->
 
-    <!-- Mobile Sidebar Drawer Toggle Script -->
+    <!-- Sidebar Navigation & Sticky-Top Controller (Stats App Nakayoshi Edition) -->
     <script>
     (function() {
+        'use strict';
+
         const toggleBtn = document.getElementById('tasks-sidebar-toggle');
         const closeBtn = document.getElementById('tasks-sidebar-close');
         const sidebar = document.getElementById('tasks-sidebar');
         const overlay = document.getElementById('tasks-sidebar-overlay');
 
+        // Ensure toggle button is attached directly to body on mobile so it is immune to ancestor containing block traps
+        if (toggleBtn && toggleBtn.parentElement && toggleBtn.parentElement !== document.body) {
+            document.body.appendChild(toggleBtn);
+        }
+
+        // Ensure topnav is static and scrolls away on all screens (Stats app behavior)
+        let tfdNav = document.getElementById('tfd-navbar') || document.querySelector('.tfd-navbar');
+        function enforceStaticNavbar() {
+            if (!tfdNav) {
+                tfdNav = document.getElementById('tfd-navbar') || document.querySelector('.tfd-navbar');
+            }
+            if (tfdNav && tfdNav.style.position !== 'static') {
+                tfdNav.style.setProperty('position', 'static', 'important');
+                tfdNav.style.setProperty('top', 'auto', 'important');
+            }
+        }
+        enforceStaticNavbar();
+
+        // Dynamically track topnav bottom position so sidebar becomes sticky-top (top: 0) as topnav scrolls away
+        function updateScrollOffset() {
+            enforceStaticNavbar();
+            let offset = 0;
+            if (tfdNav) {
+                const rect = tfdNav.getBoundingClientRect();
+                offset = Math.max(0, Math.round(rect.bottom));
+            }
+            document.documentElement.style.setProperty('--sidebar-top-offset', offset + 'px');
+        }
+        window.addEventListener('scroll', updateScrollOffset, { passive: true });
+        window.addEventListener('resize', updateScrollOffset, { passive: true });
+        window.addEventListener('load', updateScrollOffset, { passive: true });
+        updateScrollOffset();
+
+        // When topnav mobile menu is opened, ensure page is scrolled to top so navbar & [X] close button are fully visible
+        document.addEventListener('click', function(e) {
+            const toggle = e.target && e.target.closest('#tfdMobileToggle, .tfd-mobile-toggle');
+            if (toggle && window.scrollY > 0) {
+                window.scrollTo(0, 0);
+            }
+        });
+
         function openSidebar() {
             if (sidebar) sidebar.classList.remove('-translate-x-full');
             if (overlay) overlay.classList.remove('hidden');
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
             document.body.classList.add('overflow-hidden', 'md:overflow-auto');
         }
 
         function closeSidebar() {
             if (sidebar) sidebar.classList.add('-translate-x-full');
             if (overlay) overlay.classList.add('hidden');
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
             document.body.classList.remove('overflow-hidden', 'md:overflow-auto');
         }
 
-        if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+        if (toggleBtn) toggleBtn.addEventListener('click', function() {
+            if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
         if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
         if (overlay) overlay.addEventListener('click', closeSidebar);
 
@@ -177,6 +228,35 @@ declare(strict_types=1);
                 closeSidebar();
             }
         });
+
+        // Close sidebar on mobile when navigating
+        if (sidebar) {
+            sidebar.querySelectorAll('nav a').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 768) closeSidebar();
+                });
+            });
+        }
+
+        // Hide toggle on scroll down, reveal on scroll up
+        let lastScrollY = window.scrollY || window.pageYOffset || 0;
+        window.addEventListener('scroll', function() {
+            if (!toggleBtn || (sidebar && !sidebar.classList.contains('-translate-x-full'))) return;
+            const currentScrollY = Math.max(0, window.scrollY || window.pageYOffset || 0);
+            if (currentScrollY <= 15) {
+                toggleBtn.classList.remove('-translate-y-20', 'opacity-0', 'pointer-events-none');
+                lastScrollY = currentScrollY;
+                return;
+            }
+            const diff = currentScrollY - lastScrollY;
+            if (Math.abs(diff) < 6) return;
+            if (diff > 0 && currentScrollY > 60) {
+                toggleBtn.classList.add('-translate-y-20', 'opacity-0', 'pointer-events-none');
+            } else if (diff < 0) {
+                toggleBtn.classList.remove('-translate-y-20', 'opacity-0', 'pointer-events-none');
+            }
+            lastScrollY = currentScrollY;
+        }, { passive: true });
     })();
     </script>
 

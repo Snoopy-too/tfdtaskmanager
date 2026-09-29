@@ -61,8 +61,101 @@ body,
 }
 
 /* ==========================================================================
-   2. SIDEBAR NAVIGATION THEME STYLES
+   2. SIDEBAR NAVIGATION THEME STYLES & DYNAMIC TOPNAV INTEGRATION (Like Stats)
    ========================================================================== */
+
+:root {
+    --sidebar-top-offset: var(--tfd-navbar-height, 48px);
+}
+
+/* Ensure topnav scrolls away naturally on all screens */
+header#tfd-navbar,
+header#tfd-navbar.tfd-navbar,
+html body header#tfd-navbar,
+html body #tfd-navbar,
+html body .tfd-navbar,
+:root header#tfd-navbar,
+#tfd-navbar,
+.tfd-navbar {
+    position: relative !important;
+    top: auto !important;
+    z-index: 99999 !important;
+}
+
+.tfd-mobile-drawer {
+    z-index: 100010 !important;
+}
+
+.tfd-dropdown-wrapper,
+.tfd-theme-dropdown,
+.tfd-lang-dropdown {
+    z-index: 100020 !important;
+}
+
+/* Hide sidebar toggle button whenever top navbar mobile menu is open */
+body:has(#tfdMobileDrawer.open) .sidebar-toggle,
+body:has(.tfd-mobile-drawer.open) .sidebar-toggle,
+.tfd-mobile-drawer.open ~ .sidebar-toggle,
+.tfd-mobile-drawer.open ~ * .sidebar-toggle {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(-80px) !important;
+}
+
+/* Mobile Toggle Positioning */
+.sidebar-toggle,
+#tasks-sidebar-toggle {
+    top: calc(var(--sidebar-top-offset, 48px) + 8px) !important;
+    transition: transform 0.3s ease, opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* Sidebar Sizing & Sticky-Top (Fixed with dynamic offset like Stats app) */
+#tasks-sidebar {
+    position: fixed !important;
+    top: var(--sidebar-top-offset, 48px) !important;
+    left: 0 !important;
+    width: 16rem !important;
+    height: calc(100vh - var(--sidebar-top-offset, 48px)) !important;
+    height: calc(100dvh - var(--sidebar-top-offset, 48px)) !important;
+}
+
+@media (min-width: 768px) {
+    #tasks-sidebar {
+        position: fixed !important;
+        top: var(--sidebar-top-offset, 48px) !important;
+        left: 0 !important;
+        width: 16rem !important;
+        height: calc(100vh - var(--sidebar-top-offset, 48px)) !important;
+        height: calc(100dvh - var(--sidebar-top-offset, 48px)) !important;
+        transform: none !important;
+        z-index: 30 !important;
+    }
+    .flex-1.min-w-0.flex.flex-col {
+        margin-left: 16rem !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    #tasks-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        width: 280px !important;
+        z-index: 100005 !important;
+    }
+    #tasks-sidebar-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        z-index: 100004 !important;
+    }
+}
 
 [data-theme] #tasks-sidebar {
     background-color: var(--sidebar-bg, var(--color-surface, #131b2e)) !important;

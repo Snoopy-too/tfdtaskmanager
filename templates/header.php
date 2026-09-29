@@ -105,6 +105,32 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
     </style>
     <!-- TFD Universal Navigation Stylesheet -->
     <link rel="stylesheet" href="https://theflyingdutchmen.games/stylesheets/tfd-nav.css">
+    <style>
+        :root {
+            --sidebar-top-offset: var(--tfd-navbar-height, 48px);
+        }
+        header#tfd-navbar, header#tfd-navbar.tfd-navbar, html body header#tfd-navbar, html body #tfd-navbar, html body .tfd-navbar, :root header#tfd-navbar, #tfd-navbar, .tfd-navbar {
+            position: relative !important;
+            top: auto !important;
+            z-index: 99999 !important;
+        }
+        #tasks-sidebar-toggle {
+            top: calc(var(--sidebar-top-offset, 48px) + 8px) !important;
+        }
+        #tasks-sidebar {
+            position: fixed !important;
+            top: var(--sidebar-top-offset, 48px) !important;
+            left: 0 !important;
+            width: 16rem !important;
+            height: calc(100vh - var(--sidebar-top-offset, 48px)) !important;
+            height: calc(100dvh - var(--sidebar-top-offset, 48px)) !important;
+        }
+        @media (min-width: 768px) {
+            .flex-1.min-w-0.flex.flex-col {
+                margin-left: 16rem !important;
+            }
+        }
+    </style>
     <!-- Tasks Universal Theme Integration Stylesheet -->
     <link rel="stylesheet" href="<?php echo $base_url; ?>css/tasks-theme.css?v=<?php echo file_exists(__DIR__ . '/../css/tasks-theme.css') ? filemtime(__DIR__ . '/../css/tasks-theme.css') : '1'; ?>">
 </head>
@@ -113,24 +139,20 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
     <!-- Universal TFD Top Navigation Bar (Shared across all TFD apps) -->
     <header id="tfd-navbar" class="tfd-navbar" data-active="tasks" data-admin="<?php echo (SecurityHelper::getCurrentUserRole() === 'super_admin') ? 'true' : 'false'; ?>"></header>
 
-    <!-- Mobile Sub-Header with Sidebar Toggle -->
-    <div class="md:hidden flex items-center justify-between px-4 py-2.5 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-[48px] z-30">
-        <div class="flex items-center gap-2.5">
-            <button id="tasks-sidebar-toggle" type="button" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition" aria-label="Open tasks menu">
-                <i class="bi bi-layout-sidebar text-base"></i>
-            </button>
-            <span class="text-sm font-bold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">TFD Tasks</span>
-        </div>
-        <div class="text-xs text-slate-400 font-medium">
-            <?php echo SecurityHelper::escape($_SESSION['user_name'] ?? ''); ?>
-        </div>
-    </div>
+    <!-- Mobile Floating Sidebar Toggle Button (similar to Stats app) -->
+    <button id="tasks-sidebar-toggle" class="sidebar-toggle md:hidden fixed left-3 z-40 w-10 h-10 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-200 flex items-center justify-center shadow-lg backdrop-blur-md hover:bg-slate-800 transition-all duration-200" aria-label="Toggle navigation menu" aria-controls="tasks-sidebar" aria-expanded="false">
+        <span class="w-5 h-5 flex flex-col justify-center gap-1">
+            <span class="w-full h-0.5 bg-current rounded-full"></span>
+            <span class="w-full h-0.5 bg-current rounded-full"></span>
+            <span class="w-full h-0.5 bg-current rounded-full"></span>
+        </span>
+    </button>
 
     <!-- Main Application Layout Container -->
     <div class="flex flex-1 min-h-[calc(100vh-48px)] w-full">
 
         <!-- Tasks App Sidebar Menu -->
-        <aside id="tasks-sidebar" class="fixed md:sticky top-[48px] left-0 h-[calc(100vh-48px)] h-[calc(100dvh-48px)] w-64 bg-slate-900/95 backdrop-blur-md border-r border-slate-800 flex flex-col z-50 md:z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0">
+        <aside id="tasks-sidebar" class="fixed top-0 left-0 w-64 bg-slate-900/95 backdrop-blur-md border-r border-slate-800 flex flex-col z-50 md:z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0">
             
             <!-- Sidebar Header / Brand -->
             <div class="p-4 border-b border-slate-800 flex items-center justify-between">
@@ -215,36 +237,11 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
                     </a>
                 <?php endif; ?>
             </nav>
-
-            <!-- Sidebar Footer / User Profile Card -->
-            <div class="p-3 border-t border-slate-800 bg-slate-950/40">
-                <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2.5">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                            <?php 
-                            $userName = $_SESSION['user_name'] ?? 'U';
-                            echo htmlspecialchars(strtoupper(substr($userName, 0, 1))); 
-                            ?>
-                        </div>
-                        <div class="min-w-0">
-                            <div class="text-xs font-semibold text-slate-200 truncate">
-                                <?php echo SecurityHelper::escape($_SESSION['user_name'] ?? ''); ?>
-                            </div>
-                            <div class="text-[10px] text-indigo-400 font-medium tracking-wide uppercase truncate">
-                                <?php echo SecurityHelper::escape(str_replace('_', ' ', $_SESSION['role'] ?? '')); ?>
-                            </div>
-                        </div>
-                    </div>
-                    <a href="<?php echo $base_url; ?>logout.php" title="Logout" aria-label="Logout" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0">
-                        <i class="bi bi-box-arrow-right text-base"></i>
-                    </a>
-                </div>
-            </div>
         </aside>
 
         <!-- Mobile Sidebar Backdrop Overlay -->
-        <div id="tasks-sidebar-overlay" class="fixed inset-0 top-[48px] bg-slate-950/70 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300"></div>
+        <div id="tasks-sidebar-overlay" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300"></div>
 
         <!-- Content Area Wrapper -->
-        <div class="flex-1 min-w-0 flex flex-col bg-slate-950">
+        <div class="flex-1 min-w-0 flex flex-col bg-slate-950 md:ml-64">
             <main class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
