@@ -61,7 +61,7 @@ use App\Infrastructure\Security\SecurityHelper;
             </div>
 
             <div>
-                <label for="box_dim_mode" class="block text-xs font-semibold text-emerald-300 mb-1">How Are You Measuring W × L × H?</label>
+                <label for="box_dim_mode" class="block text-xs font-bold text-emerald-700 mb-1">How Are You Measuring W × L × H?</label>
                 <select id="box_dim_mode" name="box_dim_mode" onchange="updateDimensionsPreview()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2">
                     <option value="usable_cavity" selected>📐 Usable Interior Cavity (Auto-expand fold lines for inner walls)</option>
                     <option value="contents_fit">🎯 Fit My Contents / Components (Auto +3mm Play + Inner Wall Compensation)</option>
@@ -138,7 +138,7 @@ use App\Infrastructure\Security\SecurityHelper;
                 <label for="box_show_labels" class="text-xs text-slate-300 cursor-pointer select-none">Show panel labels &amp; dimensions on canvas</label>
             </div>
 
-            <div id="box_sheet_estimate" class="text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg space-y-0.5">
+            <div id="box_sheet_estimate" class="text-[11px] text-emerald-700 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-lg space-y-0.5">
                 Unfolded flat template ready for A4 / A5 single or multi-sheet printing.
             </div>
         </div>
@@ -444,7 +444,7 @@ use App\Infrastructure\Security\SecurityHelper;
                         if (estEl) {
                             const baseA4 = estimateSheetsNeeded(baseCalc.flatW, baseCalc.flatH, 210, 297);
                             const lidA4 = estimateSheetsNeeded(lidCalc.flatW, lidCalc.flatH, 210, 297);
-                            estEl.innerHTML = `<div><strong>Usable Inside Cavity:</strong> ${baseCalc.usableW}×${baseCalc.usableL}×${baseCalc.usableH}mm</div><div class="text-[10px] text-emerald-200/80">Base Panel: ${baseCalc.effW}×${baseCalc.effL}×${baseCalc.effH}mm &bull; Lid Panel: ${lidCalc.effW}×${lidCalc.effL}×${lidCalc.effH}mm &bull; ${baseA4 + lidA4}× A4 sheets</div>`;
+                            estEl.innerHTML = `<div><strong>Usable Inside Cavity:</strong> ${baseCalc.usableW}×${baseCalc.usableL}×${baseCalc.usableH}mm</div><div class="text-[10px] opacity-90">Base Panel: ${baseCalc.effW}×${baseCalc.effL}×${baseCalc.effH}mm &bull; Lid Panel: ${lidCalc.effW}×${lidCalc.effL}×${lidCalc.effH}mm &bull; ${baseA4 + lidA4}× A4 sheets</div>`;
                         }
                     } else {
                         const calc = calculateFlatBoxSize(boxType, boxPart, bw, bl, bh, bc, stockMm, lidHeightMode, dimMode);
@@ -458,7 +458,7 @@ use App\Infrastructure\Security\SecurityHelper;
                         if (estEl) {
                             const a4Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 210, 297);
                             const a5Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 148, 210);
-                            estEl.innerHTML = `<div><strong>Usable Inside Cavity:</strong> ${calc.usableW}×${calc.usableL}×${calc.usableH}mm &bull; <strong>Fold Panel:</strong> ${calc.effW}×${calc.effL}×${calc.effH}mm</div><div class="text-[10px] text-emerald-200/80">Stock t=${stockMm}mm${calc.shoulder ? ` (Shoulder ${calc.shoulder}mm)` : ''} &bull; <strong>Print:</strong> ${a4Sheets}× A4 or ${a5Sheets}× A5 sheets</div>`;
+                            estEl.innerHTML = `<div><strong>Usable Inside Cavity:</strong> ${calc.usableW}×${calc.usableL}×${calc.usableH}mm &bull; <strong>Fold Panel:</strong> ${calc.effW}×${calc.effL}×${calc.effH}mm</div><div class="text-[10px] opacity-90">Stock t=${stockMm}mm${calc.shoulder ? ` (Shoulder ${calc.shoulder}mm)` : ''} &bull; <strong>Print:</strong> ${a4Sheets}× A4 or ${a5Sheets}× A5 sheets</div>`;
                         }
                     }
                     return;

@@ -175,7 +175,7 @@ $compTypes = $compTypes ?? [];
             </div>
 
             <div>
-                <label for="modal-box-dim-mode" class="block text-xs font-semibold text-emerald-300 mb-1">How Are You Measuring W × L × H?</label>
+                <label for="modal-box-dim-mode" class="block text-xs font-bold text-emerald-700 mb-1">How Are You Measuring W × L × H?</label>
                 <select id="modal-box-dim-mode" onchange="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="usable_cavity" selected>📐 Usable Interior Cavity (Auto-expand fold lines for inner walls)</option>
                     <option value="contents_fit">🎯 Fit My Contents / Components (Auto +3mm Play + Inner Wall Compensation)</option>

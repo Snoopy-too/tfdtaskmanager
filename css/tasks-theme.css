@@ -362,6 +362,26 @@ body.sidebar-open {
     color: var(--color-primary, #6366f1) !important;
 }
 
+/* Emerald & Amber Accent Readability Across Light & Dark Themes */
+[data-theme="arcade"] .text-emerald-700,
+[data-theme="midnight"] .text-emerald-700,
+[data-theme="casino"] .text-emerald-700 {
+    color: #34d399 !important;
+}
+
+[data-theme="light"] .text-emerald-200,
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-emerald-700 {
+    color: #047857 !important;
+}
+
+[data-theme="light"] .text-amber-200,
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400 {
+    color: #b45309 !important;
+}
+
 /* Primary soft backgrounds */
 [data-theme] [class*="bg-indigo-600/"],
 [data-theme] [class*="bg-indigo-500/"] {
