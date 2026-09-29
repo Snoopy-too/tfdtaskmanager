@@ -68,59 +68,69 @@ require_once __DIR__ . '/templates/header.php';
 
 <div class="space-y-8">
     
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+    <!-- <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
         <div>
             <h1 class="text-3xl font-extrabold tracking-tight text-white">Shit We Gotta Get Done</h1>
             <p class="text-slate-400 mt-1">Create and track TFD tasks, checkout tasks, and manage progress of TFD shit.</p>
         </div>
         <div class="flex items-center space-x-3">
-            <a href="add_task.php" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow transition duration-200">
-                + Create Task
-            </a>
         </div>
-    </div>
+    </div> -->
 
     <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-xl shadow-md">
-        <form action="index.php" method="GET" class="flex flex-col md:flex-row items-end gap-4">
-            <div class="flex-grow w-full md:max-w-xs">
-                <label for="project_filter" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filter by Project</label>
-                <select id="project_filter" name="project_id" onchange="this.form.submit()"
-                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
-                    <option value="">All Projects</option>
-                    <?php foreach ($projects as $project): ?>
-                        <option value="<?php echo $project->getId(); ?>" <?php echo $selectedProjectId === $project->getId() ? 'selected' : ''; ?>>
-                            <?php echo SecurityHelper::escape($project->getName() . ($project->isPrivate() ? ' (🔒 Private)' : '')); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="flex-grow w-full md:max-w-xs">
-                <label for="bug_filter" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filter by Type</label>
-                <select id="bug_filter" name="only_bugs" onchange="this.form.submit()"
-                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
-                    <option value="0" <?php echo !$onlyBugs ? 'selected' : ''; ?>>All Tasks</option>
-                    <option value="1" <?php echo $onlyBugs ? 'selected' : ''; ?>>Bugs Only</option>
-                </select>
-            </div>
-
-            <div class="flex-grow w-full md:max-w-xs">
-                <label for="sort_by" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Sort By</label>
-                <select id="sort_by" name="sort_by" onchange="this.form.submit()"
-                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
-                    <option value="" <?php echo $sortBy === '' ? 'selected' : ''; ?>>Default (Newest First)</option>
-                    <option value="deadline" <?php echo $sortBy === 'deadline' ? 'selected' : ''; ?>>Due Date</option>
-                    <option value="alphabetical" <?php echo $sortBy === 'alphabetical' ? 'selected' : ''; ?>>Alphabetical</option>
-                    <option value="task_number" <?php echo $sortBy === 'task_number' ? 'selected' : ''; ?>>Task Number</option>
-                </select>
-            </div>
-            
-            <?php if ($selectedProjectId !== null || $onlyBugs || $sortBy !== ''): ?>
-                <a href="index.php" class="text-xs text-slate-500 hover:text-slate-300 font-medium pb-2.5 transition">
-                    Clear Filters
+        <div class="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-4">
+            <div class="flex-shrink-0 w-full md:w-auto">
+                <a href="add_task.php"
+                   class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg shadow-sm hover:shadow transition duration-200 gap-1.5 whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Create Task</span>
                 </a>
-            <?php endif; ?>
-        </form>
+            </div>
+
+            <form action="index.php" method="GET" class="flex flex-col md:flex-row items-end gap-4 flex-grow">
+                <div class="flex-grow w-full md:max-w-xs">
+                    <label for="project_filter" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filter by Project</label>
+                    <select id="project_filter" name="project_id" onchange="this.form.submit()"
+                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
+                        <option value="">All Projects</option>
+                        <?php foreach ($projects as $project): ?>
+                            <option value="<?php echo $project->getId(); ?>" <?php echo $selectedProjectId === $project->getId() ? 'selected' : ''; ?>>
+                                <?php echo SecurityHelper::escape($project->getName() . ($project->isPrivate() ? ' (🔒 Private)' : '')); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="flex-grow w-full md:max-w-xs">
+                    <label for="bug_filter" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filter by Type</label>
+                    <select id="bug_filter" name="only_bugs" onchange="this.form.submit()"
+                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
+                        <option value="0" <?php echo !$onlyBugs ? 'selected' : ''; ?>>All Tasks</option>
+                        <option value="1" <?php echo $onlyBugs ? 'selected' : ''; ?>>Bugs Only</option>
+                    </select>
+                </div>
+
+                <div class="flex-grow w-full md:max-w-xs">
+                    <label for="sort_by" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Sort By</label>
+                    <select id="sort_by" name="sort_by" onchange="this.form.submit()"
+                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
+                        <option value="" <?php echo $sortBy === '' ? 'selected' : ''; ?>>Default (Newest First)</option>
+                        <option value="deadline" <?php echo $sortBy === 'deadline' ? 'selected' : ''; ?>>Due Date</option>
+                        <option value="alphabetical" <?php echo $sortBy === 'alphabetical' ? 'selected' : ''; ?>>Alphabetical</option>
+                        <option value="task_number" <?php echo $sortBy === 'task_number' ? 'selected' : ''; ?>>Task Number</option>
+                    </select>
+                </div>
+                
+                <?php if ($selectedProjectId !== null || $onlyBugs || $sortBy !== ''): ?>
+                    <a href="index.php" class="text-xs text-slate-500 hover:text-slate-300 font-medium pb-2.5 transition whitespace-nowrap">
+                        Clear Filters
+                    </a>
+                <?php endif; ?>
+            </form>
+
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
