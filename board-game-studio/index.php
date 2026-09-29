@@ -133,8 +133,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $orientation,
                 $boxParams
             );
-            header("Location: editor.php?id=" . $newTemplate->getId());
-            exit;
+            $selectedCompType = $templateService->getComponentTypeById($compTypeId);
+            $createdBoxPair = $selectedCompType !== null
+                && str_contains($selectedCompType->getName(), 'Board Game Box')
+                && ($boxParams['box_part'] ?? '') === 'pair'
+                && ($boxParams['box_type'] ?? '') !== 'tuck_top_box';
+            if ($createdBoxPair) {
+                $trimmedBaseName = trim($name);
+                $success = "Created both box templates: \"{$trimmedBaseName} (Bottom Base)\" and \"{$trimmedBaseName} (Top Lid)\".";
+            } else {
+                header("Location: editor.php?id=" . $newTemplate->getId());
+                exit;
+            }
         } catch (ValidationException $e) {
             $error = $e->getMessage();
         } catch (\Exception $e) {

@@ -240,21 +240,31 @@
             boxBanner.appendChild(subRow);
 
             if (boxCfg.boxType !== 'tuck_top_box') {
-                const companionBtn = document.createElement('button');
-                companionBtn.type = 'button';
-                companionBtn.className = 'w-full mt-1 py-1 px-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-[10px] font-semibold text-indigo-300 hover:text-white transition flex items-center justify-center gap-1';
-                const clearance = boxCfg.clearanceMm ?? 1.5;
-                const lidW = +((boxCfg.finishedW || 120) + clearance * 2).toFixed(1);
-                const lidL = +((boxCfg.finishedL || 160) + clearance * 2).toFixed(1);
-                companionBtn.textContent = isLid
-                    ? `➕ Create Matching Bottom Box (${boxCfg.finishedW}×${boxCfg.finishedL}mm)`
-                    : `➕ Create Fitting Top Lid (${lidW}×${lidL}mm)`;
-                companionBtn.addEventListener('click', () => {
-                    if (window.boxDieline && typeof window.boxDieline.createCompanionPieceTemplate === 'function') {
-                        window.boxDieline.createCompanionPieceTemplate(boxCfg);
-                    }
-                });
-                boxBanner.appendChild(companionBtn);
+                if (boxCfg.companionTemplateId) {
+                    const switchLink = document.createElement('a');
+                    switchLink.href = `editor.php?id=${encodeURIComponent(boxCfg.companionTemplateId)}`;
+                    switchLink.className = 'w-full mt-1 py-1 px-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-[10px] font-semibold text-emerald-300 hover:text-white transition flex items-center justify-center gap-1';
+                    switchLink.textContent = isLid
+                        ? `🔗 Switch to Bottom Base Template`
+                        : `🔗 Switch to Top Lid Template`;
+                    boxBanner.appendChild(switchLink);
+                } else {
+                    const companionBtn = document.createElement('button');
+                    companionBtn.type = 'button';
+                    companionBtn.className = 'w-full mt-1 py-1 px-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-[10px] font-semibold text-indigo-300 hover:text-white transition flex items-center justify-center gap-1';
+                    const clearance = boxCfg.clearanceMm ?? 1.5;
+                    const lidW = +((boxCfg.finishedW || 120) + clearance * 2).toFixed(1);
+                    const lidL = +((boxCfg.finishedL || 160) + clearance * 2).toFixed(1);
+                    companionBtn.textContent = isLid
+                        ? `➕ Create Matching Bottom Box (${boxCfg.finishedW}×${boxCfg.finishedL}mm)`
+                        : `➕ Create Fitting Top Lid (${lidW}×${lidL}mm)`;
+                    companionBtn.addEventListener('click', () => {
+                        if (window.boxDieline && typeof window.boxDieline.createCompanionPieceTemplate === 'function') {
+                            window.boxDieline.createCompanionPieceTemplate(boxCfg);
+                        }
+                    });
+                    boxBanner.appendChild(companionBtn);
+                }
             }
 
             container.appendChild(boxBanner);

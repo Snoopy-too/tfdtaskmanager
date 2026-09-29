@@ -173,7 +173,11 @@ class BgTemplateService
                 BgBoxDielineService::PART_BASE
             );
 
-            $this->persistSingleBoxPiece(
+            $lidConfig = $config;
+            $lidConfig['companionTemplateId'] = (int)$baseTemplate->getId();
+            $lidConfig['companionTemplateName'] = $baseName;
+
+            $lidTemplate = $this->persistSingleBoxPiece(
                 $projectId,
                 $componentTypeId,
                 $lidName,
@@ -181,11 +185,19 @@ class BgTemplateService
                 $safeMarginMm,
                 $datasetId,
                 $createdByUserId,
-                $config,
+                $lidConfig,
                 BgBoxDielineService::PART_LID
             );
 
-            return $baseTemplate;
+            // Update Base template's canvas payload with the newly created Lid template ID & name
+            $baseConfigWithLink = $config;
+            $baseConfigWithLink['companionTemplateId'] = (int)$lidTemplate->getId();
+            $baseConfigWithLink['companionTemplateName'] = $lidName;
+            $baseGeom = $this->boxDielineService->calculateGeometry($baseConfigWithLink, BgBoxDielineService::PART_BASE);
+            $basePayload = $this->boxDielineService->buildFabricCanvasPayload($baseGeom);
+            $this->saveCanvas((int)$baseTemplate->getId(), $basePayload['canvasJson'], $basePayload['layersData']);
+
+            return $this->templateRepository->findById((int)$baseTemplate->getId()) ?? $baseTemplate;
         }
 
         $singlePiece = ($part === BgBoxDielineService::PART_LID)

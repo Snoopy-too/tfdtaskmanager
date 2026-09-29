@@ -278,20 +278,33 @@ use App\Infrastructure\Security\SecurityHelper;
                     if (partWrap) partWrap.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
                     if (clearWrap) clearWrap.style.display = (boxType === 'tuck_top_box' || boxPart === 'base') ? 'none' : 'block';
 
-                    const calc = calculateFlatBoxSize(boxType, boxPart, bw, bl, bh, bc);
-                    const wPx = mmToPx(calc.flatW);
-                    const hPx = mmToPx(calc.flatH);
-
-                    if (previewLabel) previewLabel.textContent = 'Unfolded Flat Size:';
-                    if (previewElem) {
-                        previewElem.textContent = `${calc.flatW} × ${calc.flatH} mm (${wPx} × ${hPx} px)`;
-                    }
-
                     const estEl = document.getElementById('box_sheet_estimate');
-                    if (estEl) {
-                        const a4Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 210, 297);
-                        const a5Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 148, 210);
-                        estEl.innerHTML = `<strong>Finished Box:</strong> ${calc.effW}×${calc.effL}×${bh}mm &bull; <strong>Print:</strong> ${a4Sheets}× A4 sheet${a4Sheets > 1 ? 's' : ''} or ${a5Sheets}× A5 sheet${a5Sheets > 1 ? 's' : ''}`;
+                    if (boxPart === 'pair' && boxType !== 'tuck_top_box') {
+                        const baseCalc = calculateFlatBoxSize(boxType, 'base', bw, bl, bh, bc);
+                        const lidCalc = calculateFlatBoxSize(boxType, 'lid', bw, bl, bh, bc);
+                        if (previewLabel) previewLabel.textContent = '2 Templates (Base + Lid):';
+                        if (previewElem) {
+                            previewElem.textContent = `Base ${baseCalc.flatW}×${baseCalc.flatH}mm • Lid ${lidCalc.flatW}×${lidCalc.flatH}mm`;
+                        }
+                        if (estEl) {
+                            const baseA4 = estimateSheetsNeeded(baseCalc.flatW, baseCalc.flatH, 210, 297);
+                            const lidA4 = estimateSheetsNeeded(lidCalc.flatW, lidCalc.flatH, 210, 297);
+                            estEl.innerHTML = `<strong>Base:</strong> ${baseCalc.effW}×${baseCalc.effL}×${bh}mm &bull; <strong>Lid:</strong> ${lidCalc.effW}×${lidCalc.effL}×${bh}mm &bull; <strong>Print:</strong> ${baseA4 + lidA4}× A4 sheets total`;
+                        }
+                    } else {
+                        const calc = calculateFlatBoxSize(boxType, boxPart, bw, bl, bh, bc);
+                        const wPx = mmToPx(calc.flatW);
+                        const hPx = mmToPx(calc.flatH);
+
+                        if (previewLabel) previewLabel.textContent = 'Unfolded Flat Size:';
+                        if (previewElem) {
+                            previewElem.textContent = `${calc.flatW} × ${calc.flatH} mm (${wPx} × ${hPx} px)`;
+                        }
+                        if (estEl) {
+                            const a4Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 210, 297);
+                            const a5Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 148, 210);
+                            estEl.innerHTML = `<strong>Finished Box:</strong> ${calc.effW}×${calc.effL}×${bh}mm &bull; <strong>Print:</strong> ${a4Sheets}× A4 sheet${a4Sheets > 1 ? 's' : ''} or ${a5Sheets}× A5 sheet${a5Sheets > 1 ? 's' : ''}`;
+                        }
                     }
                     return;
                 }

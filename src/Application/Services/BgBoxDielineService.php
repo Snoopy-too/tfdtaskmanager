@@ -194,6 +194,8 @@ class BgBoxDielineService
             'canvasHeightPx'=> $heightPx,
             'showLabels'    => (bool)($config['showLabels'] ?? true),
             'fillStyle'     => (string)($config['fillStyle'] ?? 'stencil'),
+            'companionTemplateId'   => isset($config['companionTemplateId']) ? (int)$config['companionTemplateId'] : null,
+            'companionTemplateName' => isset($config['companionTemplateName']) ? (string)$config['companionTemplateName'] : null,
         ];
     }
 
