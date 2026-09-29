@@ -153,6 +153,11 @@
                 else if (obj.id === 'box-dieline-fold') obj.dielineRole = 'fold';
                 else obj.dielineRole = 'label';
             }
+            if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+                if (!obj.styles || typeof obj.styles !== 'object' || Array.isArray(obj.styles)) {
+                    obj.styles = {};
+                }
+            }
             obj.selectable = false;
             obj.evented = false;
             obj.lockMovementX = true;
@@ -298,8 +303,37 @@
 
         const partGroup = document.getElementById('modal-box-part-group');
         const clearGroup = document.getElementById('modal-box-clearance-group');
+        const companionBtn = document.getElementById('btn-create-companion-box');
+        const fitmentNote = document.getElementById('modal-box-fitment-note');
+
         if (partGroup) partGroup.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
-        if (clearGroup) clearGroup.style.display = (boxType === 'tuck_top_box' || piece === 'base') ? 'none' : 'block';
+        if (clearGroup) clearGroup.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
+
+        const lidW = +(finishedW + clearanceMm * 2).toFixed(1);
+        const lidL = +(finishedL + clearanceMm * 2).toFixed(1);
+
+        if (companionBtn) {
+            if (boxType === 'tuck_top_box') {
+                companionBtn.classList.add('hidden');
+            } else {
+                companionBtn.classList.remove('hidden');
+                if (piece === 'lid') {
+                    companionBtn.textContent = `➕ Create Matching Bottom Box (${finishedW}×${finishedL}×${finishedH}mm)`;
+                } else {
+                    companionBtn.textContent = `➕ Create Fitting Top Lid (${lidW}×${lidL}×${finishedH}mm)`;
+                }
+            }
+        }
+
+        if (fitmentNote) {
+            if (boxType === 'tuck_top_box') {
+                fitmentNote.innerHTML = `<span class="text-emerald-300 font-semibold">All-in-One Box:</span> Includes both the Bottom Base and attached Hinged Top Lid on a single sheet.`;
+            } else if (piece === 'lid') {
+                fitmentNote.innerHTML = `<span class="text-indigo-300 font-semibold">Telescoping Top Lid:</span> Effective footprint is <strong>${lidW} × ${lidL} × ${finishedH} mm</strong> (+${clearanceMm}mm clearance per side) so it slides smoothly over a <strong>${finishedW} × ${finishedL} mm</strong> Bottom Box.`;
+            } else {
+                fitmentNote.innerHTML = `<span class="text-amber-300 font-semibold">Bottom Box (Base):</span> Exact <strong>${finishedW} × ${finishedL} × ${finishedH} mm</strong> base. Its matching Top Lid (+${clearanceMm}mm clearance/side) will be <strong>${lidW} × ${lidL} × ${finishedH} mm</strong>.`;
+            }
+        }
 
         const dims = calculateFlatDimensions({
             boxType,
@@ -314,6 +348,85 @@
         if (flatPreview) {
             flatPreview.textContent = `${dims.flatWidthMm} × ${dims.flatHeightMm} mm (${dims.canvasWidthPx} × ${dims.canvasHeightPx} px)`;
         }
+    }
+
+    function createCompanionPieceTemplate(overrideCfg) {
+        const activeCfg = overrideCfg || {
+            boxType: document.getElementById('modal-box-type')?.value || 'double_wall_tray',
+            piece: document.getElementById('modal-box-part')?.value || 'base',
+            finishedW: parseFloat(document.getElementById('modal-box-width')?.value),
+            finishedL: parseFloat(document.getElementById('modal-box-length')?.value),
+            finishedH: parseFloat(document.getElementById('modal-box-height')?.value),
+            clearanceMm: parseFloat(document.getElementById('modal-box-clearance')?.value ?? '1.5'),
+            fillStyle: document.getElementById('modal-box-fill')?.value || 'stencil',
+            showLabels: Boolean(document.getElementById('modal-box-labels')?.checked ?? true)
+        };
+
+        let validated;
+        try {
+            validated = validateBoxSchema(activeCfg);
+        } catch (err) {
+            if (typeof window.studioAlert === 'function') {
+                window.studioAlert(err.message, 'Validation Error');
+            } else {
+                alert(err.message);
+            }
+            return;
+        }
+
+        const companionPiece = (validated.piece === 'lid') ? 'base' : 'lid';
+        const companionBtn = document.getElementById('btn-create-companion-box');
+        if (companionBtn) {
+            companionBtn.disabled = true;
+            companionBtn.textContent = 'Creating Companion Template...';
+        }
+
+        const formData = new FormData();
+        formData.append('csrf_token', window.studioConfig.csrfToken);
+        formData.append('template_id', String(window.studioConfig.templateId));
+        formData.append('box_type', validated.boxType);
+        formData.append('box_part', companionPiece);
+        formData.append('box_width_mm', String(validated.finishedW));
+        formData.append('box_length_mm', String(validated.finishedL));
+        formData.append('box_height_mm', String(validated.finishedH));
+        formData.append('box_clearance_mm', String(validated.clearanceMm));
+        formData.append('box_fill_style', validated.fillStyle);
+        formData.append('box_show_labels', validated.showLabels ? '1' : '0');
+
+        fetch('api.php?action=create_companion_box_template', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': window.studioConfig.csrfToken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (companionBtn) {
+                companionBtn.disabled = false;
+                updateModalBoxPreview();
+            }
+            if (data.error) {
+                if (typeof window.studioAlert === 'function') {
+                    window.studioAlert(data.error, 'Companion Box Error');
+                } else {
+                    alert(data.error);
+                }
+                return;
+            }
+            closeBoxDielineModal();
+            const pieceTitle = (companionPiece === 'lid') ? 'Fitting Top Lid' : 'Matching Bottom Box';
+            if (confirm(`Created ${pieceTitle} template:\n"${data.templateName}"\n\nWould you like to open it in the editor now?`)) {
+                window.location.href = `editor.php?id=${data.templateId}`;
+            }
+        })
+        .catch(err => {
+            if (companionBtn) {
+                companionBtn.disabled = false;
+                updateModalBoxPreview();
+            }
+            alert('Failed to create companion box template: ' + err.message);
+        });
     }
 
     function applyBoxDielineFromModal() {
@@ -367,7 +480,7 @@
         .then(data => {
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'Apply & Generate Unfolded Box';
+                btn.textContent = 'Apply to Current Template';
             }
 
             if (data.error) {
@@ -453,7 +566,7 @@
             console.error('Box Die-Line Generation Error:', err);
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'Apply & Generate Unfolded Box';
+                btn.textContent = 'Apply to Current Template';
             }
             if (typeof window.studioAlert === 'function') {
                 window.studioAlert('Failed to generate box die-line: ' + err.message, 'Error');
@@ -470,6 +583,7 @@
         closeBoxDielineModal,
         updateModalBoxPreview,
         applyBoxDielineFromModal,
+        createCompanionPieceTemplate,
         getActiveBoxConfig
     };
 })();

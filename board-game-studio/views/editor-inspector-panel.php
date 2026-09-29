@@ -4,7 +4,7 @@ declare(strict_types=1);
 use App\Infrastructure\Security\SecurityHelper;
 ?>
 <!-- Right Panel: Properties Inspector -->
-<div id="right-inspector-panel" class="w-[280px] shrink-0 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
+<div id="right-inspector-panel" class="w-[245px] xl:w-[265px] shrink-0 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
     <div class="p-4 border-b border-slate-800">
         <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Properties Inspector</h2>
     </div>

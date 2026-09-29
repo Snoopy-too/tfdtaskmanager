@@ -660,6 +660,7 @@ class BgBoxDielineService
                 'textAlign'     => 'center',
                 'fill'          => '#64748b',
                 'opacity'       => 0.75,
+                'styles'        => new \stdClass(),
                 'visible'       => $showLabels,
                 'selectable'    => false,
                 'evented'       => false,

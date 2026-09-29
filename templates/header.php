@@ -136,7 +136,7 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
             overscroll-behavior: none !important;
         }
         @media (min-width: 768px) {
-            .flex-1.min-w-0.flex.flex-col {
+            #tasks-sidebar ~ .flex-1.min-w-0.flex.flex-col {
                 margin-left: 16rem !important;
             }
         }

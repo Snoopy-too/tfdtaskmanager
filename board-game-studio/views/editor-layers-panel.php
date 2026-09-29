@@ -4,7 +4,7 @@ declare(strict_types=1);
 use App\Infrastructure\Security\SecurityHelper;
 ?>
 <!-- Left Panel: Layers and Assets -->
-<div id="left-layers-panel" class="w-[280px] shrink-0 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
+<div id="left-layers-panel" class="w-[245px] xl:w-[265px] shrink-0 min-w-0 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-full overflow-hidden transition-all duration-200">
     <!-- Tabs -->
     <div class="flex border-b border-slate-800 items-center">
         <button id="tab-layers-btn" class="flex-1 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-400">Layers</button>

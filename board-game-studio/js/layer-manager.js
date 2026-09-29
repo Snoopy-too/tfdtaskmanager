@@ -207,12 +207,16 @@
             const boxBanner = document.createElement('div');
             boxBanner.className = 'p-2.5 rounded-xl text-xs bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-1.5 mb-2';
             const titleRow = document.createElement('div');
-            titleRow.className = 'flex items-center justify-between font-bold text-amber-300';
+            titleRow.className = 'flex items-center justify-between font-bold text-amber-300 gap-1';
             const titleSpan = document.createElement('span');
-            titleSpan.textContent = `📦 Box (${boxCfg.effectiveW || boxCfg.finishedW}×${boxCfg.effectiveL || boxCfg.finishedL}×${boxCfg.effectiveH || boxCfg.finishedH}mm)`;
+            const isLid = (boxCfg.piece === 'lid' && boxCfg.boxType !== 'tuck_top_box');
+            const pieceLabel = (boxCfg.boxType === 'tuck_top_box')
+                ? '1-Piece Box'
+                : (isLid ? 'Top Lid' : 'Bottom Box');
+            titleSpan.textContent = `📦 ${pieceLabel} (${boxCfg.effectiveW || boxCfg.finishedW}×${boxCfg.effectiveL || boxCfg.finishedL}×${boxCfg.effectiveH || boxCfg.finishedH}mm)`;
             const editBtn = document.createElement('button');
             editBtn.type = 'button';
-            editBtn.className = 'px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-[10px] text-amber-200 transition';
+            editBtn.className = 'px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-[10px] text-amber-200 transition shrink-0';
             editBtn.textContent = 'Edit Box';
             editBtn.addEventListener('click', () => {
                 if (window.boxDieline && typeof window.boxDieline.openBoxDielineModal === 'function') {
@@ -223,11 +227,36 @@
             titleRow.appendChild(editBtn);
 
             const subRow = document.createElement('div');
-            subRow.className = 'text-[10px] text-slate-400';
-            subRow.textContent = 'Cut & fold lines stay aligned over your design layers.';
+            subRow.className = 'text-[10px] text-slate-400 leading-snug';
+            if (boxCfg.boxType === 'tuck_top_box') {
+                subRow.textContent = 'All-in-one hinged top lid & bottom base. Cut & fold lines stay over your design.';
+            } else if (isLid) {
+                subRow.textContent = `Telescoping Top Lid (+${boxCfg.clearanceMm ?? 1.5}mm clearance/side to slide over ${boxCfg.finishedW}×${boxCfg.finishedL}mm Base).`;
+            } else {
+                subRow.textContent = 'Bottom Box tray. Cut & fold lines stay aligned over your design layers.';
+            }
 
             boxBanner.appendChild(titleRow);
             boxBanner.appendChild(subRow);
+
+            if (boxCfg.boxType !== 'tuck_top_box') {
+                const companionBtn = document.createElement('button');
+                companionBtn.type = 'button';
+                companionBtn.className = 'w-full mt-1 py-1 px-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-[10px] font-semibold text-indigo-300 hover:text-white transition flex items-center justify-center gap-1';
+                const clearance = boxCfg.clearanceMm ?? 1.5;
+                const lidW = +((boxCfg.finishedW || 120) + clearance * 2).toFixed(1);
+                const lidL = +((boxCfg.finishedL || 160) + clearance * 2).toFixed(1);
+                companionBtn.textContent = isLid
+                    ? `➕ Create Matching Bottom Box (${boxCfg.finishedW}×${boxCfg.finishedL}mm)`
+                    : `➕ Create Fitting Top Lid (${lidW}×${lidL}mm)`;
+                companionBtn.addEventListener('click', () => {
+                    if (window.boxDieline && typeof window.boxDieline.createCompanionPieceTemplate === 'function') {
+                        window.boxDieline.createCompanionPieceTemplate(boxCfg);
+                    }
+                });
+                boxBanner.appendChild(companionBtn);
+            }
+
             container.appendChild(boxBanner);
         }
         

@@ -175,9 +175,22 @@
         };
     }
 
+    function ensureValidTextStyles() {
+        if (!canvas) return;
+        canvas.getObjects().forEach(obj => {
+            if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+                if (!obj.styles || typeof obj.styles !== 'object' || Array.isArray(obj.styles)) {
+                    obj.styles = {};
+                }
+            }
+        });
+    }
+
     function saveCanvas() {
         if (isSaving || !canvas) return Promise.resolve();
         isSaving = true;
+
+        ensureValidTextStyles();
 
         const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'original_filename', 'stored_filename', 'asset_url', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
         
@@ -377,6 +390,7 @@
         .then(data => {
             if (data.canvas_json) {
                 canvas.loadFromJSON(data.canvas_json, () => {
+                    ensureValidTextStyles();
                     upgradeLegacyTextLayers();
                     upgradeSvgImageLayers();
 
@@ -390,8 +404,12 @@
                     
                     refreshCanvasTextLayers();
 
-                    if (window.editorViewport && typeof window.editorViewport.syncControlAppearance === 'function') {
-                        window.editorViewport.syncControlAppearance();
+                    if (window.editorViewport) {
+                        if (typeof window.editorViewport.fitToView === 'function') {
+                            window.editorViewport.fitToView();
+                        } else if (typeof window.editorViewport.syncControlAppearance === 'function') {
+                            window.editorViewport.syncControlAppearance();
+                        }
                     }
 
                     canvas.renderAll();

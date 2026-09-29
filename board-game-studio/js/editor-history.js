@@ -12,6 +12,17 @@
     let historyTimeout = null;
     const maxHistorySize = 50;
 
+    function sanitizeTextStyles(canvas) {
+        if (!canvas) return;
+        canvas.getObjects().forEach(obj => {
+            if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+                if (!obj.styles || typeof obj.styles !== 'object' || Array.isArray(obj.styles)) {
+                    obj.styles = {};
+                }
+            }
+        });
+    }
+
     function pushState() {
         const canvas = window.editorCanvas;
         if (isUndoingRedoing || !canvas) return;
@@ -19,6 +30,7 @@
         if (historyTimeout) clearTimeout(historyTimeout);
 
         historyTimeout = setTimeout(() => {
+            sanitizeTextStyles(canvas);
             const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
             if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
 
@@ -36,6 +48,7 @@
         const canvas = window.editorCanvas;
         if (isUndoingRedoing || !canvas) return;
 
+        sanitizeTextStyles(canvas);
         const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
         if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
 

@@ -86,7 +86,8 @@
         const btnIn = document.getElementById('btn-zoom-in');
         if (btnIn) {
             btnIn.addEventListener('click', () => {
-                zoomLevel = Math.min(zoomLevel + 0.1, 3.0);
+                const step = zoomLevel < 0.3 ? 0.03 : 0.1;
+                zoomLevel = Math.min(+(zoomLevel + step).toFixed(2), 3.0);
                 applyZoom();
             });
         }
@@ -94,7 +95,8 @@
         const btnOut = document.getElementById('btn-zoom-out');
         if (btnOut) {
             btnOut.addEventListener('click', () => {
-                zoomLevel = Math.max(zoomLevel - 0.1, 0.2);
+                const step = zoomLevel <= 0.3 ? 0.03 : 0.1;
+                zoomLevel = Math.max(+(zoomLevel - step).toFixed(2), 0.05);
                 applyZoom();
             });
         }
@@ -108,7 +110,7 @@
             zoomInput.addEventListener('change', () => {
                 let val = parseFloat(zoomInput.value.replace(/[^0-9.]/g, ''));
                 if (!isNaN(val)) {
-                    val = Math.max(10, Math.min(val, 300));
+                    val = Math.max(5, Math.min(val, 300));
                     zoomLevel = val / 100;
                 }
                 applyZoom();
@@ -127,16 +129,27 @@
 
         function fitToView() {
             if (!viewport) return;
-            const containerWidth = viewport.clientWidth - 64;
-            const containerHeight = viewport.clientHeight - 64;
+            // Temporarily collapse zoomContainer so viewport clientWidth/clientHeight reflect true available panel space
+            if (zoomContainer) {
+                zoomContainer.style.width = '0px';
+                zoomContainer.style.height = '0px';
+            }
+            const containerWidth = Math.max(120, viewport.clientWidth - 28);
+            const containerHeight = Math.max(120, viewport.clientHeight - 28);
             const widthScale = containerWidth / window.studioConfig.canvasWidth;
             const heightScale = containerHeight / window.studioConfig.canvasHeight;
             
-            zoomLevel = Math.min(widthScale, heightScale, 1.0);
+            zoomLevel = Math.max(0.04, Math.min(widthScale, heightScale, 1.0));
             applyZoom();
         }
 
-        setTimeout(fitToView, 200);
+        window.editorViewport.fitToView = fitToView;
+        fitToView();
+        setTimeout(fitToView, 150);
+        window.addEventListener('resize', () => {
+            clearTimeout(window._bgsFitResizeTimer);
+            window._bgsFitResizeTimer = setTimeout(fitToView, 100);
+        });
     }
 
     function toggleCanvasOrientation() {

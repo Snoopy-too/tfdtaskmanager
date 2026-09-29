@@ -254,7 +254,7 @@ require_once __DIR__ . '/../templates/header.php';
         <?php include __DIR__ . '/views/editor-layers-panel.php'; ?>
 
         <!-- Central Panel: Canvas Area (Expands dynamically to fill remaining workspace) -->
-        <div id="center-canvas-panel" class="flex-1 min-w-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative transition-all duration-200">
+        <div id="center-canvas-panel" style="margin-left: 0 !important;" class="flex-1 min-w-0 min-h-0 flex flex-col h-full bg-slate-950 border border-slate-800/60 rounded-2xl overflow-hidden relative transition-all duration-200">
             
             <!-- Canvas Loading Overlay (Displayed in center of canvas area during load) -->
             <div id="canvas-loading-overlay" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/75 backdrop-blur-sm transition-all duration-300 pointer-events-auto">
@@ -287,11 +287,11 @@ require_once __DIR__ . '/../templates/header.php';
                 </div>
             </div>
 
-            <div class="canvas-viewport flex-grow overflow-auto flex p-2 md:p-3 relative">
+            <div class="canvas-viewport flex-1 min-h-0 min-w-0 overflow-auto flex p-2 md:p-3 relative">
                 <!-- Outer scaled container to handle flex-scroll centering -->
-                <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0;">
+                <div id="canvas-zoom-container" class="shrink-0" style="margin: auto; position: relative; flex-shrink: 0; overflow: hidden;">
                     <!-- Wrapper for absolute alignment and sizing -->
-                    <div id="canvas-container-wrapper" class="relative shadow-2xl border border-slate-700/50" style="transform-origin: 0 0; max-width: none !important; max-height: none !important;">
+                    <div id="canvas-container-wrapper" class="shadow-2xl border border-slate-700/50" style="position: absolute; top: 0; left: 0; transform-origin: 0 0; max-width: none !important; max-height: none !important;">
                         <canvas id="editor-canvas"></canvas>
                     </div>
                 </div>

@@ -602,6 +602,74 @@ try {
             ]);
             break;
 
+        case 'create_companion_box_template':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Source template not found.']);
+                exit;
+            }
+
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Project not found or access denied.']);
+                exit;
+            }
+
+            $targetPiece = (isset($_POST['box_part']) && $_POST['box_part'] === 'base') ? 'base' : 'lid';
+            $baseName = (string)preg_replace('/\s*\[(Base|Lid)\s+[^\]]+\]\s*$/i', '', $template->getName());
+            $baseName = trim($baseName) !== '' ? trim($baseName) : $template->getName();
+
+            $wMm = isset($_POST['box_width_mm']) ? (float)$_POST['box_width_mm'] : 120.0;
+            $lMm = isset($_POST['box_length_mm']) ? (float)$_POST['box_length_mm'] : 160.0;
+            $hMm = isset($_POST['box_height_mm']) ? (float)$_POST['box_height_mm'] : 40.0;
+            $cMm = isset($_POST['box_clearance_mm']) ? (float)$_POST['box_clearance_mm'] : 1.5;
+
+            $effW = ($targetPiece === 'lid') ? round($wMm + 2.0 * $cMm, 1) : round($wMm, 1);
+            $effL = ($targetPiece === 'lid') ? round($lMm + 2.0 * $cMm, 1) : round($lMm, 1);
+            $effH = round($hMm, 1);
+            $pieceLabel = ($targetPiece === 'lid') ? "Lid {$effW}x{$effL}x{$effH}mm" : "Base {$effW}x{$effL}x{$effH}mm";
+            $companionName = "{$baseName} [{$pieceLabel}]";
+
+            $companionTemplate = $templateService->createBoxTemplate(
+                $template->getProjectId(),
+                $companionName,
+                $template->getComponentTypeId(),
+                [
+                    'box_type'         => $_POST['box_type'] ?? 'double_wall_tray',
+                    'box_part'         => $targetPiece,
+                    'box_width_mm'     => $wMm,
+                    'box_length_mm'    => $lMm,
+                    'box_height_mm'    => $hMm,
+                    'box_clearance_mm' => $cMm,
+                    'box_show_labels'  => isset($_POST['box_show_labels']) ? ($_POST['box_show_labels'] === '1' || $_POST['box_show_labels'] === 'true') : true,
+                    'box_fill_style'   => $_POST['box_fill_style'] ?? 'stencil',
+                ],
+                $template->getBleedMm(),
+                $template->getSafeMarginMm()
+            );
+
+            echo json_encode([
+                'success'      => true,
+                'templateId'   => $companionTemplate->getId(),
+                'templateName' => $companionTemplate->getName(),
+                'piece'        => $targetPiece,
+            ]);
+            break;
+
         default:
             if (!handleDatasetApiAction($action, $method, $datasetService, $projectService) && !handleRulebookApiAction($action, $method, $rulebookService, $projectService)) {
                 http_response_code(400);

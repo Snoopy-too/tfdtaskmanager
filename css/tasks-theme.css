@@ -144,7 +144,7 @@ body.sidebar-open {
         z-index: 30 !important;
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15) !important;
     }
-    .flex-1.min-w-0.flex.flex-col {
+    #tasks-sidebar ~ .flex-1.min-w-0.flex.flex-col {
         margin-left: 16rem !important;
     }
 }

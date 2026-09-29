@@ -210,19 +210,29 @@ $compTypes = $compTypes ?? [];
                 </label>
             </div>
 
-            <div class="flex items-center justify-between bg-slate-950/80 border border-slate-800 px-3 py-2.5 rounded-xl text-xs">
-                <span class="text-slate-400">Unfolded Flat Sheet (300 DPI):</span>
-                <span id="modal-box-flat-preview" class="font-mono font-bold text-amber-400">297.2 × 312 mm (3510 × 3685 px)</span>
+            <div class="bg-slate-950/80 border border-slate-800 px-3 py-2.5 rounded-xl text-xs space-y-1">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">Unfolded Flat Sheet (300 DPI):</span>
+                    <span id="modal-box-flat-preview" class="font-mono font-bold text-amber-400">297.2 × 312 mm (3510 × 3685 px)</span>
+                </div>
+                <div id="modal-box-fitment-note" class="text-[11px] text-slate-400 pt-1 border-t border-slate-800/70">
+                    <!-- Populated dynamically by JS -->
+                </div>
             </div>
         </div>
 
-        <div class="flex justify-end space-x-3 pt-3 border-t border-slate-800">
-            <button type="button" onclick="if(window.boxDieline) window.boxDieline.closeBoxDielineModal();" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-xl transition">
-                Cancel
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
+            <button type="button" id="btn-create-companion-box" onclick="if(window.boxDieline) window.boxDieline.createCompanionPieceTemplate();" class="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-semibold text-amber-300 rounded-xl transition">
+                ➕ Create Fitting Top Lid Template
             </button>
-            <button type="button" id="btn-confirm-box-dieline" onclick="if(window.boxDieline) window.boxDieline.applyBoxDielineFromModal();" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white rounded-xl shadow transition">
-                Apply &amp; Generate Unfolded Box
-            </button>
+            <div class="flex items-center space-x-2 ml-auto">
+                <button type="button" onclick="if(window.boxDieline) window.boxDieline.closeBoxDielineModal();" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-xl transition">
+                    Cancel
+                </button>
+                <button type="button" id="btn-confirm-box-dieline" onclick="if(window.boxDieline) window.boxDieline.applyBoxDielineFromModal();" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white rounded-xl shadow transition">
+                    Apply to Current Template
+                </button>
+            </div>
         </div>
     </div>
 </div>
