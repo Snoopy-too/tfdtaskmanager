@@ -26,14 +26,14 @@ class UserService
         return $this->userRepository->findAll();
     }
 
-    public function createUser(string $name, string $email, string $password, string $role): User
+    public function createUser(string $name, string $email, ?string $password, string $role): User
     {
         $name = trim($name);
         $email = trim($email);
         $role = trim($role);
 
-        if (empty($name) || empty($email) || empty($password) || empty($role)) {
-            throw new ValidationException("All fields are required.");
+        if (empty($name) || empty($email) || empty($role)) {
+            throw new ValidationException("Name, email, and role are required.");
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -53,8 +53,12 @@ class UserService
             throw new ValidationException("A user with this email already exists.");
         }
 
-        $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
-        $hash = password_hash($password, $algo);
+        if (!empty($password)) {
+            $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
+            $hash = password_hash($password, $algo);
+        } else {
+            $hash = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
+        }
         $user = new User(null, $role, $name, $email, $hash);
 
         return $this->userRepository->save($user);

@@ -190,6 +190,18 @@ class SSOHelper
         return false;
     }
 
+    public static function getTfdDomain(): string
+    {
+        $host = $_SERVER['HTTP_HOST'] ?? 'tasks.theflyingdutchmen.games';
+        return (strpos($host, 'theflyingdutchmen.com') !== false) ? 'theflyingdutchmen.com' : 'theflyingdutchmen.games';
+    }
+
+    public static function getCentralLoginUrl(): string
+    {
+        $tfdDomain = self::getTfdDomain();
+        return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode("https://tasks.{$tfdDomain}/auth_callback.php") . "&scope=openid%20profile%20email";
+    }
+
     public static function clearSession(): void
     {
         $_SESSION = [];

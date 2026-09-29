@@ -123,10 +123,11 @@ require_once __DIR__ . '/templates/header.php';
 
                 <div>
                     <label for="password" class="block text-sm font-medium text-slate-300 mb-1">
-                        Password <?php echo $editUser ? '<span class="text-slate-500 text-xs">(leave blank to keep current)</span>' : ''; ?>
+                        Password <span class="text-slate-500 text-xs">(optional – managed via central TFD login)</span>
                     </label>
-                    <input type="password" id="password" name="password" <?php echo $editUser ? '' : 'required'; ?>
-                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 transition outline-none">
+                    <input type="password" id="password" name="password"
+                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 transition outline-none"
+                        placeholder="Leave blank for SSO account">
                 </div>
 
                 <div>

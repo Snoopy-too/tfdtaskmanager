@@ -12,13 +12,14 @@ $code = $_GET['code'] ?? null;
 $error = $_GET['error'] ?? null;
 
 if ($error) {
-    $_SESSION['error'] = "Authentication failed: " . htmlspecialchars($error);
-    header("Location: login.php");
+    http_response_code(403);
+    $authError = "Authentication failed: " . htmlspecialchars($error);
+    require __DIR__ . '/templates/access_denied.php';
     exit();
 }
 
 if (!$code) {
-    header("Location: login.php");
+    header("Location: " . SSOHelper::getCentralLoginUrl());
     exit();
 }
 
@@ -53,8 +54,9 @@ $tokenData = json_decode($tokenResponse, true);
 $accessToken = $tokenData['access_token'] ?? null;
 
 if (!$accessToken) {
-    $_SESSION['error'] = "Failed to retrieve access token from authorization server.";
-    header("Location: login.php");
+    http_response_code(403);
+    $authError = "Failed to retrieve access token from authorization server.";
+    require __DIR__ . '/templates/access_denied.php';
     exit();
 }
 
@@ -74,14 +76,16 @@ $username = $userData['username'] ?? $userData['preferred_username'] ?? null;
 $tfdRole = $userData['role'] ?? 'user';
 
 if (!$email && !$username) {
-    $_SESSION['error'] = "Failed to retrieve user identity from authorization server.";
-    header("Location: login.php");
+    http_response_code(403);
+    $authError = "Failed to retrieve user identity from authorization server.";
+    require __DIR__ . '/templates/access_denied.php';
     exit();
 }
 
 if (strtolower($tfdRole) !== 'admin') {
-    $_SESSION['error'] = "Access restricted: Task Manager is only available to administrators.";
-    header("Location: login.php");
+    http_response_code(403);
+    $authError = "Access restricted: Task Manager is only available to administrators.";
+    require __DIR__ . '/templates/access_denied.php';
     exit();
 }
 
@@ -89,7 +93,8 @@ if (SSOHelper::loginUserByEmailOrUsername($email, $username, $tfdRole)) {
     header("Location: index.php");
     exit();
 } else {
-    $_SESSION['error'] = "Failed to synchronize user account.";
-    header("Location: login.php");
+    http_response_code(403);
+    $authError = "Failed to synchronize user account.";
+    require __DIR__ . '/templates/access_denied.php';
     exit();
 }

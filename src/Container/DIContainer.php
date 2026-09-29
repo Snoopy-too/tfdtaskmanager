@@ -11,7 +11,6 @@ use App\Infrastructure\Repository\PDOCommentRepository;
 use App\Infrastructure\Repository\PDOTaskHistoryRepository;
 use App\Infrastructure\Repository\PDOMeetingRepository;
 use App\Infrastructure\Repository\PDOMeetingTopicRepository;
-use App\Application\Services\AuthService;
 use App\Application\Services\UserService;
 use App\Application\Services\ProjectService;
 use App\Application\Services\TaskService;
@@ -69,9 +68,6 @@ class DIContainer
             return new PDOTaskHistoryRepository($this->get(PDO::class));
         };
 
-        $this->services[AuthService::class] = function() {
-            return new AuthService($this->get(PDOUserRepository::class));
-        };
 
         $this->services[UserService::class] = function() {
             return new UserService($this->get(PDOUserRepository::class));

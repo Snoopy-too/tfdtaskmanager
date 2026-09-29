@@ -13,9 +13,9 @@ $host = $_SERVER['HTTP_HOST'] ?? 'tasks.theflyingdutchmen.games';
 $tfdDomain = (strpos($host, 'theflyingdutchmen.com') !== false) ? 'theflyingdutchmen.com' : 'theflyingdutchmen.games';
 
 if ($wasSso || !empty($_COOKIE['session_id'])) {
-    header("Location: https://{$tfdDomain}/logout?redirect=" . urlencode("https://{$host}/login.php"));
+    header("Location: https://{$tfdDomain}/logout?redirect=" . urlencode("https://{$tfdDomain}/"));
     exit();
 }
 
-header('Location: login.php');
+header("Location: https://{$tfdDomain}/");
 exit();

@@ -41,9 +41,7 @@ class SecurityHelper
 
         if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $lifetime)) {
             self::destroySession();
-            $inStudio = basename(dirname($_SERVER['PHP_SELF'] ?? '')) === 'board-game-studio';
-            $loginPath = ($inStudio ? '../' : '') . 'login.php?expired=1';
-            header('Location: ' . $loginPath);
+            header('Location: ' . SSOHelper::getCentralLoginUrl());
             exit();
         }
         $_SESSION['last_activity'] = time();
@@ -112,9 +110,7 @@ class SecurityHelper
     {
         self::initSession();
         if (!self::isLoggedIn()) {
-            $inStudio = basename(dirname($_SERVER['PHP_SELF'] ?? '')) === 'board-game-studio';
-            $loginPath = ($inStudio ? '../' : '') . 'login.php';
-            header('Location: ' . $loginPath);
+            header('Location: ' . SSOHelper::getCentralLoginUrl());
             exit();
         }
 
