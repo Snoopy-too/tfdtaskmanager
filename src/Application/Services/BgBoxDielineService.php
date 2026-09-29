@@ -25,6 +25,91 @@ class BgBoxDielineService
     public const LID_HEIGHT_THUMB = 'thumb_reveal';
     public const LID_HEIGHT_EXACT = 'exact';
 
+    public const DIM_MODE_CAVITY   = 'usable_cavity';
+    public const DIM_MODE_CONTENTS = 'contents_fit';
+    public const DIM_MODE_RAW      = 'raw_panel';
+
+    /**
+     * Calculates the inward wall intrusion (in mm) that folded inner walls & flaps
+     * consume from the center panel floor of a box, and derives both the guaranteed
+     * usable interior cavity and the required outer score-to-score Base panel size.
+     *
+     * @return array{
+     *   usableW: float,
+     *   usableL: float,
+     *   usableH: float,
+     *   baseScoreW: float,
+     *   baseScoreL: float,
+     *   baseScoreH: float
+     * }
+     */
+    public static function calculateBaseScoreDimensions(
+        string $boxType,
+        float $inputW,
+        float $inputL,
+        float $inputH,
+        float $stockThicknessMm,
+        string $dimensionMode
+    ): array {
+        // How much total interior width/length/height is eaten by inward-folding walls & flaps:
+        if ($boxType === self::TYPE_DOUBLE_WALL_TRAY) {
+            $wallLossW = 3.5 * $stockThicknessMm; // Left & Right dust flaps + inner rollover walls
+            $wallLossL = 2.5 * $stockThicknessMm; // Top & Bottom inner tuck flaps
+            $wallLossH = 1.0 * $stockThicknessMm; // Floor + fold bead
+        } elseif ($boxType === self::TYPE_ROLL_END_TRAY) {
+            $wallLossW = 3.5 * $stockThicknessMm; // Left & Right rollover walls + dust flaps
+            $wallLossL = 1.0 * $stockThicknessMm; // Single end wall crease bead
+            $wallLossH = 1.0 * $stockThicknessMm;
+        } elseif ($boxType === self::TYPE_TUCK_TOP_BOX) {
+            $wallLossW = 2.0 * $stockThicknessMm;
+            $wallLossL = 2.0 * $stockThicknessMm;
+            $wallLossH = 1.5 * $stockThicknessMm;
+        } else {
+            // TYPE_SIMPLE_TRAY (single wall with corner glue tabs)
+            $wallLossW = 1.5 * $stockThicknessMm;
+            $wallLossL = 1.5 * $stockThicknessMm;
+            $wallLossH = 0.5 * $stockThicknessMm;
+        }
+
+        if ($dimensionMode === self::DIM_MODE_CONTENTS) {
+            // User entered the size of their cards/boards/components:
+            // Add +3.0mm (+1.5mm/side) finger/insertion play and +1.5mm vertical headroom,
+            // then push score lines out by the inward wall thickness.
+            $usableW = round($inputW + 3.0, 1);
+            $usableL = round($inputL + 3.0, 1);
+            $usableH = round($inputH + 1.5, 1);
+            $baseScoreW = round($usableW + $wallLossW, 1);
+            $baseScoreL = round($usableL + $wallLossL, 1);
+            $baseScoreH = round($usableH + $wallLossH, 1);
+        } elseif ($dimensionMode === self::DIM_MODE_RAW) {
+            // User entered raw score-to-score panel dimensions directly:
+            $baseScoreW = round($inputW, 1);
+            $baseScoreL = round($inputL, 1);
+            $baseScoreH = round($inputH, 1);
+            $usableW = round(max(5.0, $baseScoreW - $wallLossW), 1);
+            $usableL = round(max(5.0, $baseScoreL - $wallLossL), 1);
+            $usableH = round(max(5.0, $baseScoreH - $wallLossH), 1);
+        } else {
+            // Default DIM_MODE_CAVITY: User entered the desired Usable Interior Cavity (W x L x H):
+            // Push the Base score lines outward by the inward wall loss so the inside stays truly W x L x H.
+            $usableW = round($inputW, 1);
+            $usableL = round($inputL, 1);
+            $usableH = round($inputH, 1);
+            $baseScoreW = round($usableW + $wallLossW, 1);
+            $baseScoreL = round($usableL + $wallLossL, 1);
+            $baseScoreH = round($usableH + $wallLossH, 1);
+        }
+
+        return [
+            'usableW'    => $usableW,
+            'usableL'    => $usableL,
+            'usableH'    => $usableH,
+            'baseScoreW' => $baseScoreW,
+            'baseScoreL' => $baseScoreL,
+            'baseScoreH' => $baseScoreH,
+        ];
+    }
+
     /**
      * Calculates the recommended horizontal Lid clearance per side (in mm)
      * based on the box wall fold structure and cardboard stock caliper (t).
@@ -102,6 +187,7 @@ class BgBoxDielineService
      * @return array{
      *   boxType: string,
      *   boxPart: string,
+     *   dimensionMode: string,
      *   widthMm: float,
      *   lengthMm: float,
      *   heightMm: float,
@@ -123,6 +209,11 @@ class BgBoxDielineService
         $boxPart = isset($params['box_part']) ? trim((string)$params['box_part']) : self::PART_BASE;
         if (!in_array($boxPart, [self::PART_BASE, self::PART_LID, self::PART_PAIR], true)) {
             $boxPart = self::PART_BASE;
+        }
+
+        $dimensionMode = isset($params['box_dim_mode']) ? trim((string)$params['box_dim_mode']) : self::DIM_MODE_CAVITY;
+        if (!in_array($dimensionMode, [self::DIM_MODE_CAVITY, self::DIM_MODE_CONTENTS, self::DIM_MODE_RAW], true)) {
+            $dimensionMode = self::DIM_MODE_CAVITY;
         }
 
         $widthMm = isset($params['box_width_mm']) ? (float)$params['box_width_mm'] : 120.0;
@@ -166,6 +257,7 @@ class BgBoxDielineService
         return [
             'boxType'          => $boxType,
             'boxPart'          => $boxPart,
+            'dimensionMode'    => $dimensionMode,
             'widthMm'          => round($widthMm, 1),
             'lengthMm'         => round($lengthMm, 1),
             'heightMm'         => round($heightMm, 1),
@@ -188,19 +280,25 @@ class BgBoxDielineService
     public function calculateGeometry(array $config, string $piece = self::PART_BASE): array
     {
         $boxType = (string)($config['boxType'] ?? self::TYPE_DOUBLE_WALL_TRAY);
-        $baseW = (float)($config['widthMm'] ?? 120.0);
-        $baseL = (float)($config['lengthMm'] ?? 160.0);
-        $baseH = (float)($config['heightMm'] ?? 40.0);
+        $dimensionMode = (string)($config['dimensionMode'] ?? self::DIM_MODE_CAVITY);
+        $inputW = (float)($config['widthMm'] ?? 120.0);
+        $inputL = (float)($config['lengthMm'] ?? 160.0);
+        $inputH = (float)($config['heightMm'] ?? 40.0);
         $stockMm = (float)($config['stockThicknessMm'] ?? 0.6);
         $lidHeightMode = (string)($config['lidHeightMode'] ?? self::LID_HEIGHT_FULL);
         $clearance = (float)($config['clearanceMm'] ?? self::calculateRecommendedClearance($boxType, $stockMm));
 
-        // If generating a telescoping Lid for a tray, add 2 * clearance to Width and Length
+        $scoreDims = self::calculateBaseScoreDimensions($boxType, $inputW, $inputL, $inputH, $stockMm, $dimensionMode);
+        $baseScoreW = $scoreDims['baseScoreW'];
+        $baseScoreL = $scoreDims['baseScoreL'];
+        $baseScoreH = $scoreDims['baseScoreH'];
+
+        // If generating a telescoping Lid for a tray, add 2 * clearance to the compensated Base score-to-score W and L,
         // and compensate vertical Lid height (+3t) so the Lid sides reach the bottom of the Base.
         $isLid = ($piece === self::PART_LID && $boxType !== self::TYPE_TUCK_TOP_BOX);
-        $W = $isLid ? round($baseW + ($clearance * 2.0), 1) : $baseW;
-        $L = $isLid ? round($baseL + ($clearance * 2.0), 1) : $baseL;
-        $H = $isLid ? self::calculateLidEffectiveHeight($baseH, $stockMm, $lidHeightMode) : $baseH;
+        $W = $isLid ? round($baseScoreW + ($clearance * 2.0), 1) : $baseScoreW;
+        $L = $isLid ? round($baseScoreL + ($clearance * 2.0), 1) : $baseScoreL;
+        $H = $isLid ? self::calculateLidEffectiveHeight($baseScoreH, $stockMm, $lidHeightMode) : $baseScoreH;
 
         $padMm = 6.0; // Outer safety padding around cut line on canvas
 
@@ -235,9 +333,16 @@ class BgBoxDielineService
         return [
             'boxType'               => $boxType,
             'piece'                 => $isLid ? self::PART_LID : self::PART_BASE,
-            'finishedW'             => $baseW,
-            'finishedL'             => $baseL,
-            'finishedH'             => $baseH,
+            'dimensionMode'         => $dimensionMode,
+            'finishedW'             => $inputW,
+            'finishedL'             => $inputL,
+            'finishedH'             => $inputH,
+            'usableW'               => $scoreDims['usableW'],
+            'usableL'               => $scoreDims['usableL'],
+            'usableH'               => $scoreDims['usableH'],
+            'baseScoreW'            => $baseScoreW,
+            'baseScoreL'            => $baseScoreL,
+            'baseScoreH'            => $baseScoreH,
             'effectiveW'            => $W,
             'effectiveL'            => $L,
             'effectiveH'            => $H,

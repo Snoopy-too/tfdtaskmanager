@@ -54,9 +54,18 @@ use App\Infrastructure\Security\SecurityHelper;
             <div id="box_part_container">
                 <label for="box_part" class="block text-xs font-semibold text-slate-300 mb-1">Box Piece to Generate</label>
                 <select id="box_part" name="box_part" onchange="updateDimensionsPreview()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2">
-                    <option value="base" selected>Bottom Box / Single Tray (Exact W × L × H)</option>
+                    <option value="base" selected>Bottom Box / Single Tray (Base)</option>
                     <option value="lid">Telescoping Top Lid (+Clearance to slide over Base)</option>
                     <option value="pair">Create Both: Bottom Base + Matching Top Lid (2 Templates)</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="box_dim_mode" class="block text-xs font-semibold text-emerald-300 mb-1">How Are You Measuring W × L × H?</label>
+                <select id="box_dim_mode" name="box_dim_mode" onchange="updateDimensionsPreview()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2">
+                    <option value="usable_cavity" selected>📐 Usable Interior Cavity (Auto-expand fold lines for inner walls)</option>
+                    <option value="contents_fit">🎯 Fit My Contents / Components (Auto +3mm Play + Inner Wall Compensation)</option>
+                    <option value="raw_panel">📏 Raw Score-to-Score Panel (Exact Fold Lines — No Inner Compensation)</option>
                 </select>
             </div>
 
@@ -213,6 +222,54 @@ use App\Infrastructure\Security\SecurityHelper;
                 return +(baseH + 3.0 * stockMm).toFixed(1);
             }
 
+            function getBaseScoreDimensions(boxType, inputW, inputL, inputH, stockMm, dimMode) {
+                let wallLossW = 1.5 * stockMm, wallLossL = 1.5 * stockMm, wallLossH = 0.5 * stockMm;
+                if (boxType === 'double_wall_tray') {
+                    wallLossW = 3.5 * stockMm;
+                    wallLossL = 2.5 * stockMm;
+                    wallLossH = 1.0 * stockMm;
+                } else if (boxType === 'roll_end_tray') {
+                    wallLossW = 3.5 * stockMm;
+                    wallLossL = 1.0 * stockMm;
+                    wallLossH = 1.0 * stockMm;
+                } else if (boxType === 'tuck_top_box') {
+                    wallLossW = 2.0 * stockMm;
+                    wallLossL = 2.0 * stockMm;
+                    wallLossH = 1.5 * stockMm;
+                }
+                if (dimMode === 'contents_fit') {
+                    const usableW = +(inputW + 3.0).toFixed(1);
+                    const usableL = +(inputL + 3.0).toFixed(1);
+                    const usableH = +(inputH + 1.5).toFixed(1);
+                    return {
+                        usableW,
+                        usableL,
+                        usableH,
+                        baseScoreW: +(usableW + wallLossW).toFixed(1),
+                        baseScoreL: +(usableL + wallLossL).toFixed(1),
+                        baseScoreH: +(usableH + wallLossH).toFixed(1)
+                    };
+                }
+                if (dimMode === 'raw_panel') {
+                    return {
+                        usableW: +Math.max(5.0, inputW - wallLossW).toFixed(1),
+                        usableL: +Math.max(5.0, inputL - wallLossL).toFixed(1),
+                        usableH: +Math.max(5.0, inputH - wallLossH).toFixed(1),
+                        baseScoreW: +inputW.toFixed(1),
+                        baseScoreL: +inputL.toFixed(1),
+                        baseScoreH: +inputH.toFixed(1)
+                    };
+                }
+                return {
+                    usableW: +inputW.toFixed(1),
+                    usableL: +inputL.toFixed(1),
+                    usableH: +inputH.toFixed(1),
+                    baseScoreW: +(inputW + wallLossW).toFixed(1),
+                    baseScoreL: +(inputL + wallLossL).toFixed(1),
+                    baseScoreH: +(inputH + wallLossH).toFixed(1)
+                };
+            }
+
             function handleBoxStockPresetChange() {
                 const presetEl = document.getElementById('box_stock_preset');
                 const stockInput = document.getElementById('box_stock_mm');
@@ -246,12 +303,13 @@ use App\Infrastructure\Security\SecurityHelper;
                 updateDimensionsPreview();
             }
 
-            function calculateFlatBoxSize(boxType, part, baseW, baseL, baseH, clearance, stockMm, lidHeightMode) {
+            function calculateFlatBoxSize(boxType, part, inputW, inputL, inputH, clearance, stockMm, lidHeightMode, dimMode) {
                 const t = stockMm || 0.6;
+                const scoreDims = getBaseScoreDimensions(boxType, inputW, inputL, inputH, t, dimMode || 'usable_cavity');
                 const isLid = (part === 'lid' && boxType !== 'tuck_top_box');
-                const W = isLid ? +(baseW + clearance * 2).toFixed(1) : baseW;
-                const L = isLid ? +(baseL + clearance * 2).toFixed(1) : baseL;
-                const H = isLid ? getEffectiveLidHeight(baseH, t, lidHeightMode || 'full_coverage') : baseH;
+                const W = isLid ? +(scoreDims.baseScoreW + clearance * 2).toFixed(1) : scoreDims.baseScoreW;
+                const L = isLid ? +(scoreDims.baseScoreL + clearance * 2).toFixed(1) : scoreDims.baseScoreL;
+                const H = isLid ? getEffectiveLidHeight(scoreDims.baseScoreH, t, lidHeightMode || 'full_coverage') : scoreDims.baseScoreH;
                 const pad = 6.0;
                 let flatW = 0, flatH = 0, shoulder = 0;
 
@@ -273,7 +331,17 @@ use App\Infrastructure\Security\SecurityHelper;
                     flatW = +(W + 2 * H + 2 * pad).toFixed(1);
                     flatH = +(L + 2 * H + 2 * pad).toFixed(1);
                 }
-                return { flatW, flatH, effW: W, effL: L, effH: H, shoulder };
+                return {
+                    flatW,
+                    flatH,
+                    effW: W,
+                    effL: L,
+                    effH: H,
+                    usableW: scoreDims.usableW,
+                    usableL: scoreDims.usableL,
+                    usableH: scoreDims.usableH,
+                    shoulder
+                };
             }
 
             function estimateSheetsNeeded(flatW, flatH, pageW, pageH) {
@@ -344,6 +412,7 @@ use App\Infrastructure\Security\SecurityHelper;
                 if (isBox) {
                     const boxType = document.getElementById('box_type')?.value || 'double_wall_tray';
                     const boxPart = document.getElementById('box_part')?.value || 'base';
+                    const dimMode = document.getElementById('box_dim_mode')?.value || 'usable_cavity';
                     const bw = parseFloat(document.getElementById('box_width_mm')?.value) || 120;
                     const bl = parseFloat(document.getElementById('box_length_mm')?.value) || 160;
                     const bh = parseFloat(document.getElementById('box_height_mm')?.value) || 40;
@@ -366,8 +435,8 @@ use App\Infrastructure\Security\SecurityHelper;
 
                     const estEl = document.getElementById('box_sheet_estimate');
                     if (boxPart === 'pair' && boxType !== 'tuck_top_box') {
-                        const baseCalc = calculateFlatBoxSize(boxType, 'base', bw, bl, bh, bc, stockMm, lidHeightMode);
-                        const lidCalc = calculateFlatBoxSize(boxType, 'lid', bw, bl, bh, bc, stockMm, lidHeightMode);
+                        const baseCalc = calculateFlatBoxSize(boxType, 'base', bw, bl, bh, bc, stockMm, lidHeightMode, dimMode);
+                        const lidCalc = calculateFlatBoxSize(boxType, 'lid', bw, bl, bh, bc, stockMm, lidHeightMode, dimMode);
                         if (previewLabel) previewLabel.textContent = '2 Templates (Base + Lid):';
                         if (previewElem) {
                             previewElem.textContent = `Base ${baseCalc.flatW}×${baseCalc.flatH}mm • Lid ${lidCalc.flatW}×${lidCalc.flatH}mm`;
@@ -375,10 +444,10 @@ use App\Infrastructure\Security\SecurityHelper;
                         if (estEl) {
                             const baseA4 = estimateSheetsNeeded(baseCalc.flatW, baseCalc.flatH, 210, 297);
                             const lidA4 = estimateSheetsNeeded(lidCalc.flatW, lidCalc.flatH, 210, 297);
-                            estEl.innerHTML = `<div><strong>Base:</strong> ${baseCalc.effW}×${baseCalc.effL}×${baseCalc.effH}mm &bull; <strong>Snug Lid:</strong> ${lidCalc.effW}×${lidCalc.effL}×${lidCalc.effH}mm</div><div class="text-[10px] text-emerald-200/80">Stock t=${stockMm}mm (Shoulder ${baseCalc.shoulder}mm, +${bc}mm/side clearance) &bull; ${baseA4 + lidA4}× A4 sheets total</div>`;
+                            estEl.innerHTML = `<div><strong>Usable Inside Cavity:</strong> ${baseCalc.usableW}×${baseCalc.usableL}×${baseCalc.usableH}mm</div><div class="text-[10px] text-emerald-200/80">Base Panel: ${baseCalc.effW}×${baseCalc.effL}×${baseCalc.effH}mm &bull; Lid Panel: ${lidCalc.effW}×${lidCalc.effL}×${lidCalc.effH}mm &bull; ${baseA4 + lidA4}× A4 sheets</div>`;
                         }
                     } else {
-                        const calc = calculateFlatBoxSize(boxType, boxPart, bw, bl, bh, bc, stockMm, lidHeightMode);
+                        const calc = calculateFlatBoxSize(boxType, boxPart, bw, bl, bh, bc, stockMm, lidHeightMode, dimMode);
                         const wPx = mmToPx(calc.flatW);
                         const hPx = mmToPx(calc.flatH);
 
@@ -389,8 +458,7 @@ use App\Infrastructure\Security\SecurityHelper;
                         if (estEl) {
                             const a4Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 210, 297);
                             const a5Sheets = estimateSheetsNeeded(calc.flatW, calc.flatH, 148, 210);
-                            const heightNote = (boxPart === 'lid' && calc.effH !== bh) ? ` (auto +${+(calc.effH - bh).toFixed(1)}mm height for ${stockMm}mm stock)` : '';
-                            estEl.innerHTML = `<div><strong>Finished Piece:</strong> ${calc.effW}×${calc.effL}×${calc.effH}mm${heightNote}</div><div class="text-[10px] text-emerald-200/80">Stock t=${stockMm}mm${calc.shoulder ? ` (Shoulder ${calc.shoulder}mm)` : ''} &bull; <strong>Print:</strong> ${a4Sheets}× A4 or ${a5Sheets}× A5 sheets</div>`;
+                            estEl.innerHTML = `<div><strong>Usable Inside Cavity:</strong> ${calc.usableW}×${calc.usableL}×${calc.usableH}mm &bull; <strong>Fold Panel:</strong> ${calc.effW}×${calc.effL}×${calc.effH}mm</div><div class="text-[10px] text-emerald-200/80">Stock t=${stockMm}mm${calc.shoulder ? ` (Shoulder ${calc.shoulder}mm)` : ''} &bull; <strong>Print:</strong> ${a4Sheets}× A4 or ${a5Sheets}× A5 sheets</div>`;
                         }
                     }
                     return;

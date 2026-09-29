@@ -47,6 +47,59 @@
         return +(baseH + 3.0 * stockMm).toFixed(1);
     }
 
+    function getBaseScoreDimensions(boxType, inputW, inputL, inputH, stockMm, dimMode) {
+        let wallLossW = +(stockMm * 1.5).toFixed(1);
+        let wallLossL = +(stockMm * 1.5).toFixed(1);
+        let wallLossH = +(stockMm * 0.5).toFixed(1);
+
+        if (boxType === 'double_wall_tray') {
+            wallLossW = +(stockMm * 3.5).toFixed(1);
+            wallLossL = +(stockMm * 2.5).toFixed(1);
+            wallLossH = +(stockMm * 1.0).toFixed(1);
+        } else if (boxType === 'roll_end_tray') {
+            wallLossW = +(stockMm * 3.5).toFixed(1);
+            wallLossL = +(stockMm * 1.0).toFixed(1);
+            wallLossH = +(stockMm * 1.0).toFixed(1);
+        } else if (boxType === 'tuck_top_box') {
+            wallLossW = +(stockMm * 2.0).toFixed(1);
+            wallLossL = +(stockMm * 2.0).toFixed(1);
+            wallLossH = +(stockMm * 1.5).toFixed(1);
+        }
+
+        if (dimMode === 'contents_fit') {
+            const usableW = +(inputW + 3.0).toFixed(1);
+            const usableL = +(inputL + 3.0).toFixed(1);
+            const usableH = +(inputH + 1.5).toFixed(1);
+            return {
+                usableW,
+                usableL,
+                usableH,
+                baseScoreW: +(usableW + wallLossW).toFixed(1),
+                baseScoreL: +(usableL + wallLossL).toFixed(1),
+                baseScoreH: +(usableH + wallLossH).toFixed(1)
+            };
+        }
+        if (dimMode === 'raw_panel') {
+            return {
+                usableW: +Math.max(5.0, inputW - wallLossW).toFixed(1),
+                usableL: +Math.max(5.0, inputL - wallLossL).toFixed(1),
+                usableH: +Math.max(5.0, inputH - wallLossH).toFixed(1),
+                baseScoreW: +inputW.toFixed(1),
+                baseScoreL: +inputL.toFixed(1),
+                baseScoreH: +inputH.toFixed(1)
+            };
+        }
+        // Default: usable_cavity
+        return {
+            usableW: +inputW.toFixed(1),
+            usableL: +inputL.toFixed(1),
+            usableH: +inputH.toFixed(1),
+            baseScoreW: +(inputW + wallLossW).toFixed(1),
+            baseScoreL: +(inputL + wallLossL).toFixed(1),
+            baseScoreH: +(inputH + wallLossH).toFixed(1)
+        };
+    }
+
     /**
      * Strict runtime schema validator for 3D Box parameters.
      */
@@ -59,6 +112,9 @@
             throw new Error('Unsupported box type selected.');
         }
         const piece = (raw.piece === 'lid') ? 'lid' : 'base';
+        const dimensionMode = ['usable_cavity', 'contents_fit', 'raw_panel'].includes(raw.dimensionMode)
+            ? raw.dimensionMode
+            : 'usable_cavity';
         const finishedW = Number(raw.finishedW);
         const finishedL = Number(raw.finishedL);
         const finishedH = Number(raw.finishedH);
@@ -87,6 +143,7 @@
         return {
             boxType,
             piece,
+            dimensionMode,
             finishedW: Math.round(finishedW * 10) / 10,
             finishedL: Math.round(finishedL * 10) / 10,
             finishedH: Math.round(finishedH * 10) / 10,
@@ -104,11 +161,13 @@
 
     function calculateFlatDimensions(cfg) {
         const t = Number(cfg.stockThicknessMm ?? 0.6);
+        const dimMode = cfg.dimensionMode || 'usable_cavity';
         const lidHeightMode = cfg.lidHeightMode || 'full_coverage';
         const isLid = (cfg.piece === 'lid' && cfg.boxType !== 'tuck_top_box');
-        const W = isLid ? +(cfg.finishedW + cfg.clearanceMm * 2).toFixed(1) : cfg.finishedW;
-        const L = isLid ? +(cfg.finishedL + cfg.clearanceMm * 2).toFixed(1) : cfg.finishedL;
-        const H = isLid ? getEffectiveLidHeight(cfg.finishedH, t, lidHeightMode) : cfg.finishedH;
+        const baseDims = getBaseScoreDimensions(cfg.boxType, cfg.finishedW, cfg.finishedL, cfg.finishedH, t, dimMode);
+        const W = isLid ? +(baseDims.baseScoreW + cfg.clearanceMm * 2).toFixed(1) : baseDims.baseScoreW;
+        const L = isLid ? +(baseDims.baseScoreL + cfg.clearanceMm * 2).toFixed(1) : baseDims.baseScoreL;
+        const H = isLid ? getEffectiveLidHeight(baseDims.baseScoreH, t, lidHeightMode) : baseDims.baseScoreH;
         const pad = 6.0;
         let flatW = 0, flatH = 0, shoulder = 0;
 
@@ -132,6 +191,12 @@
         }
 
         return {
+            usableW: baseDims.usableW,
+            usableL: baseDims.usableL,
+            usableH: baseDims.usableH,
+            baseScoreW: baseDims.baseScoreW,
+            baseScoreL: baseDims.baseScoreL,
+            baseScoreH: baseDims.baseScoreH,
             effectiveW: W,
             effectiveL: L,
             effectiveH: H,
@@ -318,6 +383,7 @@
         if (cfg) {
             const typeEl = document.getElementById('modal-box-type');
             const partEl = document.getElementById('modal-box-part');
+            const dimModeEl = document.getElementById('modal-box-dim-mode');
             const wEl = document.getElementById('modal-box-width');
             const lEl = document.getElementById('modal-box-length');
             const hEl = document.getElementById('modal-box-height');
@@ -330,6 +396,7 @@
 
             if (typeEl && cfg.boxType) typeEl.value = cfg.boxType;
             if (partEl && cfg.piece) partEl.value = cfg.piece;
+            if (dimModeEl && cfg.dimensionMode) dimModeEl.value = cfg.dimensionMode;
             if (wEl && cfg.finishedW) wEl.value = cfg.finishedW;
             if (lEl && cfg.finishedL) lEl.value = cfg.finishedL;
             if (hEl && cfg.finishedH) hEl.value = cfg.finishedH;
@@ -358,6 +425,7 @@
     function updateModalBoxPreview() {
         const boxType = document.getElementById('modal-box-type')?.value || 'double_wall_tray';
         const piece = document.getElementById('modal-box-part')?.value || 'base';
+        const dimensionMode = document.getElementById('modal-box-dim-mode')?.value || 'usable_cavity';
         const finishedW = parseFloat(document.getElementById('modal-box-width')?.value) || 120;
         const finishedL = parseFloat(document.getElementById('modal-box-length')?.value) || 160;
         const finishedH = parseFloat(document.getElementById('modal-box-height')?.value) || 40;
@@ -381,27 +449,10 @@
         if (clearGroup) clearGroup.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
         if (lidHeightGroup) lidHeightGroup.style.display = (boxType === 'tuck_top_box') ? 'none' : 'block';
 
-        const lidW = +(finishedW + clearanceMm * 2).toFixed(1);
-        const lidL = +(finishedL + clearanceMm * 2).toFixed(1);
-        const lidH = getEffectiveLidHeight(finishedH, stockThicknessMm, lidHeightMode);
-        const deltaH = +(lidH - finishedH).toFixed(1);
-
-        if (companionBtn) {
-            if (boxType === 'tuck_top_box') {
-                companionBtn.classList.add('hidden');
-            } else {
-                companionBtn.classList.remove('hidden');
-                if (piece === 'lid') {
-                    companionBtn.textContent = `➕ Create Matching Bottom Box (${finishedW}×${finishedL}×${finishedH}mm)`;
-                } else {
-                    companionBtn.textContent = `➕ Create Fitting Top Lid (${lidW}×${lidL}×${lidH}mm)`;
-                }
-            }
-        }
-
         const dims = calculateFlatDimensions({
             boxType,
             piece,
+            dimensionMode,
             finishedW,
             finishedL,
             finishedH,
@@ -410,14 +461,33 @@
             clearanceMm
         });
 
-        if (fitmentNote) {
+        const lidW = +(dims.baseScoreW + clearanceMm * 2).toFixed(1);
+        const lidL = +(dims.baseScoreL + clearanceMm * 2).toFixed(1);
+        const lidH = getEffectiveLidHeight(dims.baseScoreH, stockThicknessMm, lidHeightMode);
+        const deltaH = +(lidH - dims.baseScoreH).toFixed(1);
+
+        if (companionBtn) {
             if (boxType === 'tuck_top_box') {
-                fitmentNote.innerHTML = `<span class="text-emerald-300 font-semibold">All-in-One Box:</span> Includes both the Bottom Base and attached Hinged Top Lid on a single sheet (Stock t=${stockThicknessMm}mm).`;
+                companionBtn.classList.add('hidden');
+            } else {
+                companionBtn.classList.remove('hidden');
+                if (piece === 'lid') {
+                    companionBtn.textContent = `➕ Create Matching Bottom Box (${dims.baseScoreW}×${dims.baseScoreL}×${dims.baseScoreH}mm)`;
+                } else {
+                    companionBtn.textContent = `➕ Create Fitting Top Lid (${lidW}×${lidL}×${lidH}mm)`;
+                }
+            }
+        }
+
+        if (fitmentNote) {
+            const cavityNote = `Usable Inside Cavity: <strong>${dims.usableW} × ${dims.usableL} × ${dims.usableH} mm</strong> → Fold Panel: <strong>${dims.baseScoreW} × ${dims.baseScoreL} × ${dims.baseScoreH} mm</strong>`;
+            if (boxType === 'tuck_top_box') {
+                fitmentNote.innerHTML = `<span class="text-emerald-300 font-semibold">All-in-One Box:</span> ${cavityNote} (Stock t=${stockThicknessMm}mm).`;
             } else if (piece === 'lid') {
                 const heightExplain = deltaH !== 0 ? ` (${deltaH > 0 ? '+' : ''}${deltaH}mm vertical height compensation for ${stockThicknessMm}mm stock so sides cover the Base)` : '';
-                fitmentNote.innerHTML = `<span class="text-indigo-300 font-semibold">Telescoping Top Lid:</span> Effective size <strong>${lidW} × ${lidL} × ${lidH} mm</strong> (+${clearanceMm}mm/side horizontal clearance${heightExplain}) to slide snugly over a <strong>${finishedW} × ${finishedL} × ${finishedH} mm</strong> Base.`;
+                fitmentNote.innerHTML = `<span class="text-indigo-300 font-semibold">Telescoping Top Lid:</span> Effective fold size <strong>${lidW} × ${lidL} × ${lidH} mm</strong> (+${clearanceMm}mm/side horizontal clearance${heightExplain}) over Base (${cavityNote}).`;
             } else {
-                fitmentNote.innerHTML = `<span class="text-amber-300 font-semibold">Bottom Box (Base):</span> Exact <strong>${finishedW} × ${finishedL} × ${finishedH} mm</strong> base (Stock t=${stockThicknessMm}mm, Shoulder ${dims.shoulderMm}mm). Its matching Top Lid will be <strong>${lidW} × ${lidL} × ${lidH} mm</strong>.`;
+                fitmentNote.innerHTML = `<span class="text-amber-300 font-semibold">Bottom Box (Base):</span> ${cavityNote} (Stock t=${stockThicknessMm}mm, Shoulder ${dims.shoulderMm}mm). Matching Top Lid: <strong>${lidW} × ${lidL} × ${lidH} mm</strong>.`;
             }
         }
 
@@ -431,6 +501,7 @@
         const activeCfg = overrideCfg || {
             boxType: document.getElementById('modal-box-type')?.value || 'double_wall_tray',
             piece: document.getElementById('modal-box-part')?.value || 'base',
+            dimensionMode: document.getElementById('modal-box-dim-mode')?.value || 'usable_cavity',
             finishedW: parseFloat(document.getElementById('modal-box-width')?.value),
             finishedL: parseFloat(document.getElementById('modal-box-length')?.value),
             finishedH: parseFloat(document.getElementById('modal-box-height')?.value),
@@ -465,6 +536,7 @@
         formData.append('template_id', String(window.studioConfig.templateId));
         formData.append('box_type', validated.boxType);
         formData.append('box_part', companionPiece);
+        formData.append('box_dim_mode', validated.dimensionMode);
         formData.append('box_width_mm', String(validated.finishedW));
         formData.append('box_length_mm', String(validated.finishedL));
         formData.append('box_height_mm', String(validated.finishedH));
@@ -527,6 +599,7 @@
             validated = validateBoxSchema({
                 boxType: document.getElementById('modal-box-type')?.value || 'double_wall_tray',
                 piece: document.getElementById('modal-box-part')?.value || 'base',
+                dimensionMode: document.getElementById('modal-box-dim-mode')?.value || 'usable_cavity',
                 finishedW: parseFloat(document.getElementById('modal-box-width')?.value),
                 finishedL: parseFloat(document.getElementById('modal-box-length')?.value),
                 finishedH: parseFloat(document.getElementById('modal-box-height')?.value),
@@ -556,6 +629,7 @@
         formData.append('template_id', String(window.studioConfig.templateId));
         formData.append('box_type', validated.boxType);
         formData.append('box_part', validated.piece);
+        formData.append('box_dim_mode', validated.dimensionMode);
         formData.append('box_width_mm', String(validated.finishedW));
         formData.append('box_length_mm', String(validated.finishedL));
         formData.append('box_height_mm', String(validated.finishedH));

@@ -108,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $boxParams = [
             'box_type'            => $_POST['box_type'] ?? 'double_wall_tray',
             'box_part'            => $_POST['box_part'] ?? 'base',
+            'box_dim_mode'        => $_POST['box_dim_mode'] ?? 'usable_cavity',
             'box_width_mm'        => isset($_POST['box_width_mm']) ? (float)$_POST['box_width_mm'] : 120.0,
             'box_length_mm'       => isset($_POST['box_length_mm']) ? (float)$_POST['box_length_mm'] : 160.0,
             'box_height_mm'       => isset($_POST['box_height_mm']) ? (float)$_POST['box_height_mm'] : 40.0,

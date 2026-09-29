@@ -169,8 +169,17 @@ $compTypes = $compTypes ?? [];
             <div id="modal-box-part-group">
                 <label for="modal-box-part" class="block text-xs font-semibold text-slate-300 mb-1">Box Piece</label>
                 <select id="modal-box-part" onchange="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="base">Bottom Box / Single Tray (Exact W × L × H)</option>
+                    <option value="base">Bottom Box / Single Tray (Base)</option>
                     <option value="lid">Telescoping Top Lid (+Clearance to fit over Base)</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="modal-box-dim-mode" class="block text-xs font-semibold text-emerald-300 mb-1">How Are You Measuring W × L × H?</label>
+                <select id="modal-box-dim-mode" onchange="if(window.boxDieline) window.boxDieline.updateModalBoxPreview();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="usable_cavity" selected>📐 Usable Interior Cavity (Auto-expand fold lines for inner walls)</option>
+                    <option value="contents_fit">🎯 Fit My Contents / Components (Auto +3mm Play + Inner Wall Compensation)</option>
+                    <option value="raw_panel">📏 Raw Score-to-Score Panel (Exact Fold Lines — No Inner Compensation)</option>
                 </select>
             </div>
 

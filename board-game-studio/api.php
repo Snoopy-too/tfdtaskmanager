@@ -570,6 +570,7 @@ try {
             $config = $boxService->validateConfig([
                 'box_type'            => $_POST['box_type'] ?? 'double_wall_tray',
                 'box_part'            => $_POST['box_part'] ?? 'base',
+                'box_dim_mode'        => $_POST['box_dim_mode'] ?? 'usable_cavity',
                 'box_width_mm'        => $_POST['box_width_mm'] ?? 120,
                 'box_length_mm'       => $_POST['box_length_mm'] ?? 160,
                 'box_height_mm'       => $_POST['box_height_mm'] ?? 40,
@@ -639,17 +640,26 @@ try {
             $lMm = isset($_POST['box_length_mm']) ? (float)$_POST['box_length_mm'] : 160.0;
             $hMm = isset($_POST['box_height_mm']) ? (float)$_POST['box_height_mm'] : 40.0;
             $stockMm = isset($_POST['box_stock_mm']) ? (float)$_POST['box_stock_mm'] : 0.6;
+            $dimMode = $_POST['box_dim_mode'] ?? 'usable_cavity';
             $lidHeightMode = $_POST['box_lid_height_mode'] ?? 'full_coverage';
             $boxType = $_POST['box_type'] ?? 'double_wall_tray';
             $cMm = isset($_POST['box_clearance_mm']) && $_POST['box_clearance_mm'] !== ''
                 ? (float)$_POST['box_clearance_mm']
                 : \App\Application\Services\BgBoxDielineService::calculateRecommendedClearance((string)$boxType, $stockMm);
 
-            $effW = ($targetPiece === 'lid') ? round($wMm + 2.0 * $cMm, 1) : round($wMm, 1);
-            $effL = ($targetPiece === 'lid') ? round($lMm + 2.0 * $cMm, 1) : round($lMm, 1);
+            $scoreDims = \App\Application\Services\BgBoxDielineService::calculateBaseScoreDimensions(
+                (string)$boxType,
+                $wMm,
+                $lMm,
+                $hMm,
+                $stockMm,
+                (string)$dimMode
+            );
+            $effW = ($targetPiece === 'lid') ? round($scoreDims['baseScoreW'] + 2.0 * $cMm, 1) : $scoreDims['baseScoreW'];
+            $effL = ($targetPiece === 'lid') ? round($scoreDims['baseScoreL'] + 2.0 * $cMm, 1) : $scoreDims['baseScoreL'];
             $effH = ($targetPiece === 'lid')
-                ? \App\Application\Services\BgBoxDielineService::calculateLidEffectiveHeight($hMm, $stockMm, (string)$lidHeightMode)
-                : round($hMm, 1);
+                ? \App\Application\Services\BgBoxDielineService::calculateLidEffectiveHeight($scoreDims['baseScoreH'], $stockMm, (string)$lidHeightMode)
+                : $scoreDims['baseScoreH'];
             $pieceLabel = ($targetPiece === 'lid') ? "Lid {$effW}x{$effL}x{$effH}mm" : "Base {$effW}x{$effL}x{$effH}mm";
             $companionName = "{$baseName} [{$pieceLabel}]";
 
@@ -664,6 +674,7 @@ try {
                 [
                     'box_type'            => $boxType,
                     'box_part'            => $targetPiece,
+                    'box_dim_mode'        => $dimMode,
                     'box_width_mm'        => $wMm,
                     'box_length_mm'       => $lMm,
                     'box_height_mm'       => $hMm,
