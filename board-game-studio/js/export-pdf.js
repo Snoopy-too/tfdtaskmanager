@@ -25,11 +25,37 @@
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = img.height;
                 tempCanvas.height = img.width;
-                const ctx = tempCanvas.getContext('2d');
+                const ctx = tempCanvas.getContext('2d', { alpha: false });
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
                 ctx.rotate((90 * Math.PI) / 180);
                 ctx.drawImage(img, -img.width / 2, -img.height / 2);
-                resolve(tempCanvas.toDataURL('image/png'));
+                resolve(tempCanvas.toDataURL('image/jpeg', 0.92));
+            };
+            img.onerror = () => resolve(imgDataUrl);
+            img.src = imgDataUrl;
+        });
+    }
+
+    // Flatten PNG dataUrl onto opaque white print background and encode as compact 300 DPI JPEG
+    function toPrintJpegDataUrl(imgDataUrl) {
+        if (typeof imgDataUrl === 'string' && imgDataUrl.startsWith('data:image/jpeg')) {
+            return Promise.resolve(imgDataUrl);
+        }
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const w = img.naturalWidth || img.width || 1;
+                const h = img.naturalHeight || img.height || 1;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = w;
+                tempCanvas.height = h;
+                const ctx = tempCanvas.getContext('2d', { alpha: false });
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(tempCanvas.toDataURL('image/jpeg', 0.92));
             };
             img.onerror = () => resolve(imgDataUrl);
             img.src = imgDataUrl;
@@ -328,7 +354,8 @@
                 const pdf = new jsPDF({
                     orientation: pdfOrientation,
                     unit: 'mm',
-                    format: pdfFormat
+                    format: pdfFormat,
+                    compress: true
                 });
 
                 const cardsPerPage = cols * rows;
@@ -353,9 +380,12 @@
                         // ponytail: auto-rotate 90° if portrait card (e.g. 55x91mm or 69x97mm) is placed on horizontal pre-cut slot
                         if (isPrecutSheet && cardW < cardH) {
                             cardDataUrl = await rotateImage90(img.dataUrl);
+                        } else {
+                            cardDataUrl = await toPrintJpegDataUrl(img.dataUrl);
                         }
 
-                        pdf.addImage(cardDataUrl, 'PNG', x, y, drawW, drawH);
+                        const imgFormat = cardDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+                        pdf.addImage(cardDataUrl, imgFormat, x, y, drawW, drawH, undefined, 'FAST');
 
                         if (drawCropMarks) {
                             drawPageCropMarks(pdf, x, y, drawW, drawH, col, row, cols, rows, gap);
@@ -383,15 +413,20 @@
                                 const chunkSourceX = c * chunkSourceW;
                                 const chunkSourceY = r * chunkSourceH;
 
+                                const tileW = Math.max(1, Math.round(chunkSourceW));
+                                const tileH = Math.max(1, Math.round(chunkSourceH));
+
                                 const tempCanvas = document.createElement('canvas');
-                                tempCanvas.width = chunkSourceW;
-                                tempCanvas.height = chunkSourceH;
-                                const tempCtx = tempCanvas.getContext('2d');
+                                tempCanvas.width = tileW;
+                                tempCanvas.height = tileH;
+                                const tempCtx = tempCanvas.getContext('2d', { alpha: false });
 
-                                tempCtx.drawImage(htmlImg, chunkSourceX, chunkSourceY, chunkSourceW, chunkSourceH, 0, 0, chunkSourceW, chunkSourceH);
-                                const slicedDataUrl = tempCanvas.toDataURL('image/png');
+                                tempCtx.fillStyle = '#ffffff';
+                                tempCtx.fillRect(0, 0, tileW, tileH);
+                                tempCtx.drawImage(htmlImg, chunkSourceX, chunkSourceY, chunkSourceW, chunkSourceH, 0, 0, tileW, tileH);
+                                const slicedDataUrl = tempCanvas.toDataURL('image/jpeg', 0.92);
 
-                                pdf.addImage(slicedDataUrl, 'PNG', x, y, drawW, drawH);
+                                pdf.addImage(slicedDataUrl, 'JPEG', x, y, drawW, drawH, undefined, 'FAST');
 
                                 if (drawCropMarks) {
                                     drawPageCropMarks(pdf, x, y, drawW, drawH);

@@ -184,8 +184,12 @@
     function renderCards() {
         return new Promise((resolve, reject) => {
             const images = [];
-            let rows = dataset ? dataset.rowData : [{}]; // If no dataset, render once
-            if (dataset && dataset.rowData && window.studioConfig && window.studioConfig.rowFilter) {
+            const formatEl = document.getElementById('export_format');
+            const printModeEl = document.getElementById('pdf_print_mode');
+            const isStencilOnly = (formatEl && formatEl.value === 'pdf') && (printModeEl && printModeEl.value === 'cutout_stencil');
+
+            let rows = (dataset && !isStencilOnly) ? dataset.rowData : [{}]; // If no dataset or stencil-only, render once
+            if (dataset && !isStencilOnly && dataset.rowData && window.studioConfig && window.studioConfig.rowFilter) {
                 const filterIndices = parseExportRowFilter(window.studioConfig.rowFilter, dataset.rowData.length);
                 rows = filterIndices.map(i => dataset.rowData[i]);
             }
