@@ -577,7 +577,12 @@ class BgTemplateService
 
         $oldFlapH = round((float)($boxCfg['flapHMm'] ?? 0.0), 1);
         $oldShoulder = round((float)($boxCfg['shoulderMm'] ?? 0.0), 1);
-        if ($oldFlapH === (float)$geom['flapHMm'] && $oldShoulder === (float)$geom['shoulderMm']) {
+        $oldLipAngle = round((float)($boxCfg['lipCornerAngleDeg'] ?? 45.0), 1);
+        if (
+            $oldFlapH === (float)$geom['flapHMm']
+            && $oldShoulder === (float)$geom['shoulderMm']
+            && $oldLipAngle === (float)$geom['lipCornerAngleDeg']
+        ) {
             return $template;
         }
 

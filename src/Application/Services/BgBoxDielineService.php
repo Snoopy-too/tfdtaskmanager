@@ -353,6 +353,7 @@ class BgBoxDielineService
             'padMm'                 => $padMm,
             'flapHMm'               => $flapH,
             'shoulderMm'            => $shoulder,
+            'lipCornerAngleDeg'     => 20.0,
             'flatWidthMm'           => $flatWidthMm,
             'flatHeightMm'          => $flatHeightMm,
             'canvasWidthPx'         => $widthPx,
@@ -383,6 +384,7 @@ class BgBoxDielineService
         $pad = (float)$geom['padMm'];
         $flapH = (float)$geom['flapHMm'];
         $shoulder = (float)$geom['shoulderMm'];
+        $lipCornerAngleDeg = (float)($geom['lipCornerAngleDeg'] ?? 20.0);
         $showLabels = (bool)$geom['showLabels'];
         $fillStyle = (string)$geom['fillStyle'];
 
@@ -413,13 +415,14 @@ class BgBoxDielineService
             $yB2   = $px($pad + (2.0 * $shoulder) + (4.0 * $H) + $L);
 
             $sPx = $px($shoulder);
+            $lipBevPx = round($sPx * tan(deg2rad($lipCornerAngleDeg)), 2);
             $slPx = $px($slotMm);
             $hslPx = $px($halfSlot);
 
             // Outer continuous Cut Line path with full-depth H inner rollover walls + scored interlocking bottom lips (shoulder) on all 4 sides
             $cutParts = [
-                "M " . ($xC0 + $sPx) . " {$yT2}",
-                "L " . ($xC1 - $sPx) . " {$yT2}",
+                "M " . ($xC0 + $lipBevPx) . " {$yT2}",
+                "L " . ($xC1 - $lipBevPx) . " {$yT2}",
                 "L {$xC1} {$yTLip}",
                 "L {$xC1} {$yC0}",
                 "L " . ($xC1 + $slPx) . " {$yC0}",
@@ -430,8 +433,8 @@ class BgBoxDielineService
                 "L " . ($xR1 + $hslPx) . " {$yT1}",
                 "L {$xR2} {$yT1}",
                 "L {$xR2} {$yC0}",
-                "L {$xROut} " . ($yC0 + $sPx),
-                "L {$xROut} " . ($yC1 - $sPx),
+                "L {$xROut} " . ($yC0 + $lipBevPx),
+                "L {$xROut} " . ($yC1 - $lipBevPx),
                 "L {$xR2} {$yC1}",
                 "L {$xR2} {$yB1}",
                 "L " . ($xR1 + $hslPx) . " {$yB1}",
@@ -442,8 +445,8 @@ class BgBoxDielineService
                 "L " . ($xC1 + $slPx) . " {$yC1}",
                 "L {$xC1} {$yC1}",
                 "L {$xC1} {$yBLip}",
-                "L " . ($xC1 - $sPx) . " {$yB2}",
-                "L " . ($xC0 + $sPx) . " {$yB2}",
+                "L " . ($xC1 - $lipBevPx) . " {$yB2}",
+                "L " . ($xC0 + $lipBevPx) . " {$yB2}",
                 "L {$xC0} {$yBLip}",
                 "L {$xC0} {$yC1}",
                 "L " . ($xC0 - $slPx) . " {$yC1}",
@@ -454,8 +457,8 @@ class BgBoxDielineService
                 "L " . ($xL1 - $hslPx) . " {$yB1}",
                 "L {$xL2} {$yB1}",
                 "L {$xL2} {$yC1}",
-                "L {$xLOut} " . ($yC1 - $sPx),
-                "L {$xLOut} " . ($yC0 + $sPx),
+                "L {$xLOut} " . ($yC1 - $lipBevPx),
+                "L {$xLOut} " . ($yC0 + $lipBevPx),
                 "L {$xL2} {$yC0}",
                 "L {$xL2} {$yT1}",
                 "L " . ($xL1 - $hslPx) . " {$yT1}",
@@ -517,6 +520,7 @@ class BgBoxDielineService
             $yB1 = $px($pad + (2.0 * $H) + $L);
 
             $sPx = $px($shoulder);
+            $lipBevPx = round($sPx * tan(deg2rad($lipCornerAngleDeg)), 2);
             $slPx = $px($slotMm);
             $chamferPx = $px(min(8.0, max(2.5, $H * 0.2)));
 
@@ -530,8 +534,8 @@ class BgBoxDielineService
                 "L {$xR1} {$yT1}",
                 "L {$xR1} {$yC0}",
                 "L {$xR2} {$yC0}",
-                "L {$xROut} " . ($yC0 + $sPx),
-                "L {$xROut} " . ($yC1 - $sPx),
+                "L {$xROut} " . ($yC0 + $lipBevPx),
+                "L {$xROut} " . ($yC1 - $lipBevPx),
                 "L {$xR2} {$yC1}",
                 "L {$xR1} {$yC1}",
                 "L {$xR1} {$yB1}",
@@ -548,8 +552,8 @@ class BgBoxDielineService
                 "L {$xL1} {$yB1}",
                 "L {$xL1} {$yC1}",
                 "L {$xL2} {$yC1}",
-                "L {$xLOut} " . ($yC1 - $sPx),
-                "L {$xLOut} " . ($yC0 + $sPx),
+                "L {$xLOut} " . ($yC1 - $lipBevPx),
+                "L {$xLOut} " . ($yC0 + $lipBevPx),
                 "L {$xL2} {$yC0}",
                 "L {$xL1} {$yC0}",
                 "L {$xL1} {$yT1}",
