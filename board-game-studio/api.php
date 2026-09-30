@@ -51,6 +51,9 @@ try {
                 echo json_encode(['error' => 'Template not found or access denied.']);
                 exit;
             }
+            if (!$templateService->isTemplateLockedByOther($template, $currentUserId)) {
+                $template = $templateService->upgradeLegacyBoxDielineIfNeeded($template);
+            }
             $canvasJson = $template->getCanvasJson();
             if (is_string($canvasJson)) {
                 $canvasJson = str_replace('"alphabetical"', '"alphabetic"', $canvasJson);

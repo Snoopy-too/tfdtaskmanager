@@ -42,8 +42,9 @@ if ($templateService->isTemplateLockedByOther($template, $currentUserId)) {
     $userService = $container->get(\App\Application\Services\UserService::class);
     $lockUser = $userService->getUserById($template->getLockedByUserId());
 } else {
-    // Acquire or refresh lock
+    // Acquire or refresh lock and auto-upgrade legacy box die-line flap geometry if needed
     $templateService->acquireOrRefreshLock($template->getId(), $currentUserId);
+    $template = $templateService->upgradeLegacyBoxDielineIfNeeded($template);
 }
 
 // Handle Template Duplication from Editor

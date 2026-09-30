@@ -303,12 +303,13 @@ class BgBoxDielineService
         $padMm = 6.0; // Outer safety padding around cut line on canvas
 
         if ($boxType === self::TYPE_DOUBLE_WALL_TRAY) {
-            $flapH = round($H * 0.75, 1);
-            $shoulder = round(max(1.2, min(12.0, $stockMm * 2.2)), 1);
+            // Floor interlocking lip (shoulder) on all 4 rollover walls + full inner wall height H so flaps reach the bottom floor and interlock
+            $shoulder = round(max(5.0, min(18.0, ($H * 0.22) + ($stockMm * 1.5))), 1);
+            $flapH = round($H + $shoulder, 1);
             $flatWidthMm = round($W + (4.0 * $H) + (2.0 * $shoulder) + (2.0 * $padMm), 1);
             $flatHeightMm = round($L + (2.0 * $H) + (2.0 * $flapH) + (2.0 * $padMm), 1);
         } elseif ($boxType === self::TYPE_ROLL_END_TRAY) {
-            $shoulder = round(max(1.2, min(10.0, $stockMm * 2.0)), 1);
+            $shoulder = round(max(5.0, min(16.0, ($H * 0.20) + ($stockMm * 1.5))), 1);
             $flatWidthMm = round($W + (4.0 * $H) + (2.0 * $shoulder) + (2.0 * $padMm), 1);
             $flatHeightMm = round($L + (2.0 * $H) + (2.0 * $padMm), 1);
             $flapH = 0.0;
@@ -393,8 +394,6 @@ class BgBoxDielineService
         $halfSlot = $slotMm / 2.0;
 
         if ($boxType === self::TYPE_DOUBLE_WALL_TRAY) {
-            $chamfer = min(10.0, max(3.0, round($flapH * 0.28, 1)));
-
             $xLOut = $px($pad);
             $xL2   = $px($pad + $shoulder);
             $xL1   = $px($pad + $shoulder + $H);
@@ -404,23 +403,24 @@ class BgBoxDielineService
             $xR2   = $px($pad + $shoulder + (4.0 * $H) + $W);
             $xROut = $px($pad + (2.0 * $shoulder) + (4.0 * $H) + $W);
 
-            $yT2 = $px($pad);
-            $yT1 = $px($pad + $flapH);
-            $yC0 = $px($pad + $flapH + $H);
-            $yC1 = $px($pad + $flapH + $H + $L);
-            $yB1 = $px($pad + $flapH + (2.0 * $H) + $L);
-            $yB2 = $px($pad + (2.0 * $flapH) + (2.0 * $H) + $L);
+            $yT2   = $px($pad);
+            $yTLip = $px($pad + $shoulder);
+            $yT1   = $px($pad + $shoulder + $H);
+            $yC0   = $px($pad + $shoulder + (2.0 * $H));
+            $yC1   = $px($pad + $shoulder + (2.0 * $H) + $L);
+            $yB1   = $px($pad + $shoulder + (3.0 * $H) + $L);
+            $yBLip = $px($pad + $shoulder + (4.0 * $H) + $L);
+            $yB2   = $px($pad + (2.0 * $shoulder) + (4.0 * $H) + $L);
 
-            $cPx = $px($chamfer);
             $sPx = $px($shoulder);
             $slPx = $px($slotMm);
             $hslPx = $px($halfSlot);
 
-            // Outer continuous Cut Line path with corner slots, chamfers, and side locking shoulders
+            // Outer continuous Cut Line path with full-depth H inner rollover walls + scored interlocking bottom lips (shoulder) on all 4 sides
             $cutParts = [
-                "M " . ($xC0 + $cPx) . " {$yT2}",
-                "L " . ($xC1 - $cPx) . " {$yT2}",
-                "L {$xC1} " . ($yT2 + $cPx),
+                "M " . ($xC0 + $sPx) . " {$yT2}",
+                "L " . ($xC1 - $sPx) . " {$yT2}",
+                "L {$xC1} {$yTLip}",
                 "L {$xC1} {$yC0}",
                 "L " . ($xC1 + $slPx) . " {$yC0}",
                 "L " . ($xC1 + $slPx) . " {$yT1}",
@@ -441,10 +441,10 @@ class BgBoxDielineService
                 "L " . ($xC1 + $slPx) . " {$yB1}",
                 "L " . ($xC1 + $slPx) . " {$yC1}",
                 "L {$xC1} {$yC1}",
-                "L {$xC1} " . ($yB2 - $cPx),
-                "L " . ($xC1 - $cPx) . " {$yB2}",
-                "L " . ($xC0 + $cPx) . " {$yB2}",
-                "L {$xC0} " . ($yB2 - $cPx),
+                "L {$xC1} {$yBLip}",
+                "L " . ($xC1 - $sPx) . " {$yB2}",
+                "L " . ($xC0 + $sPx) . " {$yB2}",
+                "L {$xC0} {$yBLip}",
                 "L {$xC0} {$yC1}",
                 "L " . ($xC0 - $slPx) . " {$yC1}",
                 "L " . ($xC0 - $slPx) . " {$yB1}",
@@ -465,18 +465,20 @@ class BgBoxDielineService
                 "L " . ($xC0 - $slPx) . " {$yT1}",
                 "L " . ($xC0 - $slPx) . " {$yC0}",
                 "L {$xC0} {$yC0}",
-                "L {$xC0} " . ($yT2 + $cPx),
+                "L {$xC0} {$yTLip}",
                 "Z"
             ];
             $cutPathStr = implode(' ', $cutParts);
 
-            // Interior Fold / Score lines
+            // Interior Fold / Score lines (including top/bottom interlocking floor lip score lines at yTLip and yBLip)
             $foldParts = [
                 // Horizontal folds
+                "M {$xC0} {$yTLip} L {$xC1} {$yTLip}",
                 "M {$xC0} {$yT1} L {$xC1} {$yT1}",
                 "M {$xL2} {$yC0} L {$xR2} {$yC0}",
                 "M {$xL2} {$yC1} L {$xR2} {$yC1}",
                 "M {$xC0} {$yB1} L {$xC1} {$yB1}",
+                "M {$xC0} {$yBLip} L {$xC1} {$yBLip}",
                 // Vertical folds
                 "M {$xL2} {$yC0} L {$xL2} {$yC1}",
                 "M {$xL1} {$yC0} L {$xL1} {$yC1}",
@@ -490,14 +492,14 @@ class BgBoxDielineService
             $partTitle = ($geom['piece'] === self::PART_LID) ? 'TOP LID PANEL' : 'CENTER BASE PANEL';
             $labels = [
                 ['text' => "{$partTitle}\n{$W} × {$L} mm\n(Height: {$H} mm)", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yC0 + $yC1) / 2.0, 'angle' => 0, 'size' => 28],
-                ['text' => "TOP WALL ({$W}×{$H}mm)", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yT1 + $yC0) / 2.0, 'angle' => 0, 'size' => 20],
-                ['text' => "TUCK FLAP", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yT2 + $yT1) / 2.0, 'angle' => 0, 'size' => 18],
-                ['text' => "BOTTOM WALL ({$W}×{$H}mm)", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yC1 + $yB1) / 2.0, 'angle' => 0, 'size' => 20],
-                ['text' => "TUCK FLAP", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yB1 + $yB2) / 2.0, 'angle' => 0, 'size' => 18],
+                ['text' => "TOP OUTER WALL ({$W}×{$H}mm)", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yT1 + $yC0) / 2.0, 'angle' => 0, 'size' => 20],
+                ['text' => "TOP INNER WALL ({$W}×{$H}mm)", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yTLip + $yT1) / 2.0, 'angle' => 0, 'size' => 18],
+                ['text' => "BOTTOM OUTER WALL ({$W}×{$H}mm)", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yC1 + $yB1) / 2.0, 'angle' => 0, 'size' => 20],
+                ['text' => "BOTTOM INNER WALL ({$W}×{$H}mm)", 'x' => ($xC0 + $xC1) / 2.0, 'y' => ($yB1 + $yBLip) / 2.0, 'angle' => 0, 'size' => 18],
                 ['text' => "LEFT INNER WALL ({$L}×{$H}mm)", 'x' => ($xL1 + $xC0) / 2.0, 'y' => ($yC0 + $yC1) / 2.0, 'angle' => -90, 'size' => 20],
-                ['text' => "LEFT OUTER WALL", 'x' => ($xL2 + $xL1) / 2.0, 'y' => ($yC0 + $yC1) / 2.0, 'angle' => -90, 'size' => 18],
+                ['text' => "LEFT OUTER WALL ({$L}×{$H}mm)", 'x' => ($xL2 + $xL1) / 2.0, 'y' => ($yC0 + $yC1) / 2.0, 'angle' => -90, 'size' => 18],
                 ['text' => "RIGHT INNER WALL ({$L}×{$H}mm)", 'x' => ($xC1 + $xR1) / 2.0, 'y' => ($yC0 + $yC1) / 2.0, 'angle' => 90, 'size' => 20],
-                ['text' => "RIGHT OUTER WALL", 'x' => ($xR1 + $xR2) / 2.0, 'y' => ($yC0 + $yC1) / 2.0, 'angle' => 90, 'size' => 18],
+                ['text' => "RIGHT OUTER WALL ({$L}×{$H}mm)", 'x' => ($xR1 + $xR2) / 2.0, 'y' => ($yC0 + $yC1) / 2.0, 'angle' => 90, 'size' => 18],
             ];
         } elseif ($boxType === self::TYPE_ROLL_END_TRAY) {
             $xLOut = $px($pad);

@@ -314,12 +314,12 @@ use App\Infrastructure\Security\SecurityHelper;
                 let flatW = 0, flatH = 0, shoulder = 0;
 
                 if (boxType === 'double_wall_tray') {
-                    const flapH = +(H * 0.75).toFixed(1);
-                    shoulder = +(Math.min(12.0, Math.max(1.2, t * 2.2))).toFixed(1);
+                    shoulder = +(Math.min(18.0, Math.max(5.0, (H * 0.22) + (t * 1.5)))).toFixed(1);
+                    const flapH = +(H + shoulder).toFixed(1);
                     flatW = +(W + 4 * H + 2 * shoulder + 2 * pad).toFixed(1);
                     flatH = +(L + 2 * H + 2 * flapH + 2 * pad).toFixed(1);
                 } else if (boxType === 'roll_end_tray') {
-                    shoulder = +(Math.min(10.0, Math.max(1.2, t * 2.0))).toFixed(1);
+                    shoulder = +(Math.min(16.0, Math.max(5.0, (H * 0.20) + (t * 1.5)))).toFixed(1);
                     flatW = +(W + 4 * H + 2 * shoulder + 2 * pad).toFixed(1);
                     flatH = +(L + 2 * H + 2 * pad).toFixed(1);
                 } else if (boxType === 'tuck_top_box') {

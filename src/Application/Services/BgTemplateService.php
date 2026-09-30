@@ -514,4 +514,120 @@ class BgTemplateService
     {
         $this->templateRepository->updateRowFilter($templateId, $rowFilter);
     }
+
+    /**
+     * Automatically upgrades existing saved box die-line templates if their flap/shoulder
+     * geometry was generated with an older calculation, preserving any user design layers.
+     */
+    public function upgradeLegacyBoxDielineIfNeeded(BgTemplate $template): BgTemplate
+    {
+        $canvasJson = $template->getCanvasJson();
+        if (!is_string($canvasJson) || trim($canvasJson) === '') {
+            return $template;
+        }
+
+        $decoded = json_decode($canvasJson, true);
+        if (!is_array($decoded) || empty($decoded['objects']) || !is_array($decoded['objects'])) {
+            return $template;
+        }
+
+        $boxCfg = $decoded['boxConfig'] ?? null;
+        if (!is_array($boxCfg)) {
+            foreach ($decoded['objects'] as $obj) {
+                if (is_array($obj) && !empty($obj['isBoxDieline']) && !empty($obj['boxConfig']) && is_array($obj['boxConfig'])) {
+                    $boxCfg = $obj['boxConfig'];
+                    break;
+                }
+            }
+        }
+
+        if (!is_array($boxCfg)) {
+            return $template;
+        }
+
+        $boxType = (string)($boxCfg['boxType'] ?? '');
+        if (!in_array($boxType, [BgBoxDielineService::TYPE_DOUBLE_WALL_TRAY, BgBoxDielineService::TYPE_ROLL_END_TRAY], true)) {
+            return $template;
+        }
+
+        $config = $this->boxDielineService->validateConfig([
+            'box_type'            => $boxType,
+            'box_part'            => $boxCfg['piece'] ?? BgBoxDielineService::PART_BASE,
+            'box_dim_mode'        => $boxCfg['dimensionMode'] ?? BgBoxDielineService::DIM_MODE_CAVITY,
+            'box_width_mm'        => $boxCfg['finishedW'] ?? 120.0,
+            'box_length_mm'       => $boxCfg['finishedL'] ?? 160.0,
+            'box_height_mm'       => $boxCfg['finishedH'] ?? 40.0,
+            'box_stock_mm'        => $boxCfg['stockThicknessMm'] ?? 0.6,
+            'box_lid_height_mode' => $boxCfg['lidHeightMode'] ?? BgBoxDielineService::LID_HEIGHT_FULL,
+            'box_clearance_mm'    => $boxCfg['clearanceMm'] ?? null,
+            'box_show_labels'     => $boxCfg['showLabels'] ?? true,
+            'box_fill_style'      => $boxCfg['fillStyle'] ?? 'stencil',
+        ]);
+        if (!empty($boxCfg['companionTemplateId'])) {
+            $config['companionTemplateId'] = (int)$boxCfg['companionTemplateId'];
+        }
+        if (!empty($boxCfg['companionTemplateName'])) {
+            $config['companionTemplateName'] = (string)$boxCfg['companionTemplateName'];
+        }
+
+        $piece = ($config['boxPart'] === BgBoxDielineService::PART_LID)
+            ? BgBoxDielineService::PART_LID
+            : BgBoxDielineService::PART_BASE;
+        $geom = $this->boxDielineService->calculateGeometry($config, $piece);
+
+        $oldFlapH = round((float)($boxCfg['flapHMm'] ?? 0.0), 1);
+        $oldShoulder = round((float)($boxCfg['shoulderMm'] ?? 0.0), 1);
+        if ($oldFlapH === (float)$geom['flapHMm'] && $oldShoulder === (float)$geom['shoulderMm']) {
+            return $template;
+        }
+
+        $oldW = $template->getCanvasWidthPx();
+        $oldH = $template->getCanvasHeightPx();
+        $newW = (int)$geom['canvasWidthPx'];
+        $newH = (int)$geom['canvasHeightPx'];
+        $dx = ($newW - $oldW) / 2.0;
+        $dy = ($newH - $oldH) / 2.0;
+
+        $payload = $this->boxDielineService->buildFabricCanvasPayload($geom);
+        $newDecoded = json_decode($payload['canvasJson'], true);
+        $newDielineObjects = is_array($newDecoded['objects'] ?? null) ? $newDecoded['objects'] : [];
+
+        $fillObjects = [];
+        $overlayObjects = [];
+        foreach ($newDielineObjects as $dObj) {
+            if (($dObj['dielineRole'] ?? '') === 'fill') {
+                $fillObjects[] = $dObj;
+            } else {
+                $overlayObjects[] = $dObj;
+            }
+        }
+
+        $userObjects = [];
+        foreach ($decoded['objects'] as $existingObj) {
+            if (!is_array($existingObj)) {
+                continue;
+            }
+            $objId = (string)($existingObj['id'] ?? '');
+            $isDieline = !empty($existingObj['isBoxDieline']) || str_starts_with($objId, 'box-dieline-');
+            if ($isDieline) {
+                continue;
+            }
+            if ($objId !== 'safe-zone-guide' && $objId !== 'bleed-zone-guide') {
+                $existingObj['left'] = round(((float)($existingObj['left'] ?? 0.0)) + $dx, 2);
+                $existingObj['top']  = round(((float)($existingObj['top'] ?? 0.0)) + $dy, 2);
+            }
+            $userObjects[] = $existingObj;
+        }
+
+        $mergedObjects = array_merge($fillObjects, $userObjects, $overlayObjects);
+        $decoded['boxConfig'] = $geom;
+        $decoded['objects'] = $mergedObjects;
+
+        $templateId = (int)$template->getId();
+        $this->updateTemplateDimensions($templateId, $newW, $newH);
+        $this->templateRepository->updateCanvasJson($templateId, (string)json_encode($decoded, JSON_UNESCAPED_UNICODE));
+
+        return $this->templateRepository->findById($templateId) ?? $template;
+    }
 }
+
