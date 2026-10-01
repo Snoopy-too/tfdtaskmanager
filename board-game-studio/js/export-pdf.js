@@ -131,7 +131,7 @@
     function resolveSplitGrid(tilingMode, cardW, cardH) {
         let splitCols = 1;
         let splitRows = 1;
-        if (tilingMode === 'split_2' || tilingMode === 'split_2_margin') {
+        if (tilingMode === 'split_2' || tilingMode === 'split_2_margin' || tilingMode === 'split_2_poster' || tilingMode === 'split_2_poster_margin') {
             if (cardW >= cardH) {
                 splitCols = 2;
                 splitRows = 1;
@@ -147,7 +147,7 @@
                 splitCols = 1;
                 splitRows = 3;
             }
-        } else if (tilingMode === 'split_4') {
+        } else if (tilingMode === 'split_4' || tilingMode === 'split_4_poster') {
             splitCols = 2;
             splitRows = 2;
         } else if (tilingMode === 'split_6') {
@@ -350,7 +350,21 @@
                             availW = pageW - (margin * 2);
                             availH = pageH - (margin * 2);
 
-                            if (tiling === 'split_2_margin') {
+                            if (tiling === 'split_2_poster') {
+                                // Poster mode: expand each half to fill the full sheet (210 x 297 mm for A4)
+                                const scaleW = pageW / pieceW;
+                                const scaleH = pageH / pieceH;
+                                scaleFactor = Math.min(scaleW, scaleH);
+                                drawW = pieceW * scaleFactor;
+                                drawH = pieceH * scaleFactor;
+                            } else if (tiling === 'split_2_poster_margin') {
+                                // Poster margin mode: expand each half to safely fill inside 10mm margins on the sheet
+                                const scaleW = availW / pieceW;
+                                const scaleH = availH / pieceH;
+                                scaleFactor = Math.min(scaleW, scaleH);
+                                drawW = pieceW * scaleFactor;
+                                drawH = pieceH * scaleFactor;
+                            } else if (tiling === 'split_2_margin') {
                                 // Fit inside standard 10mm margins on the sheet with trim lines
                                 scaleFactor = Math.min(availW / pieceW, availH / pieceH, 1.0);
                                 drawW = pieceW * scaleFactor;
@@ -453,7 +467,7 @@
 
                                 pdf.addImage(slicedDataUrl, 'JPEG', x, y, drawW, drawH, undefined, 'FAST');
 
-                                const hasSafeMargins = (tilingMode === 'split_2_margin') || (x >= 4 || y >= 4);
+                                const hasSafeMargins = (tilingMode === 'split_2_margin' || tilingMode === 'split_2_poster_margin') || (x >= 4 || y >= 4);
                                 if (drawCropMarks && hasSafeMargins) {
                                     drawPageCropMarks(pdf, x, y, drawW, drawH);
                                 }
@@ -481,7 +495,7 @@
         const pageSize = document.getElementById('pdf_page_size').value;
         const orientation = document.getElementById('pdf_orientation') ? document.getElementById('pdf_orientation').value : 'portrait';
         const tilingSelect = document.getElementById('pdf_tiling');
-        let selectedOption = tilingSelect ? tilingSelect.value : 'split_2';
+        const selectedOption = tilingSelect ? tilingSelect.value : 'split_2_poster';
         const printModeEl = document.getElementById('pdf_print_mode');
         const isStencilMode = printModeEl && printModeEl.value === 'cutout_stencil';
 
@@ -540,118 +554,122 @@
         const scaleH = availH / cardH;
         const fitScalePercent = Math.round(Math.min(scaleW, scaleH, 1) * 1000) / 10;
 
-        const isLargeForSheet = (cardW > availW || cardH > availH);
-
         if (tilingContainer) {
-            if (isLargeForSheet || isStencilMode || isA3Canvas) {
-                tilingContainer.classList.remove('hidden');
+            tilingContainer.classList.remove('hidden');
 
-                // If user has not chosen anything or is on fit, auto-select split_2 for A3 on A4
-                if (isA3Canvas && pageSize === 'a4' && tilingSelect && (tilingSelect.value === 'fit' || !tilingSelect.value)) {
-                    tilingSelect.value = 'split_2';
-                    selectedOption = 'split_2';
+            if (orientNote) {
+                if (selectedOption.startsWith('split_')) {
+                    const grid = resolveSplitGrid(selectedOption, cardW, cardH);
+                    const pieceW = cardW / grid.splitCols;
+                    const pieceH = cardH / grid.splitRows;
+                    const tileOrient = (pieceW > pieceH) ? 'Landscape' : 'Portrait';
+                    orientNote.textContent = `(Auto: ${tileOrient} per sheet)`;
+                } else {
+                    orientNote.textContent = '';
                 }
+            }
 
-                if (orientNote) {
-                    if (selectedOption.startsWith('split_')) {
-                        const grid = resolveSplitGrid(selectedOption, cardW, cardH);
-                        const pieceW = cardW / grid.splitCols;
-                        const pieceH = cardH / grid.splitRows;
-                        const tileOrient = (pieceW > pieceH) ? 'Landscape' : 'Portrait';
-                        orientNote.textContent = `(Auto: ${tileOrient} per sheet)`;
-                    } else {
-                        orientNote.textContent = '';
-                    }
-                }
-
-                if (warningBox) {
-                    if (selectedOption === 'actual_1page') {
-                        const exceedsSheet = (cardW > pageW || cardH > pageH);
-                        if (exceedsSheet) {
-                            warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
-                            warningBox.innerHTML = `
-                                <div class="font-bold flex items-center gap-1.5 text-amber-400">
-                                    <span>⚠️ Template (${cardW}×${cardH} mm) Exceeds 1 ${pageSize.toUpperCase()} Sheet (${pageW}×${pageH} mm)</span>
-                                </div>
-                                <p>Your template is larger than a single ${pageSize.toUpperCase()} sheet and will clip at the edges. Select <strong>"2 Sheets"</strong> above to print across two ${pageSize.toUpperCase()} sheets!</p>
-                            `;
-                        } else {
-                            warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
-                            warningBox.innerHTML = `
-                                <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                    <span>✅ 100% Actual 1:1 Physical Scale (1 Sheet)</span>
-                                </div>
-                                <p>Exports at <strong>100% 1:1 physical size</strong> on 1 single ${pageSize.toUpperCase()} sheet. When printing your PDF, select <strong>"Actual Size / 100%"</strong> in your printer dialog.</p>
-                            `;
-                        }
-                    } else if (selectedOption === 'fit') {
+            if (warningBox) {
+                if (selectedOption === 'split_2_poster' || selectedOption === 'split_2_poster_margin') {
+                    const isMargin = (selectedOption === 'split_2_poster_margin');
+                    const half1 = (cardW >= cardH) ? 'Left Half' : 'Top Half';
+                    const half2 = (cardW >= cardH) ? 'Right Half' : 'Bottom Half';
+                    warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1.5";
+                    warningBox.innerHTML = `
+                        <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                            <span>🎯 2× ${pageSize.toUpperCase()} Sheets Poster Print Mode (${isMargin ? 'Safe Margins' : 'Full Page'})</span>
+                        </div>
+                        <p>Expands your canvas across <strong>2 ${pageSize.toUpperCase()} sheets</strong> so each sheet holds one half of your board game:</p>
+                        <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
+                            <p>📄 <strong>Sheet 1:</strong> ${half1} (fills A4 page)</p>
+                            <p>📄 <strong>Sheet 2:</strong> ${half2} (fills A4 page)</p>
+                            <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Assembly:</strong> When printed, place the two A4 sheets side-by-side to form your full-size A3 board.</p>
+                        </div>
+                    `;
+                } else if (selectedOption === 'actual_1page') {
+                    const exceedsSheet = (cardW > pageW || cardH > pageH);
+                    if (exceedsSheet) {
                         warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
                         warningBox.innerHTML = `
                             <div class="font-bold flex items-center gap-1.5 text-amber-400">
-                                <span>⚠️ Scaling Warning (${fitScalePercent}% Scale)</span>
+                                <span>⚠️ Template (${cardW}×${cardH} mm) Exceeds 1 ${pageSize.toUpperCase()} Sheet (${pageW}×${pageH} mm)</span>
                             </div>
-                            <p>Scale to Fit will shrink your <strong>${cardW}×${cardH} mm</strong> design down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins on a single sheet. Do not use if you want 100% actual scale!</p>
-                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 actual size across two sheets, select <strong>"2 Sheets (A3 → 2× A4)"</strong> above.</p>
-                        `;
-                    } else if (selectedOption === 'split_2_margin') {
-                        const grid = resolveSplitGrid('split_2', cardW, cardH);
-                        const pieceW = cardW / grid.splitCols;
-                        const pieceH = cardH / grid.splitRows;
-                        const pieceAvailW = (pieceW > pieceH ? selectedDims.h : selectedDims.w) - (margin * 2);
-                        const pieceAvailH = (pieceW > pieceH ? selectedDims.w : selectedDims.h) - (margin * 2);
-                        const safeScale = Math.round(Math.min(pieceAvailW / pieceW, pieceAvailH / pieceH, 1.0) * 1000) / 10;
-                        warningBox.className = "p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 space-y-1";
-                        warningBox.innerHTML = `
-                            <div class="font-bold flex items-center gap-1.5 text-indigo-400">
-                                <span>🛡️ Safe Printable Margin Mode (${safeScale}% Scale — 2× ${pageSize.toUpperCase()} Sheets)</span>
-                            </div>
-                            <p>Scales each half slightly to <strong>${safeScale}%</strong> so it sits safely inside 10mm printer margins with dashed trim lines and corner crosshairs. Perfect for desktop printers that cannot print borderless.</p>
+                            <p>Your template is larger than a single ${pageSize.toUpperCase()} sheet and will clip at the edges. Select <strong>"2 Sheets"</strong> above to print across two ${pageSize.toUpperCase()} sheets!</p>
                         `;
                     } else {
-                        const grid = resolveSplitGrid(selectedOption, cardW, cardH);
-                        const totalSheets = grid.splitCols * grid.splitRows;
-                        const pieceW = Math.round((cardW / grid.splitCols) * 10) / 10;
-                        const pieceH = Math.round((cardH / grid.splitRows) * 10) / 10;
-                        const toleranceMm = 1.0;
-                        const fitsSheet = (pieceW <= selectedDims.w + toleranceMm && pieceH <= selectedDims.h + toleranceMm) ||
-                                          (pieceW <= selectedDims.h + toleranceMm && pieceH <= selectedDims.w + toleranceMm);
+                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <span>✅ 100% Actual 1:1 Physical Scale (1 Sheet)</span>
+                            </div>
+                            <p>Exports at <strong>100% 1:1 physical size</strong> on 1 single ${pageSize.toUpperCase()} sheet. When printing your PDF, select <strong>"Actual Size / 100%"</strong> in your printer dialog.</p>
+                        `;
+                    }
+                } else if (selectedOption === 'fit') {
+                    warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
+                    warningBox.innerHTML = `
+                        <div class="font-bold flex items-center gap-1.5 text-amber-400">
+                            <span>⚠️ Scaling Warning (${fitScalePercent}% Scale)</span>
+                        </div>
+                        <p>Scale to Fit will shrink your <strong>${cardW}×${cardH} mm</strong> design down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins on a single sheet. Do not use if you want 100% actual scale!</p>
+                        <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 actual size across two sheets, select <strong>"2 Sheets (A3 → 2× A4)"</strong> above.</p>
+                    `;
+                } else if (selectedOption === 'split_2_margin') {
+                    const grid = resolveSplitGrid('split_2', cardW, cardH);
+                    const pieceW = cardW / grid.splitCols;
+                    const pieceH = cardH / grid.splitRows;
+                    const pieceAvailW = (pieceW > pieceH ? selectedDims.h : selectedDims.w) - (margin * 2);
+                    const pieceAvailH = (pieceW > pieceH ? selectedDims.w : selectedDims.h) - (margin * 2);
+                    const safeScale = Math.round(Math.min(pieceAvailW / pieceW, pieceAvailH / pieceH, 1.0) * 1000) / 10;
+                    warningBox.className = "p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 space-y-1";
+                    warningBox.innerHTML = `
+                        <div class="font-bold flex items-center gap-1.5 text-indigo-400">
+                            <span>🛡️ Safe Printable Margin Mode (${safeScale}% Scale — 2× ${pageSize.toUpperCase()} Sheets)</span>
+                        </div>
+                        <p>Scales each half slightly to <strong>${safeScale}%</strong> so it sits safely inside 10mm printer margins with dashed trim lines and corner crosshairs. Perfect for desktop printers that cannot print borderless.</p>
+                    `;
+                } else {
+                    const grid = resolveSplitGrid(selectedOption, cardW, cardH);
+                    const totalSheets = grid.splitCols * grid.splitRows;
+                    const pieceW = Math.round((cardW / grid.splitCols) * 10) / 10;
+                    const pieceH = Math.round((cardH / grid.splitRows) * 10) / 10;
+                    const toleranceMm = 1.0;
+                    const fitsSheet = (pieceW <= selectedDims.w + toleranceMm && pieceH <= selectedDims.h + toleranceMm) ||
+                                      (pieceW <= selectedDims.h + toleranceMm && pieceH <= selectedDims.w + toleranceMm);
 
-                        if (!fitsSheet) {
-                            warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
-                            warningBox.innerHTML = `
-                                <div class="font-bold flex items-center gap-1.5 text-amber-400">
-                                    <span>⚠️ Tile Size (${pieceW}×${pieceH} mm) Exceeds ${pageSize.toUpperCase()} Sheet (${selectedDims.w}×${selectedDims.h} mm)</span>
-                                </div>
-                                <p>Splitting <strong>${cardW}×${cardH} mm</strong> into ${totalSheets} sheets creates ${pieceW}×${pieceH} mm tiles, which are larger than a single ${pageSize.toUpperCase()} sheet. Choose <strong>4 Sheets</strong>, <strong>6 Sheets</strong>, or <strong>9 Sheets</strong> so every part fits without clipping.</p>
-                            `;
-                        } else if (totalSheets === 2 && pageSize === 'a4') {
-                            const half1 = (cardW >= cardH) ? 'Left Half' : 'Top Half';
-                            const half2 = (cardW >= cardH) ? 'Right Half' : 'Bottom Half';
-                            warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1.5";
-                            warningBox.innerHTML = `
-                                <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                    <span>✅ 100% Actual 1:1 Scale (2× A4 Sheets — Tiled Poster Print)</span>
-                                </div>
-                                <p>Splits your <strong>${cardW}×${cardH} mm</strong> canvas into <strong>2 A4 sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 scale</strong>.</p>
-                                <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
-                                    <p>📄 <strong>Sheet 1:</strong> ${half1} (${pieceW}×${pieceH} mm)</p>
-                                    <p>📄 <strong>Sheet 2:</strong> ${half2} (${pieceW}×${pieceH} mm)</p>
-                                    <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Print Dialog Tip:</strong> In your printer dialog, select <strong>"Actual Size / 100%"</strong> (or <strong>"Borderless"</strong> if supported). Do not choose "Fit to Paper".</p>
-                                </div>
-                            `;
-                        } else {
-                            warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
-                            warningBox.innerHTML = `
-                                <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                    <span>✅ 100% Actual 1:1 Physical Scale (${totalSheets} Sheets — ${grid.splitCols}×${grid.splitRows} Assembly Grid)</span>
-                                </div>
-                                <p>Splits your <strong>${cardW}×${cardH} mm</strong> template into <strong>${totalSheets} sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 physical size</strong> with registration crosshairs and dashed join lines for easy assembly.</p>
-                            `;
-                        }
+                    if (!fitsSheet) {
+                        warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-amber-400">
+                                <span>⚠️ Tile Size (${pieceW}×${pieceH} mm) Exceeds ${pageSize.toUpperCase()} Sheet (${selectedDims.w}×${selectedDims.h} mm)</span>
+                            </div>
+                            <p>Splitting <strong>${cardW}×${cardH} mm</strong> into ${totalSheets} sheets creates ${pieceW}×${pieceH} mm tiles, which are larger than a single ${pageSize.toUpperCase()} sheet. Choose <strong>4 Sheets</strong>, <strong>6 Sheets</strong>, or <strong>9 Sheets</strong> so every part fits without clipping.</p>
+                        `;
+                    } else if (totalSheets === 2 && pageSize === 'a4') {
+                        const half1 = (cardW >= cardH) ? 'Left Half' : 'Top Half';
+                        const half2 = (cardW >= cardH) ? 'Right Half' : 'Bottom Half';
+                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1.5";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <span>✅ 100% Actual 1:1 Scale (2× A4 Sheets — Tiled Poster Print)</span>
+                            </div>
+                            <p>Splits your <strong>${cardW}×${cardH} mm</strong> canvas into <strong>2 A4 sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 scale</strong>.</p>
+                            <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
+                                <p>📄 <strong>Sheet 1:</strong> ${half1} (${pieceW}×${pieceH} mm)</p>
+                                <p>📄 <strong>Sheet 2:</strong> ${half2} (${pieceW}×${pieceH} mm)</p>
+                                <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Print Dialog Tip:</strong> In your printer dialog, select <strong>"Actual Size / 100%"</strong> (or <strong>"Borderless"</strong> if supported). Do not choose "Fit to Paper".</p>
+                            </div>
+                        `;
+                    } else {
+                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <span>✅ 100% Actual 1:1 Physical Scale (${totalSheets} Sheets — ${grid.splitCols}×${grid.splitRows} Assembly Grid)</span>
+                            </div>
+                            <p>Splits your <strong>${cardW}×${cardH} mm</strong> template into <strong>${totalSheets} sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 physical size</strong> with registration crosshairs and dashed join lines for easy assembly.</p>
+                        `;
                     }
                 }
-            } else {
-                tilingContainer.classList.add('hidden');
             }
         }
     }
