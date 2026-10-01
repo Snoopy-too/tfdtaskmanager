@@ -131,7 +131,7 @@
     function resolveSplitGrid(tilingMode, cardW, cardH) {
         let splitCols = 1;
         let splitRows = 1;
-        if (tilingMode === 'split_2') {
+        if (tilingMode === 'split_2' || tilingMode === 'split_2_margin') {
             if (cardW >= cardH) {
                 splitCols = 2;
                 splitRows = 1;
@@ -178,7 +178,7 @@
     }
 
     // Helper to draw alignment borders, registration crosshairs, and sheet assembly labels
-    function drawOverlapGuidelines(pdf, x, y, w, h, col, row, totalCols, totalRows, sheetNum, totalSheets) {
+    function drawOverlapGuidelines(pdf, x, y, w, h, col, row, totalCols, totalRows, sheetNum, totalSheets, hasSafeMargins = false) {
         pdf.setDrawColor(140, 140, 140);
         pdf.setLineWidth(0.22);
         pdf.setLineDashPattern([2, 1], 0);
@@ -188,43 +188,48 @@
 
         if (col > 0) {
             pdf.line(x, y, x, y + h);
-            pdf.text("TRIM / TAPE SEAM (JOIN LEFT)", x + 1.8, y + Math.min(14, h / 2), { angle: 90 });
+            if (hasSafeMargins) {
+                pdf.text("TRIM / TAPE SEAM (JOIN LEFT)", x + 1.8, y + Math.min(14, h / 2), { angle: 90 });
+            }
         }
         if (col < totalCols - 1) {
             pdf.line(x + w, y, x + w, y + h);
-            pdf.text("TRIM / TAPE SEAM (JOIN RIGHT)", x + w - 3.2, y + Math.min(14, h / 2), { angle: 90 });
+            if (hasSafeMargins) {
+                pdf.text("TRIM / TAPE SEAM (JOIN RIGHT)", x + w - 3.2, y + Math.min(14, h / 2), { angle: 90 });
+            }
         }
         if (row > 0) {
             pdf.line(x, y, x + w, y);
-            pdf.text("TRIM / TAPE SEAM (JOIN TOP)", x + Math.min(10, w / 4), y + 2.8);
+            if (hasSafeMargins) {
+                pdf.text("TRIM / TAPE SEAM (JOIN TOP)", x + Math.min(10, w / 4), y + 2.8);
+            }
         }
         if (row < totalRows - 1) {
             pdf.line(x, y + h, x + w, y + h);
-            pdf.text("TRIM / TAPE SEAM (JOIN BOTTOM)", x + Math.min(10, w / 4), y + h - 1.5);
+            if (hasSafeMargins) {
+                pdf.text("TRIM / TAPE SEAM (JOIN BOTTOM)", x + Math.min(10, w / 4), y + h - 1.5);
+            }
         }
 
         pdf.setLineDashPattern([], 0);
 
         // Draw corner registration crosshairs on shared interior seams
-        if (col > 0 || row > 0) {
-            drawRegistrationCrosshair(pdf, x, y);
-        }
-        if (col < totalCols - 1 || row > 0) {
-            drawRegistrationCrosshair(pdf, x + w, y);
-        }
-        if (col > 0 || row < totalRows - 1) {
-            drawRegistrationCrosshair(pdf, x, y + h);
-        }
-        if (col < totalCols - 1 || row < totalRows - 1) {
-            drawRegistrationCrosshair(pdf, x + w, y + h);
+        if (hasSafeMargins) {
+            if (col > 0 || row > 0) drawRegistrationCrosshair(pdf, x, y);
+            if (col < totalCols - 1 || row > 0) drawRegistrationCrosshair(pdf, x + w, y);
+            if (col > 0 || row < totalRows - 1) drawRegistrationCrosshair(pdf, x, y + h);
+            if (col < totalCols - 1 || row < totalRows - 1) drawRegistrationCrosshair(pdf, x + w, y + h);
         }
 
-        // Draw sheet assembly identification header
-        if (sheetNum && totalSheets) {
+        // Draw sheet assembly identification header in safe margins area
+        if (sheetNum && totalSheets && hasSafeMargins && y >= 4.5) {
             pdf.setFontSize(6.5);
             pdf.setTextColor(90, 90, 90);
             const labelY = Math.max(4.5, y - 2.5);
-            const labelText = `Sheet ${sheetNum} of ${totalSheets} [Row ${row + 1}/${totalRows}, Col ${col + 1}/${totalCols}]  •  100% 1:1 Scale  •  Align crosshairs & dashed seams to assemble`;
+            const colDesc = (totalCols === 2) ? (col === 0 ? 'Left Half' : 'Right Half') : `Col ${col + 1}/${totalCols}`;
+            const rowDesc = (totalRows === 2) ? (row === 0 ? 'Top Half' : 'Bottom Half') : `Row ${row + 1}/${totalRows}`;
+            const halfDesc = (totalCols === 2 && totalRows === 1) ? colDesc : ((totalRows === 2 && totalCols === 1) ? rowDesc : `Part ${sheetNum}`);
+            const labelText = `Sheet ${sheetNum} of ${totalSheets} [${halfDesc}]  •  Align crosshairs & dashed seams to assemble`;
             pdf.text(labelText, Math.max(6, x), labelY);
         }
     }
@@ -260,6 +265,7 @@
 
                 const cardW = window.studioConfig.widthMm;
                 const cardH = window.studioConfig.heightMm;
+                const isA3Canvas = (Math.abs(cardW - 420) < 15 && Math.abs(cardH - 297) < 15) || (Math.abs(cardW - 297) < 15 && Math.abs(cardH - 420) < 15);
 
                 let margin = 10;
                 let gap = 2;
@@ -277,7 +283,7 @@
 
                 const tilingContainer = document.getElementById('pdf-tiling-container');
                 const isTilingVisible = tilingContainer && !tilingContainer.classList.contains('hidden');
-                const tilingMode = (isTilingVisible && document.getElementById('pdf_tiling')) ? document.getElementById('pdf_tiling').value : 'fit';
+                let tilingMode = (isTilingVisible && document.getElementById('pdf_tiling')) ? document.getElementById('pdf_tiling').value : 'fit';
 
                 if (isF10A4) {
                     // A-one F10A4-1 fixed standard layout (10 cards: 2x5 grid, 91x55mm, 14mm sides, 11mm top/bottom, 0mm gap)
@@ -303,9 +309,21 @@
                     cols = Math.floor((availW + gap) / (drawW + gap));
                     rows = Math.floor((availH + gap) / (drawH + gap));
 
+                    const isOversized = (cols === 0 || rows === 0);
+                    if (isOversized && (tilingMode === 'fit' || !tilingMode)) {
+                        // If oversized and user hasn't explicitly chosen single-sheet shrink, default to 2-sheet poster tiling for A3/large canvas
+                        if (isA3Canvas || cardW > 220 || cardH > 220) {
+                            tilingMode = 'split_2';
+                            const tilingEl = document.getElementById('pdf_tiling');
+                            if (tilingEl && (tilingEl.value === 'fit' || !tilingEl.value)) {
+                                tilingEl.value = 'split_2';
+                            }
+                        }
+                    }
+
                     // Apply multi-sheet or single-sheet tiling if the component is larger than 1 page OR if the user explicitly chose a multi-sheet split
                     if (cols === 0 || rows === 0 || (isTilingVisible && tilingMode && tilingMode.startsWith('split_'))) {
-                        const tiling = document.getElementById('pdf_tiling') ? document.getElementById('pdf_tiling').value : 'fit';
+                        const tiling = tilingMode;
                         if (tiling === 'actual_1page') {
                             isTiled = false;
                             scaleFactor = 1.0;
@@ -320,21 +338,28 @@
                             splitRows = grid.splitRows;
                             const pieceW = cardW / splitCols;
                             const pieceH = cardH / splitRows;
-                            scaleFactor = 1.0;
-                            drawW = pieceW;
-                            drawH = pieceH;
                             cols = 1;
                             rows = 1;
 
-                            // Auto-orient the sheet if the split tile fits cleanly in the alternate orientation
-                            const fitsCurrent = (drawW <= pageW - 8) && (drawH <= pageH - 8);
-                            const fitsRotated = (drawW <= pageH - 8) && (drawH <= pageW - 8);
-                            if (!fitsCurrent && fitsRotated) {
-                                pdfOrientation = (pdfOrientation === 'portrait') ? 'landscape' : 'portrait';
-                                pageW = pdfOrientation === 'portrait' ? selectedDims.w : selectedDims.h;
-                                pageH = pdfOrientation === 'portrait' ? selectedDims.h : selectedDims.w;
-                                availW = pageW - (margin * 2);
-                                availH = pageH - (margin * 2);
+                            // Automatically configure sheet orientation to match the individual tile piece!
+                            // (e.g. A3 Landscape 420x297 split in 2 produces 210x297 Portrait tiles -> Portrait A4 sheets)
+                            const tileIsLandscape = pieceW > pieceH;
+                            pdfOrientation = tileIsLandscape ? 'landscape' : 'portrait';
+                            pageW = (pdfOrientation === 'portrait') ? Math.min(selectedDims.w, selectedDims.h) : Math.max(selectedDims.w, selectedDims.h);
+                            pageH = (pdfOrientation === 'portrait') ? Math.max(selectedDims.w, selectedDims.h) : Math.min(selectedDims.w, selectedDims.h);
+                            availW = pageW - (margin * 2);
+                            availH = pageH - (margin * 2);
+
+                            if (tiling === 'split_2_margin') {
+                                // Fit inside standard 10mm margins on the sheet with trim lines
+                                scaleFactor = Math.min(availW / pieceW, availH / pieceH, 1.0);
+                                drawW = pieceW * scaleFactor;
+                                drawH = pieceH * scaleFactor;
+                            } else {
+                                // 100% 1:1 Scale
+                                scaleFactor = 1.0;
+                                drawW = pieceW;
+                                drawH = pieceH;
                             }
                         } else {
                             scaleFactor = Math.min(availW / cardW, availH / cardH);
@@ -377,7 +402,7 @@
                         const y = startY + (row * (drawH + gap));
 
                         let cardDataUrl = img.dataUrl;
-                        // ponytail: auto-rotate 90° if portrait card (e.g. 55x91mm or 69x97mm) is placed on horizontal pre-cut slot
+                        // auto-rotate 90° if portrait card (e.g. 55x91mm or 69x97mm) is placed on horizontal pre-cut slot
                         if (isPrecutSheet && cardW < cardH) {
                             cardDataUrl = await rotateImage90(img.dataUrl);
                         } else {
@@ -407,8 +432,8 @@
                                 pageIndex++;
                                 sheetCounter++;
 
-                                const x = (pageW - drawW) / 2;
-                                const y = (pageH - drawH) / 2;
+                                const x = Math.max(0, (pageW - drawW) / 2);
+                                const y = Math.max(0, (pageH - drawH) / 2);
 
                                 const chunkSourceX = c * chunkSourceW;
                                 const chunkSourceY = r * chunkSourceH;
@@ -428,11 +453,12 @@
 
                                 pdf.addImage(slicedDataUrl, 'JPEG', x, y, drawW, drawH, undefined, 'FAST');
 
-                                if (drawCropMarks) {
+                                const hasSafeMargins = (tilingMode === 'split_2_margin') || (x >= 4 || y >= 4);
+                                if (drawCropMarks && hasSafeMargins) {
                                     drawPageCropMarks(pdf, x, y, drawW, drawH);
                                 }
 
-                                drawOverlapGuidelines(pdf, x, y, drawW, drawH, c, r, splitCols, splitRows, sheetCounter, totalSheets);
+                                drawOverlapGuidelines(pdf, x, y, drawW, drawH, c, r, splitCols, splitRows, sheetCounter, totalSheets, hasSafeMargins);
                             }
                         }
                     }
@@ -455,14 +481,20 @@
         const pageSize = document.getElementById('pdf_page_size').value;
         const orientation = document.getElementById('pdf_orientation') ? document.getElementById('pdf_orientation').value : 'portrait';
         const tilingSelect = document.getElementById('pdf_tiling');
-        const selectedOption = tilingSelect ? tilingSelect.value : 'split_2';
+        let selectedOption = tilingSelect ? tilingSelect.value : 'split_2';
         const printModeEl = document.getElementById('pdf_print_mode');
         const isStencilMode = printModeEl && printModeEl.value === 'cutout_stencil';
 
         const f10Badge = document.getElementById('f10a4-info-badge');
         const f8Badge = document.getElementById('f8a4-info-badge');
+        const a3Badge = document.getElementById('a3-info-badge');
         const orientContainer = document.getElementById('pdf-orientation-container');
+        const orientNote = document.getElementById('pdf-orientation-note');
         const isPrecut = (pageSize === 'f10a4_1' || pageSize === 'a_one_51215');
+
+        const cardW = window.studioConfig.widthMm || 297;
+        const cardH = window.studioConfig.heightMm || 210;
+        const isA3Canvas = (Math.abs(cardW - 420) < 15 && Math.abs(cardH - 297) < 15) || (Math.abs(cardW - 297) < 15 && Math.abs(cardH - 420) < 15);
 
         if (f10Badge) {
             if (pageSize === 'f10a4_1') f10Badge.classList.remove('hidden');
@@ -471,6 +503,10 @@
         if (f8Badge) {
             if (pageSize === 'a_one_51215') f8Badge.classList.remove('hidden');
             else f8Badge.classList.add('hidden');
+        }
+        if (a3Badge) {
+            if (isA3Canvas && pageSize === 'a4') a3Badge.classList.remove('hidden');
+            else a3Badge.classList.add('hidden');
         }
         if (orientContainer) {
             if (isPrecut) orientContainer.classList.add('hidden');
@@ -500,16 +536,33 @@
         const availW = pageW - (margin * 2);
         const availH = pageH - (margin * 2);
 
-        const cardW = window.studioConfig.widthMm || 297;
-        const cardH = window.studioConfig.heightMm || 210;
-
         const scaleW = availW / cardW;
         const scaleH = availH / cardH;
         const fitScalePercent = Math.round(Math.min(scaleW, scaleH, 1) * 1000) / 10;
 
+        const isLargeForSheet = (cardW > availW || cardH > availH);
+
         if (tilingContainer) {
-            if (cardW > availW || cardH > availH || isStencilMode) {
+            if (isLargeForSheet || isStencilMode || isA3Canvas) {
                 tilingContainer.classList.remove('hidden');
+
+                // If user has not chosen anything or is on fit, auto-select split_2 for A3 on A4
+                if (isA3Canvas && pageSize === 'a4' && tilingSelect && (tilingSelect.value === 'fit' || !tilingSelect.value)) {
+                    tilingSelect.value = 'split_2';
+                    selectedOption = 'split_2';
+                }
+
+                if (orientNote) {
+                    if (selectedOption.startsWith('split_')) {
+                        const grid = resolveSplitGrid(selectedOption, cardW, cardH);
+                        const pieceW = cardW / grid.splitCols;
+                        const pieceH = cardH / grid.splitRows;
+                        const tileOrient = (pieceW > pieceH) ? 'Landscape' : 'Portrait';
+                        orientNote.textContent = `(Auto: ${tileOrient} per sheet)`;
+                    } else {
+                        orientNote.textContent = '';
+                    }
+                }
 
                 if (warningBox) {
                     if (selectedOption === 'actual_1page') {
@@ -520,7 +573,7 @@
                                 <div class="font-bold flex items-center gap-1.5 text-amber-400">
                                     <span>⚠️ Template (${cardW}×${cardH} mm) Exceeds 1 ${pageSize.toUpperCase()} Sheet (${pageW}×${pageH} mm)</span>
                                 </div>
-                                <p>Your unfolded template is larger than a single ${pageSize.toUpperCase()} sheet and will clip at the edges. Select <strong>"2 Sheets"</strong> or <strong>"4 Sheets (2×2 Grid)"</strong> above to print across multiple sheets and assemble them!</p>
+                                <p>Your template is larger than a single ${pageSize.toUpperCase()} sheet and will clip at the edges. Select <strong>"2 Sheets"</strong> above to print across two ${pageSize.toUpperCase()} sheets!</p>
                             `;
                         } else {
                             warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
@@ -537,15 +590,31 @@
                             <div class="font-bold flex items-center gap-1.5 text-amber-400">
                                 <span>⚠️ Scaling Warning (${fitScalePercent}% Scale)</span>
                             </div>
-                            <p>Scale to Fit will shrink your <strong>${cardW}×${cardH} mm</strong> template down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins. Do not use if you need 1:1 physical box dimensions!</p>
-                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 physical box dimensions, select <strong>"2 Sheets"</strong> or <strong>"4 Sheets (2×2 Grid)"</strong>.</p>
+                            <p>Scale to Fit will shrink your <strong>${cardW}×${cardH} mm</strong> design down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins on a single sheet. Do not use if you want 100% actual scale!</p>
+                            <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 actual size across two sheets, select <strong>"2 Sheets (A3 → 2× A4)"</strong> above.</p>
+                        `;
+                    } else if (selectedOption === 'split_2_margin') {
+                        const grid = resolveSplitGrid('split_2', cardW, cardH);
+                        const pieceW = cardW / grid.splitCols;
+                        const pieceH = cardH / grid.splitRows;
+                        const pieceAvailW = (pieceW > pieceH ? selectedDims.h : selectedDims.w) - (margin * 2);
+                        const pieceAvailH = (pieceW > pieceH ? selectedDims.w : selectedDims.h) - (margin * 2);
+                        const safeScale = Math.round(Math.min(pieceAvailW / pieceW, pieceAvailH / pieceH, 1.0) * 1000) / 10;
+                        warningBox.className = "p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 space-y-1";
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-indigo-400">
+                                <span>🛡️ Safe Printable Margin Mode (${safeScale}% Scale — 2× ${pageSize.toUpperCase()} Sheets)</span>
+                            </div>
+                            <p>Scales each half slightly to <strong>${safeScale}%</strong> so it sits safely inside 10mm printer margins with dashed trim lines and corner crosshairs. Perfect for desktop printers that cannot print borderless.</p>
                         `;
                     } else {
                         const grid = resolveSplitGrid(selectedOption, cardW, cardH);
                         const totalSheets = grid.splitCols * grid.splitRows;
                         const pieceW = Math.round((cardW / grid.splitCols) * 10) / 10;
                         const pieceH = Math.round((cardH / grid.splitRows) * 10) / 10;
-                        const fitsSheet = (pieceW <= selectedDims.w && pieceH <= selectedDims.h) || (pieceW <= selectedDims.h && pieceH <= selectedDims.w);
+                        const toleranceMm = 1.0;
+                        const fitsSheet = (pieceW <= selectedDims.w + toleranceMm && pieceH <= selectedDims.h + toleranceMm) ||
+                                          (pieceW <= selectedDims.h + toleranceMm && pieceH <= selectedDims.w + toleranceMm);
 
                         if (!fitsSheet) {
                             warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
@@ -553,7 +622,22 @@
                                 <div class="font-bold flex items-center gap-1.5 text-amber-400">
                                     <span>⚠️ Tile Size (${pieceW}×${pieceH} mm) Exceeds ${pageSize.toUpperCase()} Sheet (${selectedDims.w}×${selectedDims.h} mm)</span>
                                 </div>
-                                <p>Splitting <strong>${cardW}×${cardH} mm</strong> into ${totalSheets} sheets (${grid.splitCols}×${grid.splitRows}) creates ${pieceW}×${pieceH} mm tiles, which are still larger than a single ${pageSize.toUpperCase()} sheet. Choose <strong>4 Sheets</strong>, <strong>6 Sheets</strong>, or <strong>9 Sheets</strong> so every part fits without clipping.</p>
+                                <p>Splitting <strong>${cardW}×${cardH} mm</strong> into ${totalSheets} sheets creates ${pieceW}×${pieceH} mm tiles, which are larger than a single ${pageSize.toUpperCase()} sheet. Choose <strong>4 Sheets</strong>, <strong>6 Sheets</strong>, or <strong>9 Sheets</strong> so every part fits without clipping.</p>
+                            `;
+                        } else if (totalSheets === 2 && pageSize === 'a4') {
+                            const half1 = (cardW >= cardH) ? 'Left Half' : 'Top Half';
+                            const half2 = (cardW >= cardH) ? 'Right Half' : 'Bottom Half';
+                            warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1.5";
+                            warningBox.innerHTML = `
+                                <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                    <span>✅ 100% Actual 1:1 Scale (2× A4 Sheets — Tiled Poster Print)</span>
+                                </div>
+                                <p>Splits your <strong>${cardW}×${cardH} mm</strong> canvas into <strong>2 A4 sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 scale</strong>.</p>
+                                <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
+                                    <p>📄 <strong>Sheet 1:</strong> ${half1} (${pieceW}×${pieceH} mm)</p>
+                                    <p>📄 <strong>Sheet 2:</strong> ${half2} (${pieceW}×${pieceH} mm)</p>
+                                    <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Print Dialog Tip:</strong> In your printer dialog, select <strong>"Actual Size / 100%"</strong> (or <strong>"Borderless"</strong> if supported). Do not choose "Fit to Paper".</p>
+                                </div>
                             `;
                         } else {
                             warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
@@ -561,7 +645,7 @@
                                 <div class="font-bold flex items-center gap-1.5 text-emerald-400">
                                     <span>✅ 100% Actual 1:1 Physical Scale (${totalSheets} Sheets — ${grid.splitCols}×${grid.splitRows} Assembly Grid)</span>
                                 </div>
-                                <p>Splits your <strong>${cardW}×${cardH} mm</strong> template into <strong>${totalSheets} sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 physical size</strong> with registration crosshairs and dashed join lines for easy taping and cardboard cutout.</p>
+                                <p>Splits your <strong>${cardW}×${cardH} mm</strong> template into <strong>${totalSheets} sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 physical size</strong> with registration crosshairs and dashed join lines for easy assembly.</p>
                             `;
                         }
                     }

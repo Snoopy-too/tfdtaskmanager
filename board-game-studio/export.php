@@ -238,6 +238,8 @@ require_once __DIR__ . '/../templates/header.php';
                             $isF10A4 = ($compType && str_contains($compType->getName(), 'F10A4-1')) || (abs($tmplWidth - 91.0) < 1.5 && abs($tmplHeight - 55.0) < 1.5) || (abs($tmplWidth - 55.0) < 1.5 && abs($tmplHeight - 91.0) < 1.5);
                             $is51215 = ($compType && (str_contains($compType->getName(), '51215') || str_contains($compType->getName(), 'F8A4-5'))) || (abs($tmplWidth - 97.0) < 1.5 && abs($tmplHeight - 69.0) < 1.5) || (abs($tmplWidth - 69.0) < 1.5 && abs($tmplHeight - 97.0) < 1.5);
                             $isBoxTemplate = ($compType && str_contains($compType->getName(), 'Board Game Box')) || ($activeTemplate && str_contains((string)$activeTemplate->getCanvasJson(), 'isBoxDieline'));
+                            $isA3 = (abs($tmplWidth - 420.0) < 15.0 && abs($tmplHeight - 297.0) < 15.0) || (abs($tmplWidth - 297.0) < 15.0 && abs($tmplHeight - 420.0) < 15.0);
+                            $isLargeTemplate = $isA3 || ($tmplWidth > 215.0 || $tmplHeight > 215.0);
                             $autoOrientation = ($tmplWidth > $tmplHeight) ? 'landscape' : 'portrait';
                             ?>
                             <div>
@@ -267,6 +269,15 @@ require_once __DIR__ . '/../templates/header.php';
                                 </p>
                             </div>
 
+                            <div id="a3-info-badge" class="<?php echo ($isA3) ? '' : 'hidden '; ?>p-3 bg-indigo-500/10 border border-indigo-500/25 rounded-xl text-xs text-indigo-300 space-y-1">
+                                <div class="font-bold flex items-center gap-1.5 text-indigo-400">
+                                    <span>📐 A3 Canvas (<?php echo $tmplWidth; ?>×<?php echo $tmplHeight; ?> mm) → 2× A4 Sheets</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300 leading-relaxed">
+                                    To print this A3 canvas on standard A4 paper, select <strong>A4</strong> and <strong>"2 Sheets (A3 → 2× A4)"</strong> below. The studio will tile your design across two A4 sheets at <strong>100% 1:1 scale</strong> without condensing the image.
+                                </p>
+                            </div>
+
                             <div id="f10a4-info-badge" class="<?php echo $isF10A4 ? '' : 'hidden '; ?>p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 space-y-1">
                                 <div class="font-bold flex items-center gap-1.5 text-indigo-400">
                                     <span>🎴 A-one F10A4-1 (10-Card Sheet Layout)</span>
@@ -282,7 +293,10 @@ require_once __DIR__ . '/../templates/header.php';
                             </div>
 
                             <div id="pdf-orientation-container">
-                                <label for="pdf_orientation" class="block text-sm font-medium text-slate-300 mb-1">Orientation</label>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label for="pdf_orientation" class="block text-sm font-medium text-slate-300">Orientation</label>
+                                    <span id="pdf-orientation-note" class="text-[11px] text-indigo-400 font-normal"></span>
+                                </div>
                                 <select id="pdf_orientation" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
                                     <option value="portrait" <?php echo $autoOrientation === 'portrait' ? 'selected' : ''; ?>>Portrait</option>
                                     <option value="landscape" <?php echo $autoOrientation === 'landscape' ? 'selected' : ''; ?>>Landscape</option>
@@ -299,16 +313,17 @@ require_once __DIR__ . '/../templates/header.php';
                                 <label for="pdf_draw_bleed" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Include Physical Bleed Margins</label>
                             </div>
 
-                            <div id="pdf-tiling-container" class="space-y-2 <?php echo $isBoxTemplate ? '' : 'hidden'; ?>">
+                            <div id="pdf-tiling-container" class="space-y-2 <?php echo ($isBoxTemplate || $isLargeTemplate) ? '' : 'hidden'; ?>">
                                 <label for="pdf_tiling" class="block text-sm font-medium text-slate-300">Multi-Sheet Assembly &amp; Print Scale</label>
                                 <select id="pdf_tiling" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <option value="split_2" <?php echo !$isBoxTemplate ? 'selected' : ''; ?>>2 Sheets — 100% Actual Size (Split into 2 Parts to Assemble)</option>
-                                    <option value="split_4" <?php echo $isBoxTemplate ? 'selected' : ''; ?>>4 Sheets — 100% Actual Size (2×2 Grid — 4 Parts to Assemble)</option>
-                                    <option value="actual_1page">1 Sheet — 100% Actual Size (Full-Bleed 1:1 Scale)</option>
+                                    <option value="split_2" <?php echo !$isBoxTemplate ? 'selected' : ''; ?>>2 Sheets (A3 → 2× A4) — 100% Actual Size (Borderless Halves)</option>
+                                    <option value="split_2_margin">2 Sheets (A3 → 2× A4) — Fit within Page Margins (Safe Scale + Seam Guide)</option>
+                                    <option value="split_4" <?php echo $isBoxTemplate ? 'selected' : ''; ?>>4 Sheets — 100% Actual Size (2×2 Grid — 4 Quadrants)</option>
+                                    <option value="actual_1page">1 Sheet — 100% Actual Size (Full-Bleed 1:1 Scale — Single Sheet)</option>
                                     <option value="split_3">3 Sheets — 100% Actual Size (Split into 3 Parts)</option>
                                     <option value="split_6">6 Sheets — 100% Actual Size (2×3 / 3×2 Grid — 6 Parts)</option>
                                     <option value="split_9">9 Sheets — 100% Actual Size (3×3 Grid — 9 Parts)</option>
-                                    <option value="fit">1 Sheet — Scale to Fit Page (⚠️ Shrinks Component)</option>
+                                    <option value="fit">1 Sheet — Scale to Fit Page (⚠️ Condenses Entire Design onto 1 Page)</option>
                                 </select>
                                 <div id="pdf-tiling-warning" class="p-3 rounded-xl text-xs space-y-1">
                                     <!-- Populated dynamically by JS -->
