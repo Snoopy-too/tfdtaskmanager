@@ -179,52 +179,50 @@
 
     // Helper to draw alignment borders, registration crosshairs, and sheet assembly labels
     function drawOverlapGuidelines(pdf, x, y, w, h, col, row, totalCols, totalRows, sheetNum, totalSheets, hasSafeMargins = false) {
+        if (!hasSafeMargins) return;
+
         pdf.setDrawColor(140, 140, 140);
         pdf.setLineWidth(0.22);
         pdf.setLineDashPattern([2, 1], 0);
 
         pdf.setFontSize(6);
-        pdf.setTextColor(110, 110, 110);
+        pdf.setTextColor(100, 100, 100);
 
         if (col > 0) {
+            // Seam on left edge: dashed seam line
             pdf.line(x, y, x, y + h);
-            if (hasSafeMargins) {
-                pdf.text("TRIM / TAPE SEAM (JOIN LEFT)", x + 1.8, y + Math.min(14, h / 2), { angle: 90 });
-            }
+            // Place text in the white margin to the left of the seam, never covering artwork
+            pdf.text("TRIM / TAPE SEAM (JOIN LEFT)", Math.max(1.5, x - 1.8), y + 10, { angle: 90 });
         }
         if (col < totalCols - 1) {
+            // Seam on right edge: dashed seam line
             pdf.line(x + w, y, x + w, y + h);
-            if (hasSafeMargins) {
-                pdf.text("TRIM / TAPE SEAM (JOIN RIGHT)", x + w - 3.2, y + Math.min(14, h / 2), { angle: 90 });
-            }
+            // Place text in the white margin to the right of the seam, never covering artwork
+            pdf.text("TRIM / TAPE SEAM (JOIN RIGHT)", x + w + 3.2, y + 10, { angle: 90 });
         }
         if (row > 0) {
+            // Seam on top edge
             pdf.line(x, y, x + w, y);
-            if (hasSafeMargins) {
-                pdf.text("TRIM / TAPE SEAM (JOIN TOP)", x + Math.min(10, w / 4), y + 2.8);
-            }
+            pdf.text("TRIM / TAPE SEAM (JOIN TOP)", x + Math.min(10, w / 4), Math.max(2, y - 2));
         }
         if (row < totalRows - 1) {
+            // Seam on bottom edge
             pdf.line(x, y + h, x + w, y + h);
-            if (hasSafeMargins) {
-                pdf.text("TRIM / TAPE SEAM (JOIN BOTTOM)", x + Math.min(10, w / 4), y + h - 1.5);
-            }
+            pdf.text("TRIM / TAPE SEAM (JOIN BOTTOM)", x + Math.min(10, w / 4), y + h + 3.2);
         }
 
         pdf.setLineDashPattern([], 0);
 
         // Draw corner registration crosshairs on shared interior seams
-        if (hasSafeMargins) {
-            if (col > 0 || row > 0) drawRegistrationCrosshair(pdf, x, y);
-            if (col < totalCols - 1 || row > 0) drawRegistrationCrosshair(pdf, x + w, y);
-            if (col > 0 || row < totalRows - 1) drawRegistrationCrosshair(pdf, x, y + h);
-            if (col < totalCols - 1 || row < totalRows - 1) drawRegistrationCrosshair(pdf, x + w, y + h);
-        }
+        if (col > 0 || row > 0) drawRegistrationCrosshair(pdf, x, y);
+        if (col < totalCols - 1 || row > 0) drawRegistrationCrosshair(pdf, x + w, y);
+        if (col > 0 || row < totalRows - 1) drawRegistrationCrosshair(pdf, x, y + h);
+        if (col < totalCols - 1 || row < totalRows - 1) drawRegistrationCrosshair(pdf, x + w, y + h);
 
         // Draw sheet assembly identification header in safe margins area
-        if (sheetNum && totalSheets && hasSafeMargins && y >= 4.5) {
+        if (sheetNum && totalSheets && y >= 4.5) {
             pdf.setFontSize(6.5);
-            pdf.setTextColor(90, 90, 90);
+            pdf.setTextColor(80, 80, 80);
             const labelY = Math.max(4.5, y - 2.5);
             const colDesc = (totalCols === 2) ? (col === 0 ? 'Left Half' : 'Right Half') : `Col ${col + 1}/${totalCols}`;
             const rowDesc = (totalRows === 2) ? (row === 0 ? 'Top Half' : 'Bottom Half') : `Row ${row + 1}/${totalRows}`;
@@ -311,13 +309,11 @@
 
                     const isOversized = (cols === 0 || rows === 0);
                     if (isOversized && (tilingMode === 'fit' || !tilingMode)) {
-                        // If oversized and user hasn't explicitly chosen single-sheet shrink, default to 2-sheet poster tiling for A3/large canvas
-                        if (isA3Canvas || cardW > 220 || cardH > 220) {
-                            tilingMode = 'split_2';
-                            const tilingEl = document.getElementById('pdf_tiling');
-                            if (tilingEl && (tilingEl.value === 'fit' || !tilingEl.value)) {
-                                tilingEl.value = 'split_2';
-                            }
+                        // If oversized and user hasn't explicitly chosen single-sheet shrink, default to 2-sheet tiling
+                        tilingMode = 'split_2_margin';
+                        const tilingEl = document.getElementById('pdf_tiling');
+                        if (tilingEl && (tilingEl.value === 'fit' || !tilingEl.value)) {
+                            tilingEl.value = 'split_2_margin';
                         }
                     }
 
@@ -350,30 +346,18 @@
                             availW = pageW - (margin * 2);
                             availH = pageH - (margin * 2);
 
-                            if (tiling === 'split_2_poster') {
-                                // Poster mode: expand each half to fill the full sheet (210 x 297 mm for A4)
-                                const scaleW = pageW / pieceW;
-                                const scaleH = pageH / pieceH;
-                                scaleFactor = Math.min(scaleW, scaleH);
-                                drawW = pieceW * scaleFactor;
-                                drawH = pieceH * scaleFactor;
-                            } else if (tiling === 'split_2_poster_margin') {
-                                // Poster margin mode: expand each half to safely fill inside 10mm margins on the sheet
-                                const scaleW = availW / pieceW;
-                                const scaleH = availH / pieceH;
-                                scaleFactor = Math.min(scaleW, scaleH);
-                                drawW = pieceW * scaleFactor;
-                                drawH = pieceH * scaleFactor;
-                            } else if (tiling === 'split_2_margin') {
-                                // Fit inside standard 10mm margins on the sheet with trim lines
-                                scaleFactor = Math.min(availW / pieceW, availH / pieceH, 1.0);
+                            const isMarginMode = (tiling === 'split_2_margin' || tiling === 'split_2_poster_margin' || tiling.endsWith('_margin'));
+
+                            if (isMarginMode) {
+                                // Maximize each half/piece to take up as much space on each page as possible within printable margins
+                                scaleFactor = Math.min(availW / pieceW, availH / pieceH);
                                 drawW = pieceW * scaleFactor;
                                 drawH = pieceH * scaleFactor;
                             } else {
-                                // 100% 1:1 Scale
-                                scaleFactor = 1.0;
-                                drawW = pieceW;
-                                drawH = pieceH;
+                                // Full sheet / borderless: expand piece to fill the full sheet (210 x 297 mm for A4)
+                                scaleFactor = Math.min(pageW / pieceW, pageH / pieceH);
+                                drawW = pieceW * scaleFactor;
+                                drawH = pieceH * scaleFactor;
                             }
                         } else {
                             scaleFactor = Math.min(availW / cardW, availH / cardH);
@@ -467,7 +451,8 @@
 
                                 pdf.addImage(slicedDataUrl, 'JPEG', x, y, drawW, drawH, undefined, 'FAST');
 
-                                const hasSafeMargins = (tilingMode === 'split_2_margin' || tilingMode === 'split_2_poster_margin') || (x >= 4 || y >= 4);
+                                const isMarginMode = (tilingMode === 'split_2_margin' || tilingMode === 'split_2_poster_margin' || tilingMode.endsWith('_margin'));
+                                const hasSafeMargins = isMarginMode || (x >= 8 && y >= 8);
                                 if (drawCropMarks && hasSafeMargins) {
                                     drawPageCropMarks(pdf, x, y, drawW, drawH);
                                 }
@@ -570,22 +555,38 @@
             }
 
             if (warningBox) {
-                if (selectedOption === 'split_2_poster' || selectedOption === 'split_2_poster_margin') {
-                    const isMargin = (selectedOption === 'split_2_poster_margin');
+                const isTwoSheet = (selectedOption === 'split_2' || selectedOption === 'split_2_margin' || selectedOption === 'split_2_poster' || selectedOption === 'split_2_poster_margin');
+                const isMarginMode = (selectedOption === 'split_2_margin' || selectedOption === 'split_2_poster_margin' || selectedOption.endsWith('_margin'));
+
+                if (isTwoSheet && pageSize === 'a4') {
                     const half1 = (cardW >= cardH) ? 'Left Half' : 'Top Half';
                     const half2 = (cardW >= cardH) ? 'Right Half' : 'Bottom Half';
                     warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1.5";
-                    warningBox.innerHTML = `
-                        <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                            <span>🎯 2× ${pageSize.toUpperCase()} Sheets Poster Print Mode (${isMargin ? 'Safe Margins' : 'Full Page'})</span>
-                        </div>
-                        <p>Expands your canvas across <strong>2 ${pageSize.toUpperCase()} sheets</strong> so each sheet holds one half of your board game:</p>
-                        <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
-                            <p>📄 <strong>Sheet 1:</strong> ${half1} (fills A4 page)</p>
-                            <p>📄 <strong>Sheet 2:</strong> ${half2} (fills A4 page)</p>
-                            <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Assembly:</strong> When printed, place the two A4 sheets side-by-side to form your full-size A3 board.</p>
-                        </div>
-                    `;
+                    if (isMarginMode) {
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <span>🛡️ 2 Sheets (A3 → 2× A4) — Maximize to Page Margins (Recommended)</span>
+                            </div>
+                            <p>Scales each half to <strong>take up as much space on each A4 page as possible (~190×268 mm)</strong> inside safe 10mm margins, with dashed seam guides and corner crosshairs:</p>
+                            <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
+                                <p>📄 <strong>Sheet 1:</strong> ${half1} (maximized across A4 page with seam guide)</p>
+                                <p>📄 <strong>Sheet 2:</strong> ${half2} (maximized across A4 page with seam guide)</p>
+                                <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Assembly:</strong> Cut along the dashed line on Sheet 1, align corner crosshairs with Sheet 2, and tape together to form your full A3 board.</p>
+                            </div>
+                        `;
+                    } else {
+                        warningBox.innerHTML = `
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <span>🎯 2 Sheets (A3 → 2× A4) — Full Bleed / Borderless (Fill Entire A4 Sheets)</span>
+                            </div>
+                            <p>Scales each half to <strong>fill 100% of the 210×297 mm A4 sheet</strong> edge-to-edge. When placed together, they assemble into an exact full-size A3 board (420×297 mm):</p>
+                            <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
+                                <p>📄 <strong>Sheet 1:</strong> ${half1} (fills 100% of A4 page: 210×297 mm)</p>
+                                <p>📄 <strong>Sheet 2:</strong> ${half2} (fills 100% of A4 page: 210×297 mm)</p>
+                                <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Print Dialog Tip:</strong> In your printer dialog, select <strong>"Actual Size / 100%"</strong> and enable <strong>"Borderless"</strong> printing if your printer supports it.</p>
+                            </div>
+                        `;
+                    }
                 } else if (selectedOption === 'actual_1page') {
                     const exceedsSheet = (cardW > pageW || cardH > pageH);
                     if (exceedsSheet) {
@@ -594,7 +595,7 @@
                             <div class="font-bold flex items-center gap-1.5 text-amber-400">
                                 <span>⚠️ Template (${cardW}×${cardH} mm) Exceeds 1 ${pageSize.toUpperCase()} Sheet (${pageW}×${pageH} mm)</span>
                             </div>
-                            <p>Your template is larger than a single ${pageSize.toUpperCase()} sheet and will clip at the edges. Select <strong>"2 Sheets"</strong> above to print across two ${pageSize.toUpperCase()} sheets!</p>
+                            <p>Your template is larger than a single ${pageSize.toUpperCase()} sheet and will clip at the edges. Select <strong>"2 Sheets (A3 → 2× A4)"</strong> above to print across two ${pageSize.toUpperCase()} sheets!</p>
                         `;
                     } else {
                         warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
@@ -612,63 +613,19 @@
                             <span>⚠️ Scaling Warning (${fitScalePercent}% Scale)</span>
                         </div>
                         <p>Scale to Fit will shrink your <strong>${cardW}×${cardH} mm</strong> design down to <strong>${fitScalePercent}%</strong> size to squeeze inside 10mm printer margins on a single sheet. Do not use if you want 100% actual scale!</p>
-                        <p class="text-[11px] text-amber-200/80 mt-1">👉 To preserve 100% 1:1 actual size across two sheets, select <strong>"2 Sheets (A3 → 2× A4)"</strong> above.</p>
-                    `;
-                } else if (selectedOption === 'split_2_margin') {
-                    const grid = resolveSplitGrid('split_2', cardW, cardH);
-                    const pieceW = cardW / grid.splitCols;
-                    const pieceH = cardH / grid.splitRows;
-                    const pieceAvailW = (pieceW > pieceH ? selectedDims.h : selectedDims.w) - (margin * 2);
-                    const pieceAvailH = (pieceW > pieceH ? selectedDims.w : selectedDims.h) - (margin * 2);
-                    const safeScale = Math.round(Math.min(pieceAvailW / pieceW, pieceAvailH / pieceH, 1.0) * 1000) / 10;
-                    warningBox.className = "p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 space-y-1";
-                    warningBox.innerHTML = `
-                        <div class="font-bold flex items-center gap-1.5 text-indigo-400">
-                            <span>🛡️ Safe Printable Margin Mode (${safeScale}% Scale — 2× ${pageSize.toUpperCase()} Sheets)</span>
-                        </div>
-                        <p>Scales each half slightly to <strong>${safeScale}%</strong> so it sits safely inside 10mm printer margins with dashed trim lines and corner crosshairs. Perfect for desktop printers that cannot print borderless.</p>
+                        <p class="text-[11px] text-amber-200/80 mt-1">👉 To print as an A3 board across two sheets, select <strong>"2 Sheets (A3 → 2× A4)"</strong> above.</p>
                     `;
                 } else {
                     const grid = resolveSplitGrid(selectedOption, cardW, cardH);
                     const totalSheets = grid.splitCols * grid.splitRows;
-                    const pieceW = Math.round((cardW / grid.splitCols) * 10) / 10;
-                    const pieceH = Math.round((cardH / grid.splitRows) * 10) / 10;
-                    const toleranceMm = 1.0;
-                    const fitsSheet = (pieceW <= selectedDims.w + toleranceMm && pieceH <= selectedDims.h + toleranceMm) ||
-                                      (pieceW <= selectedDims.h + toleranceMm && pieceH <= selectedDims.w + toleranceMm);
 
-                    if (!fitsSheet) {
-                        warningBox.className = "p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1";
-                        warningBox.innerHTML = `
-                            <div class="font-bold flex items-center gap-1.5 text-amber-400">
-                                <span>⚠️ Tile Size (${pieceW}×${pieceH} mm) Exceeds ${pageSize.toUpperCase()} Sheet (${selectedDims.w}×${selectedDims.h} mm)</span>
-                            </div>
-                            <p>Splitting <strong>${cardW}×${cardH} mm</strong> into ${totalSheets} sheets creates ${pieceW}×${pieceH} mm tiles, which are larger than a single ${pageSize.toUpperCase()} sheet. Choose <strong>4 Sheets</strong>, <strong>6 Sheets</strong>, or <strong>9 Sheets</strong> so every part fits without clipping.</p>
-                        `;
-                    } else if (totalSheets === 2 && pageSize === 'a4') {
-                        const half1 = (cardW >= cardH) ? 'Left Half' : 'Top Half';
-                        const half2 = (cardW >= cardH) ? 'Right Half' : 'Bottom Half';
-                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1.5";
-                        warningBox.innerHTML = `
-                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                <span>✅ 100% Actual 1:1 Scale (2× A4 Sheets — Tiled Poster Print)</span>
-                            </div>
-                            <p>Splits your <strong>${cardW}×${cardH} mm</strong> canvas into <strong>2 A4 sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 scale</strong>.</p>
-                            <div class="text-[11px] text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20 space-y-1">
-                                <p>📄 <strong>Sheet 1:</strong> ${half1} (${pieceW}×${pieceH} mm)</p>
-                                <p>📄 <strong>Sheet 2:</strong> ${half2} (${pieceW}×${pieceH} mm)</p>
-                                <p class="text-amber-300/90 pt-0.5 font-medium">💡 <strong>Print Dialog Tip:</strong> In your printer dialog, select <strong>"Actual Size / 100%"</strong> (or <strong>"Borderless"</strong> if supported). Do not choose "Fit to Paper".</p>
-                            </div>
-                        `;
-                    } else {
-                        warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
-                        warningBox.innerHTML = `
-                            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                                <span>✅ 100% Actual 1:1 Physical Scale (${totalSheets} Sheets — ${grid.splitCols}×${grid.splitRows} Assembly Grid)</span>
-                            </div>
-                            <p>Splits your <strong>${cardW}×${cardH} mm</strong> template into <strong>${totalSheets} sheets</strong> (${pieceW}×${pieceH} mm per sheet) at exact <strong>100% 1:1 physical size</strong> with registration crosshairs and dashed join lines for easy assembly.</p>
-                        `;
-                    }
+                    warningBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1";
+                    warningBox.innerHTML = `
+                        <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+                            <span>✅ ${totalSheets} Sheets Assembly Grid (${grid.splitCols}×${grid.splitRows})</span>
+                        </div>
+                        <p>Splits your canvas across <strong>${totalSheets} sheets</strong>, scaling each quadrant to take up the full printable area with registration crosshairs and dashed seam guides.</p>
+                    `;
                 }
             }
         }

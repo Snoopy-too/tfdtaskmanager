@@ -316,16 +316,14 @@ require_once __DIR__ . '/../templates/header.php';
                             <div id="pdf-tiling-container" class="space-y-2">
                                 <label for="pdf_tiling" class="block text-sm font-medium text-slate-300">Multi-Sheet Assembly &amp; Print Scale</label>
                                 <select id="pdf_tiling" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-indigo-500 p-2.5">
-                                    <option value="split_2_poster" selected>2 Sheets (Poster Print / A3 → 2× A4) — Fill across 2 A4 Sheets</option>
-                                    <option value="split_2_poster_margin">2 Sheets (Poster Print) — Fit within Page Margins (Safe Scale + Seam Guide)</option>
-                                    <option value="split_2">2 Sheets (A3 → 2× A4) — 100% Actual Size (Borderless Halves)</option>
-                                    <option value="split_2_margin">2 Sheets (A3 → 2× A4) — Fit within Page Margins (Safe Scale + Seam Guide)</option>
-                                    <option value="split_4">4 Sheets — 100% Actual Size (2×2 Grid — 4 Quadrants)</option>
-                                    <option value="actual_1page">1 Sheet — 100% Actual Size (Full-Bleed 1:1 Scale — Single Sheet)</option>
-                                    <option value="split_3">3 Sheets — 100% Actual Size (Split into 3 Parts)</option>
-                                    <option value="split_6">6 Sheets — 100% Actual Size (2×3 / 3×2 Grid — 6 Parts)</option>
-                                    <option value="split_9">9 Sheets — 100% Actual Size (3×3 Grid — 9 Parts)</option>
+                                    <option value="split_2_margin" selected>2 Sheets (A3 → 2× A4) — Maximize to Page Margins (Recommended + Seam Guide)</option>
+                                    <option value="split_2">2 Sheets (A3 → 2× A4) — Full Bleed / Borderless (Fill Entire 210×297mm Sheets)</option>
+                                    <option value="split_4">4 Sheets (2×2 Grid) — Maximize across 4 Sheets</option>
+                                    <option value="actual_1page">1 Sheet — 100% Actual Size (Full Bleed Single Sheet)</option>
                                     <option value="fit">1 Sheet — Scale to Fit Page (⚠️ Condenses Entire Design onto 1 Page)</option>
+                                    <option value="split_3">3 Sheets — Maximize across 3 Sheets</option>
+                                    <option value="split_6">6 Sheets (2×3 / 3×2 Grid)</option>
+                                    <option value="split_9">9 Sheets (3×3 Grid)</option>
                                 </select>
                                 <div id="pdf-tiling-warning" class="p-3 rounded-xl text-xs space-y-1">
                                     <!-- Populated dynamically by JS -->
