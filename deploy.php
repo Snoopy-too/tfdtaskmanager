@@ -74,6 +74,38 @@ function get_header(string $name): string {
     return '';
 }
 
+function execute_deployment(string $branch): array {
+    chdir(__DIR__);
+    $allOutput = [];
+
+    // Ensure working tree is clean so git pull never gets blocked by unstaged or untracked changes
+    $statusOutput = [];
+    $statusReturn = 0;
+    exec("git status --porcelain 2>&1", $statusOutput, $statusReturn);
+    $dirtyEntries = array_values(array_filter(array_map('trim', $statusOutput)));
+
+    if (!empty($dirtyEntries)) {
+        log_message("Notice: Dirty working tree detected before deploy (" . count($dirtyEntries) . " modified/untracked files). Auto-stashing local modifications...");
+        $stashOutput = [];
+        $stashReturn = 0;
+        exec("git stash push -u -m 'Auto-stashed before deploy on " . date('Y-m-d H:i:s') . "' 2>&1", $stashOutput, $stashReturn);
+        $allOutput[] = "[Auto-stashed uncommitted changes before deploy]";
+        $allOutput = array_merge($allOutput, $stashOutput);
+        log_message("Stash result (exit code $stashReturn):\n" . implode("\n", $stashOutput));
+    }
+
+    $branchSafe = escapeshellarg($branch);
+    $pullOutput = [];
+    $pullReturn = 0;
+    exec("git pull origin $branchSafe 2>&1", $pullOutput, $pullReturn);
+    $allOutput = array_merge($allOutput, $pullOutput);
+
+    return [
+        'code' => $pullReturn,
+        'output' => $allOutput
+    ];
+}
+
 try {
     // 1. Support manual deployment via GET parameter ?key=SECRET
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -83,11 +115,9 @@ try {
         }
 
         log_message('Manual deployment triggered via GET ?key');
-        chdir(__DIR__);
-        $output = [];
-        $returnVar = 0;
-        $branchSafe = escapeshellarg($GITHUB_BRANCH);
-        exec("git pull origin $branchSafe 2>&1", $output, $returnVar);
+        $deployResult = execute_deployment($GITHUB_BRANCH);
+        $output = $deployResult['output'];
+        $returnVar = $deployResult['code'];
 
         if ($returnVar === 0) {
             log_message("SUCCESS: Git pull executed successfully.\n" . implode("\n", $output));
@@ -162,12 +192,10 @@ try {
 
     log_message("Deployment triggered by: $author - [$commitId] $message");
 
-    // Execute git pull
-    chdir(__DIR__);
-    $output = [];
-    $returnVar = 0;
-    $branchSafe = escapeshellarg($GITHUB_BRANCH);
-    exec("git pull origin $branchSafe 2>&1", $output, $returnVar);
+    // Execute git pull with auto-stash resilience
+    $deployResult = execute_deployment($GITHUB_BRANCH);
+    $output = $deployResult['output'];
+    $returnVar = $deployResult['code'];
 
     if ($returnVar === 0) {
         log_message("Deployment completed successfully: \n" . implode("\n", $output));
