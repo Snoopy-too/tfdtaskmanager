@@ -25,6 +25,29 @@ class BgAssetService
     }
 
     /**
+     * Ensures the uploads directory has an active .htaccess file preventing script execution.
+     */
+    private function ensureHtaccessExists(): void
+    {
+        $htaccessPath = $this->uploadDirBase . DIRECTORY_SEPARATOR . '.htaccess';
+        if (!file_exists($htaccessPath)) {
+            $htaccessContent = "# Disable directory listing to prevent asset enumeration\n" .
+                "Options -Indexes\n\n" .
+                "# Disable PHP engine if mod_php is loaded\n" .
+                "<IfModule mod_php.c>\n    php_flag engine off\n</IfModule>\n" .
+                "<IfModule mod_php7.c>\n    php_flag engine off\n</IfModule>\n" .
+                "<IfModule mod_php8.c>\n    php_flag engine off\n</IfModule>\n\n" .
+                "# Prevent script execution in the uploaded asset directory\n" .
+                "<FilesMatch \"\\.(php|php[0-9]|phtml|phar|pl|py|cgi|sh|inc)$\">\n    Require all denied\n</FilesMatch>\n\n" .
+                "# Prevent direct access to .htaccess\n" .
+                "<Files \".htaccess\">\n    Require all denied\n</Files>\n\n" .
+                "# Allow cross-origin asset requests for HTML5 Canvas rendering & PDF exports\n" .
+                "<IfModule mod_headers.c>\n    Header set Access-Control-Allow-Origin \"*\"\n</IfModule>\n";
+            @file_put_contents($htaccessPath, $htaccessContent);
+        }
+    }
+
+    /**
      * Synchronizes all built-in SVG icons from board-game-studio/icons into the
      * global assets database (project_id IS NULL) and the uploads/board-game-studio/global folder.
      */
@@ -42,12 +65,7 @@ class BgAssetService
             }
         }
 
-        // Ensure .htaccess exists
-        $htaccessPath = $this->uploadDirBase . DIRECTORY_SEPARATOR . '.htaccess';
-        if (!file_exists($htaccessPath)) {
-            $htaccessContent = "# Disable directory listing\nOptions -Indexes\n\n# Prevent PHP execution\n<FilesMatch \"\\.php$\">\n    Require all denied\n</FilesMatch>\n\n# Protect .htaccess\n<Files \".htaccess\">\n    Require all denied\n</Files>\n\n# Allow cross-origin asset loading\n<IfModule mod_headers.c>\n    Header set Access-Control-Allow-Origin \"*\"\n</IfModule>\n";
-            @file_put_contents($htaccessPath, $htaccessContent);
-        }
+        $this->ensureHtaccessExists();
 
         $existingGlobalAssets = $this->assetRepository->findByProjectId(null, false);
         $existingMap = [];
@@ -140,40 +158,51 @@ class BgAssetService
             throw new ValidationException("File size exceeds 10MB limit.");
         }
 
-        // Validate file type
+        // Canonical whitelist of allowed MIME types
         $allowedMimes = [
             'image/png' => 'png',
             'image/jpeg' => 'jpg',
             'image/pjpeg' => 'jpg',
+            'image/webp' => 'webp',
             'image/svg+xml' => 'svg',
             'font/ttf' => 'ttf',
             'font/otf' => 'otf',
             'application/x-font-truetype' => 'ttf',
-            'application/x-font-opentype' => 'otf'
+            'application/x-font-opentype' => 'otf',
+            'application/font-sfnt' => 'ttf',
+            'application/pdf' => 'pdf',
         ];
 
-        // Perform basic extension validation too
-        $originalName = $file['name'];
+        $originalName = (string)($file['name'] ?? '');
         $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
-        // Use mime content type check if possible, or fallback to file-reported mime
-        $detectedMime = null;
-        if (function_exists('finfo_open')) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $detectedMime = finfo_file($finfo, $file['tmp_name']);
+        // Perform server-side MIME type sniffing via finfo - never trust client $file['type']
+        if (!function_exists('finfo_open')) {
+            throw new \RuntimeException("finfo extension is required for secure MIME type inspection.");
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $detectedMime = $finfo ? finfo_file($finfo, $file['tmp_name']) : false;
+        if ($finfo) {
             finfo_close($finfo);
         }
-        $mime = $detectedMime ?: $file['type'];
 
-        if (!isset($allowedMimes[$mime]) && !in_array($ext, ['png', 'jpg', 'jpeg', 'svg', 'ttf', 'otf'])) {
-            throw new ValidationException("Invalid file type. Only PNG, JPG, SVG, TTF, and OTF are allowed.");
+        if ($detectedMime === false || empty($detectedMime)) {
+            throw new ValidationException("Unable to inspect file contents.");
         }
 
-        // Standardize extension
-        $targetExt = $allowedMimes[$mime] ?? $ext;
-        if ($targetExt === 'jpeg') {
-            $targetExt = 'jpg';
+        // SVG files are often detected by libmagic as text/xml, application/xml, or text/plain
+        if (($detectedMime === 'text/xml' || $detectedMime === 'text/plain' || $detectedMime === 'application/xml') && $ext === 'svg') {
+            $sample = file_get_contents($file['tmp_name'], false, null, 0, 1024) ?: '';
+            if (stripos($sample, '<svg') !== false) {
+                $detectedMime = 'image/svg+xml';
+            }
         }
+
+        if (!isset($allowedMimes[$detectedMime])) {
+            throw new ValidationException("Invalid file type. Only PNG, JPG, WEBP, SVG, PDF, TTF, and OTF assets are permitted.");
+        }
+
+        $targetExt = $allowedMimes[$detectedMime];
 
         // Clean tag if provided: replace whitespace, make lowercase, ensure valid format
         $cleanTag = null;
@@ -197,12 +226,7 @@ class BgAssetService
             }
         }
 
-        // Copy .htaccess to protect uploads from execution if it does not exist
-        $htaccessPath = $this->uploadDirBase . DIRECTORY_SEPARATOR . '.htaccess';
-        if (!file_exists($htaccessPath)) {
-            $htaccessContent = "# Disable directory listing\nOptions -Indexes\n\n# Prevent PHP execution\n<FilesMatch \"\\.php$\">\n    Require all denied\n</FilesMatch>\n\n# Protect .htaccess\n<Files \".htaccess\">\n    Require all denied\n</Files>\n\n# Allow cross-origin asset loading\n<IfModule mod_headers.c>\n    Header set Access-Control-Allow-Origin \"*\"\n</IfModule>\n";
-            file_put_contents($htaccessPath, $htaccessContent);
-        }
+        $this->ensureHtaccessExists();
 
         $targetPath = $projectUploadDir . DIRECTORY_SEPARATOR . $storedFilename;
 
@@ -210,7 +234,7 @@ class BgAssetService
             throw new ValidationException("Failed to save uploaded file.");
         }
 
-        if ($targetExt === 'svg' || $mime === 'image/svg+xml') {
+        if ($targetExt === 'svg' || $detectedMime === 'image/svg+xml') {
             $this->normalizeSvgFile($targetPath);
         }
 
@@ -221,8 +245,8 @@ class BgAssetService
             $projectId,
             $originalName,
             $storedFilename,
-            $mime,
-            $fileSize > 0 ? $fileSize : $file['size'],
+            $detectedMime,
+            $fileSize > 0 ? $fileSize : (int)$file['size'],
             $cleanTag,
             $uploadedByUserId
         );
@@ -365,7 +389,7 @@ class BgAssetService
             throw new ValidationException("Invalid or corrupt ZIP archive.");
         }
 
-        $extractDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bgs_zip_' . uniqid();
+        $extractDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bgs_zip_' . uniqid('', true);
         if (!is_dir($extractDir)) {
             mkdir($extractDir, 0755, true);
         }
@@ -376,18 +400,45 @@ class BgAssetService
         $results = [];
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($extractDir));
 
-        $allowedMimes = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'svg' => 'image/svg+xml'];
+        $allowedZipMimes = [
+            'image/png' => 'png',
+            'image/jpeg' => 'jpg',
+            'image/pjpeg' => 'jpg',
+            'image/webp' => 'webp',
+            'image/svg+xml' => 'svg'
+        ];
+
+        $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
+
+        $this->ensureHtaccessExists();
 
         foreach ($iterator as $fileInfo) {
             if ($fileInfo->isDir()) continue;
-            $ext = strtolower($fileInfo->getExtension());
-            if (!isset($allowedMimes[$ext])) continue;
 
             $fileName = $fileInfo->getFilename();
             if (str_starts_with($fileName, '.')) continue;
 
-            // Resolve subfolder prefix (e.g. heavyweight/boxer_1.png or fighter_images/heavyweight/boxer_1.png)
-            $relativePath = str_replace('\\', '/', substr($fileInfo->getPathname(), strlen($extractDir) + 1));
+            $filePath = $fileInfo->getPathname();
+            $detectedMime = $finfo ? finfo_file($finfo, $filePath) : false;
+            $ext = strtolower($fileInfo->getExtension());
+
+            // Normalize SVG MIME detection from XML or plain text
+            if (($detectedMime === 'text/xml' || $detectedMime === 'text/plain' || $detectedMime === 'application/xml') && $ext === 'svg') {
+                $sample = file_get_contents($filePath, false, null, 0, 1024) ?: '';
+                if (stripos($sample, '<svg') !== false) {
+                    $detectedMime = 'image/svg+xml';
+                }
+            }
+
+            if (!$detectedMime || !isset($allowedZipMimes[$detectedMime])) {
+                @unlink($filePath);
+                continue;
+            }
+
+            $targetExt = $allowedZipMimes[$detectedMime];
+
+            // Resolve subfolder prefix (e.g. heavyweight/boxer_1.png)
+            $relativePath = str_replace('\\', '/', substr($filePath, strlen($extractDir) + 1));
             $parts = explode('/', $relativePath);
 
             $prefix = '';
@@ -407,8 +458,7 @@ class BgAssetService
 
             $originalFilename = ($prefix !== '' && !str_starts_with($fileName, $prefix)) ? ($prefix . $fileName) : $fileName;
 
-            $mime = $allowedMimes[$ext];
-            $storedFilename = bin2hex(random_bytes(16)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
+            $storedFilename = bin2hex(random_bytes(16)) . '.' . $targetExt;
             $folderName = ($projectId === null) ? 'global' : (string)$projectId;
             $projectUploadDir = $this->uploadDirBase . DIRECTORY_SEPARATOR . $folderName;
             if (!is_dir($projectUploadDir)) {
@@ -416,8 +466,8 @@ class BgAssetService
             }
 
             $targetPath = $projectUploadDir . DIRECTORY_SEPARATOR . $storedFilename;
-            if (copy($fileInfo->getPathname(), $targetPath)) {
-                if ($ext === 'svg' || $mime === 'image/svg+xml') {
+            if (copy($filePath, $targetPath)) {
+                if ($targetExt === 'svg' || $detectedMime === 'image/svg+xml') {
                     $this->normalizeSvgFile($targetPath);
                 }
                 $fileSize = (int)filesize($targetPath);
@@ -426,7 +476,7 @@ class BgAssetService
                     $projectId,
                     $originalFilename,
                     $storedFilename,
-                    $mime,
+                    $detectedMime,
                     $fileSize > 0 ? $fileSize : $fileInfo->getSize(),
                     null,
                     $uploadedByUserId
@@ -434,7 +484,11 @@ class BgAssetService
                 $results[] = $this->assetRepository->save($asset);
             }
 
-            @unlink($fileInfo->getPathname());
+            @unlink($filePath);
+        }
+
+        if ($finfo) {
+            finfo_close($finfo);
         }
 
         @rmdir($extractDir);

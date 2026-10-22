@@ -1,3 +1,8 @@
+<?php
+declare(strict_types=1);
+
+use App\Infrastructure\Security\SecurityHelper;
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,7 +47,7 @@
             
             <h1 class="text-2xl font-bold text-white mb-2">Access Restricted</h1>
             <p class="text-slate-400 text-sm mb-6">
-                <?php echo !empty($authError) ? htmlspecialchars($authError) : 'The Task Manager and Development Studio is reserved exclusively for The Flying Dutchmen administrators.'; ?>
+                <?php echo !empty($authError) ? SecurityHelper::escape($authError) : 'The Task Manager and Development Studio is reserved exclusively for The Flying Dutchmen administrators.'; ?>
             </p>
 
             <div class="flex flex-col sm:flex-row gap-3 justify-center">

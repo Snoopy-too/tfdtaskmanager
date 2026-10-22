@@ -70,9 +70,12 @@ class SecurityHelper
         }
     }
 
-    public static function escape(string $value): string
+    public static function escape(?string $value): string
     {
-        return htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($value === null) {
+            return '';
+        }
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
     }
 
     public static function generateCsrfToken(): string
@@ -115,7 +118,7 @@ class SecurityHelper
         }
 
         // Restrict Tasks access strictly to administrators
-        if (self::getCurrentUserRole() !== 'super_admin') {
+        if (!hash_equals('super_admin', (string)self::getCurrentUserRole())) {
             http_response_code(403);
             $templatePath = __DIR__ . '/../../../templates/access_denied.php';
             if (file_exists($templatePath)) {
@@ -130,7 +133,7 @@ class SecurityHelper
     public static function requireSuperAdmin(): void
     {
         self::requireLogin();
-        if (self::getCurrentUserRole() !== 'super_admin') {
+        if (!hash_equals('super_admin', (string)self::getCurrentUserRole())) {
             http_response_code(403);
             echo "Access Denied: You do not have permissions to access this page.";
             exit();

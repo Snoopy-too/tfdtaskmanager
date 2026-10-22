@@ -10,10 +10,23 @@ SecurityHelper::initSession();
 
 $code = $_GET['code'] ?? null;
 $error = $_GET['error'] ?? null;
+$state = (string)($_GET['state'] ?? '');
+$sessionState = (string)($_SESSION['oauth_state'] ?? '');
+
+// Verify OAuth state token with constant-time comparison to prevent OAuth CSRF
+if ($sessionState !== '') {
+    if ($state === '' || !hash_equals($sessionState, $state)) {
+        http_response_code(403);
+        $authError = "Authentication failed: OAuth state mismatch.";
+        require __DIR__ . '/templates/access_denied.php';
+        exit();
+    }
+    unset($_SESSION['oauth_state']);
+}
 
 if ($error) {
     http_response_code(403);
-    $authError = "Authentication failed: " . htmlspecialchars($error);
+    $authError = "Authentication failed: " . SecurityHelper::escape((string)$error);
     require __DIR__ . '/templates/access_denied.php';
     exit();
 }
@@ -50,7 +63,7 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
 $tokenResponse = curl_exec($ch);
 curl_close($ch);
 
-$tokenData = json_decode($tokenResponse, true);
+$tokenData = json_decode((string)$tokenResponse, true);
 $accessToken = $tokenData['access_token'] ?? null;
 
 if (!$accessToken) {
@@ -70,10 +83,10 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 $userResponse = curl_exec($ch);
 curl_close($ch);
 
-$userData = json_decode($userResponse, true);
+$userData = json_decode((string)$userResponse, true);
 $email = $userData['email'] ?? null;
 $username = $userData['username'] ?? $userData['preferred_username'] ?? null;
-$tfdRole = $userData['role'] ?? 'user';
+$tfdRole = (string)($userData['role'] ?? 'user');
 
 if (!$email && !$username) {
     http_response_code(403);
@@ -82,14 +95,15 @@ if (!$email && !$username) {
     exit();
 }
 
-if (strtolower($tfdRole) !== 'admin') {
+// Enforce admin privilege check using constant-time string comparison
+if (!hash_equals('admin', strtolower($tfdRole))) {
     http_response_code(403);
     $authError = "Access restricted: Task Manager is only available to administrators.";
     require __DIR__ . '/templates/access_denied.php';
     exit();
 }
 
-if (SSOHelper::loginUserByEmailOrUsername($email, $username, $tfdRole)) {
+if (SSOHelper::loginUserByEmailOrUsername((string)$email, $username ? (string)$username : null, $tfdRole)) {
     header("Location: index.php");
     exit();
 } else {

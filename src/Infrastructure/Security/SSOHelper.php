@@ -32,8 +32,8 @@ class SSOHelper
                 self::clearSession();
                 return;
             }
-            $currentUsername = $_SESSION['user_name'] ?? '';
-            if (!empty($tfdUser['username']) && strtolower($tfdUser['username']) !== strtolower($currentUsername)) {
+            $currentUsername = (string)($_SESSION['user_name'] ?? '');
+            if (!empty($tfdUser['username']) && !hash_equals(strtolower($currentUsername), strtolower((string)$tfdUser['username']))) {
                 self::loginUserByEmailOrUsername($tfdUser['email'] ?? '', $tfdUser['username'] ?? '', $tfdUser['role'] ?? 'user');
             }
             return;
@@ -146,7 +146,7 @@ class SSOHelper
             }
 
             // Tasks is strictly restricted to administrators
-            if (strtolower($tfdRole) !== 'admin') {
+            if (!hash_equals('admin', strtolower((string)$tfdRole))) {
                 return false;
             }
 
@@ -169,10 +169,15 @@ class SSOHelper
 
             if ($user) {
                 // Keep super_admin sync updated if user is admin in central TFD
-                if ($user['role'] !== $targetRole && strtolower($tfdRole) === 'admin') {
+                if (!hash_equals($targetRole, (string)$user['role']) && hash_equals('admin', strtolower((string)$tfdRole))) {
                     $upd = $pdo->prepare("UPDATE users SET role = ? WHERE id = ?");
                     $upd->execute([$targetRole, $user['id']]);
                     $user['role'] = $targetRole;
+                }
+
+                // Enforce session regeneration upon login / privilege elevation
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    session_regenerate_id(true);
                 }
 
                 $_SESSION['user_id'] = (int)$user['id'];
@@ -198,8 +203,14 @@ class SSOHelper
 
     public static function getCentralLoginUrl(): string
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $state = bin2hex(random_bytes(16));
+        $_SESSION['oauth_state'] = $state;
+
         $tfdDomain = self::getTfdDomain();
-        return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode("https://tasks.{$tfdDomain}/auth_callback.php") . "&scope=openid%20profile%20email";
+        return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode("https://tasks.{$tfdDomain}/auth_callback.php") . "&scope=openid%20profile%20email&state=" . urlencode($state);
     }
 
     public static function clearSession(): void
