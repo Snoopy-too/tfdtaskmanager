@@ -58,13 +58,15 @@
     function serializeForSave(state) {
         const copy = cloneDeep(state);
         const boardObjects = {};
-        Object.entries(copy.boardObjects || {}).forEach(([id, obj]) => {
-            if (!obj || typeof obj !== 'object') return;
-            const clean = Object.assign({}, obj);
-            // Strip heavy template JSON before network transport; TemplateRenderer resolves it from projectAssets
-            delete clean.canvasJson;
-            boardObjects[id] = clean;
-        });
+        if (copy.boardObjects && typeof copy.boardObjects === 'object') {
+            Object.entries(copy.boardObjects).forEach(([id, obj]) => {
+                if (!obj || typeof obj !== 'object' || !obj.id) return;
+                const clean = Object.assign({}, obj);
+                // Strip heavy template JSON before network transport; TemplateRenderer resolves it from projectAssets
+                delete clean.canvasJson;
+                boardObjects[String(obj.id)] = clean;
+            });
+        }
         return {
             mode: copy.mode === 'PLAY' ? 'PLAY' : 'SETUP',
             turnState: copy.turnState || {

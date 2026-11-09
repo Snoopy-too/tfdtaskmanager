@@ -9,6 +9,9 @@
 
     function createStore(bootstrap) {
         const init = cloneDeep(bootstrap.initialState || {});
+        const rawBoardObjects = init.boardObjects && typeof init.boardObjects === 'object' && !Array.isArray(init.boardObjects)
+            ? init.boardObjects
+            : {};
         const state = {
             sandboxId: bootstrap.sandboxId,
             projectId: bootstrap.projectId,
@@ -23,7 +26,7 @@
             seats: Array.isArray(init.seats) && init.seats.length > 0 ? init.seats : [
                 { seatIndex: 1, color: SEAT_COLORS[0], assignedUserId: null, playerName: 'Player 1', handCardIds: [], resources: { Money: 10, VP: 0 } }
             ],
-            boardObjects: init.boardObjects || {},
+            boardObjects: rawBoardObjects,
             zones: Array.isArray(init.zones) ? init.zones : [],
             notes: Array.isArray(init.notes) ? init.notes : [],
             scenarios: Array.isArray(init.scenarios) ? init.scenarios : [],
@@ -72,7 +75,9 @@
             state.mode = snap.mode;
             state.turnState = snap.turnState;
             state.seats = snap.seats;
-            state.boardObjects = snap.boardObjects;
+            state.boardObjects = (snap.boardObjects && typeof snap.boardObjects === 'object' && !Array.isArray(snap.boardObjects))
+                ? snap.boardObjects
+                : {};
             state.zones = snap.zones;
             state.notes = snap.notes;
         }
