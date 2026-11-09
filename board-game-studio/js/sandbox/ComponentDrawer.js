@@ -54,7 +54,8 @@
     function renderProtoGrid(container, items, store, defaultSize = 48) {
         (items || []).forEach((item) => {
             const card = document.createElement('div');
-            card.className = 'group relative p-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex flex-col items-center justify-center transition shadow-sm';
+            card.draggable = true;
+            card.className = 'group relative p-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex flex-col items-center justify-center transition shadow-sm cursor-grab';
             card.innerHTML = `
                 <img src="${escapeHtml(item.imageUrl)}" class="w-8 h-8 object-contain pointer-events-none mb-1 group-hover:scale-110 transition-transform" alt="${escapeHtml(item.name)}">
                 <span class="text-[9px] font-semibold text-slate-300 truncate max-w-full leading-tight text-center">${escapeHtml(item.name.replace(/^(Red|Blue|Green|Yellow|Purple|Orange|Black|White)\s+/i, ''))}</span>
@@ -63,6 +64,16 @@
                     <button type="button" data-act="bag" class="flex-1 py-0.5 rounded bg-emerald-600/30 hover:bg-emerald-600 text-[8px] font-bold text-emerald-200 text-center" title="Spawn Supply Bag">Bag</button>
                 </div>
             `;
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('application/x-sandbox-item', JSON.stringify({
+                    dragKind: 'ASSET_SPAWN',
+                    spawnType: 'OBJECT',
+                    spec: {
+                        type: 'TOKEN', name: item.name, color: item.color || '#3B82F6',
+                        imageUrl: item.imageUrl, width: defaultSize, height: defaultSize
+                    }
+                }));
+            });
             card.querySelector('[data-act="token"]').onclick = (e) => {
                 e.stopPropagation();
                 store.spawnObject({
@@ -253,7 +264,8 @@
         (assets.boards || []).forEach((b) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'w-full text-left px-2.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between transition';
+            btn.draggable = true;
+            btn.className = 'w-full text-left px-2.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between transition cursor-grab';
             btn.innerHTML = `<span class="truncate font-semibold text-slate-200">${escapeHtml(b.name)}</span><span class="text-[10px] text-sky-400">+ Spawn</span>`;
             const spec = {
                 type: 'BOARD', assetId: b.assetId, templateId: b.templateId || null,
@@ -262,6 +274,13 @@
                 imageUrl: b.imageUrl || null, width: b.width || 800, height: b.height || 600,
                 x: -200, y: -120, isLocked: false
             };
+            btn.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('application/x-sandbox-item', JSON.stringify({
+                    dragKind: 'ASSET_SPAWN',
+                    spawnType: 'OBJECT',
+                    spec
+                }));
+            });
             btn.onclick = () => store.spawnObject(spec);
             boardsBox.appendChild(btn);
         });
@@ -271,8 +290,16 @@
         (assets.cardBatches || []).forEach((cb) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'w-full text-left px-2.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between transition';
+            btn.draggable = true;
+            btn.className = 'w-full text-left px-2.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between transition cursor-grab';
             btn.innerHTML = `<span class="truncate font-semibold text-slate-200">${escapeHtml(cb.name)}</span><span class="text-[10px] text-indigo-400">${(cb.cards || []).length} cards</span>`;
+            btn.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('application/x-sandbox-item', JSON.stringify({
+                    dragKind: 'ASSET_SPAWN',
+                    spawnType: 'CARD_BATCH',
+                    batch: cb
+                }));
+            });
             btn.onclick = () => store.spawnCardBatchAsDeck(cb, 80, 40);
             decksBox.appendChild(btn);
         });
@@ -282,9 +309,18 @@
         SEAT_COLORS.forEach((col, idx) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'px-2 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center gap-1.5 text-[10px] font-bold text-slate-200';
+            btn.draggable = true;
+            btn.className = 'px-2 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center gap-1.5 text-[10px] font-bold text-slate-200 cursor-grab';
             btn.innerHTML = `<span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${col}"></span><span>Bag P${idx + 1}</span>`;
-            btn.onclick = () => store.spawnObject({ type: 'SPAWNER', name: `P${idx + 1} Supply`, color: col, infinite: true, x: -260, y: -80 + idx * 72, width: 64, height: 64 });
+            const spec = { type: 'SPAWNER', name: `P${idx + 1} Supply`, color: col, infinite: true, x: -260, y: -80 + idx * 72, width: 64, height: 64 };
+            btn.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('application/x-sandbox-item', JSON.stringify({
+                    dragKind: 'ASSET_SPAWN',
+                    spawnType: 'OBJECT',
+                    spec
+                }));
+            });
+            btn.onclick = () => store.spawnObject(spec);
             meeplesBox.appendChild(btn);
         });
 
@@ -293,9 +329,18 @@
         (assets.tokens || []).slice(0, 12).forEach((t) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'w-full text-left px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between text-[11px]';
+            btn.draggable = true;
+            btn.className = 'w-full text-left px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between text-[11px] cursor-grab';
             btn.innerHTML = `<span class="truncate text-slate-300">${escapeHtml(t.name)}</span><span class="text-[10px] text-emerald-400">+ Bag</span>`;
-            btn.onclick = () => store.spawnObject({ type: 'SPAWNER', assetId: t.assetId, name: `${t.name} Supply`, imageUrl: t.imageUrl || null, color: '#10B981', infinite: true, x: -180, y: 40, width: 64, height: 64 });
+            const spec = { type: 'SPAWNER', assetId: t.assetId, name: `${t.name} Supply`, imageUrl: t.imageUrl || null, color: '#10B981', infinite: true, x: -180, y: 40, width: 64, height: 64 };
+            btn.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('application/x-sandbox-item', JSON.stringify({
+                    dragKind: 'ASSET_SPAWN',
+                    spawnType: 'OBJECT',
+                    spec
+                }));
+            });
+            btn.onclick = () => store.spawnObject(spec);
             tokensBox.appendChild(btn);
         });
 
@@ -308,8 +353,16 @@
         ].forEach((z) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'w-full text-left px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between';
+            btn.draggable = true;
+            btn.className = 'w-full text-left px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between cursor-grab';
             btn.innerHTML = `<span class="font-semibold text-indigo-300">${escapeHtml(z.name)}</span><span class="text-[10px] text-slate-400">+ Zone</span>`;
+            btn.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('application/x-sandbox-item', JSON.stringify({
+                    dragKind: 'ASSET_SPAWN',
+                    spawnType: 'ZONE',
+                    spec: z
+                }));
+            });
             btn.onclick = () => store.spawnZone(z);
             zonesBox.appendChild(btn);
         });
@@ -363,6 +416,17 @@
                     <input type="checkbox" id="sbx-insp-autoshuffle" ${selObj.autoShuffleOnReset ? 'checked' : ''}>
                     <span>Auto-shuffle on Reset</span>
                 </label>
+                <div class="pt-1.5 border-t border-slate-800/80 space-y-1.5">
+                    <div class="flex items-center gap-1">
+                        <input type="number" id="sbx-insp-split-cnt" min="1" max="${Math.max(1, (selObj.cardIds || []).length)}" value="${Math.min(30, Math.max(1, (selObj.cardIds || []).length))}" class="w-14 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-white font-mono">
+                        <button type="button" id="sbx-insp-split-btn" class="flex-1 py-1 px-2 rounded-lg bg-indigo-600/80 hover:bg-indigo-500 text-white text-[10px] font-bold transition" ${(selObj.cardIds || []).length === 0 ? 'disabled' : ''}>
+                            ✂️ Deal Top N Deck
+                        </button>
+                    </div>
+                    <button type="button" id="sbx-insp-merge-btn" class="w-full py-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 text-[10px] font-bold transition">
+                        🔀 Merge with Another Deck...
+                    </button>
+                </div>
             ` : ''}
         `;
 
@@ -394,6 +458,22 @@
             autoShuffleChk.onchange = (e) => {
                 selObj.autoShuffleOnReset = Boolean(e.target.checked);
                 store.notify();
+            };
+        }
+        const splitBtn = inspectorEl.querySelector('#sbx-insp-split-btn');
+        if (splitBtn) {
+            splitBtn.onclick = () => {
+                const cntInput = inspectorEl.querySelector('#sbx-insp-split-cnt');
+                const cnt = Number(cntInput ? cntInput.value : 30) || 30;
+                store.splitDeckTopN(selObj.id, cnt, `${selObj.name || 'Deck'} (Round ${cnt})`, false);
+            };
+        }
+        const mergeBtn = inspectorEl.querySelector('#sbx-insp-merge-btn');
+        if (mergeBtn) {
+            mergeBtn.onclick = () => {
+                if (window.SandboxWorkspaceModals) {
+                    window.SandboxWorkspaceModals.openMergeDecksModal(store, selObj);
+                }
             };
         }
     }

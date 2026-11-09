@@ -169,6 +169,12 @@
             },
             spawnCardBatchAsDeck(batch, x, y) {
                 pushHistory();
+                let spawnX = Math.round(x);
+                let spawnY = Math.round(y);
+                while (Object.values(state.boardObjects).some((o) => o && o.type === 'DECK' && Math.hypot((o.x || 0) - spawnX, (o.y || 0) - spawnY) < 16)) {
+                    spawnX += 32;
+                    spawnY += 24;
+                }
                 const deckId = uid('inst_deck');
                 const cardIds = (batch.cards || []).map((c, idx) => {
                     const cid = uid('inst_card');
@@ -178,7 +184,7 @@
                         canvasJson: c.canvasJson || batch.canvasJson || null, rowData: c.rowData || null,
                         name: c.name || `${batch.name} #${idx + 1}`,
                         frontImageUrl: c.frontImageUrl || null, backImageUrl: batch.backImageUrl || null,
-                        metadata: c.metadata || {}, x: Math.round(x), y: Math.round(y),
+                        metadata: c.metadata || {}, x: spawnX, y: spawnY,
                         width: batch.width || 140, height: batch.height || 200, zIndex: 310,
                         rotation: 0, isTapped: false, faceUp: false, ownerSeat: null,
                         parentId: null, tuckedChildren: [], peekingUserIds: [], isLocked: false
@@ -187,7 +193,7 @@
                 });
                 state.boardObjects[deckId] = {
                     id: deckId, type: 'DECK', name: batch.name || 'Deck',
-                    x: Math.round(x), y: Math.round(y), width: batch.width || 140, height: batch.height || 200,
+                    x: spawnX, y: spawnY, width: batch.width || 140, height: batch.height || 200,
                     zIndex: nextZInTier(state.boardObjects, 'DECK'), rotation: 0, isLocked: false,
                     faceUp: false, backImageUrl: batch.backImageUrl || null,
                     cardIds, autoShuffleOnReset: true, linkedDiscardId: null
@@ -361,6 +367,93 @@
                 ui.selectedIds = [deckId];
                 logEvent(`Formed deck "${name || 'Custom Deck'}" (${cardIds.length} cards).`);
                 notify();
+            },
+            mergeDecks(deckIds, customName = null, shouldShuffle = true) {
+                const validDecks = (deckIds || [])
+                    .map((id) => state.boardObjects[id])
+                    .filter((d) => d && d.type === 'DECK');
+                if (validDecks.length < 2) return null;
+                pushHistory();
+                const target = validDecks[0];
+                const mergedNames = [target.name || 'Deck'];
+                if (!Array.isArray(target.cardIds)) target.cardIds = [];
+
+                for (let i = 1; i < validDecks.length; i++) {
+                    const src = validDecks[i];
+                    if (src.name && !mergedNames.includes(src.name)) mergedNames.push(src.name);
+                    if (Array.isArray(src.cardIds)) {
+                        src.cardIds.forEach((cid) => {
+                            if (!target.cardIds.includes(cid)) target.cardIds.push(cid);
+                            if (state.boardObjects[cid]) state.boardObjects[cid].faceUp = false;
+                        });
+                    }
+                    delete state.boardObjects[src.id];
+                }
+
+                if (customName && String(customName).trim()) {
+                    target.name = String(customName).trim().slice(0, 80);
+                } else if (mergedNames.length > 1) {
+                    target.name = mergedNames.join(' + ').slice(0, 80);
+                }
+
+                if (shouldShuffle && target.cardIds.length > 1) {
+                    for (let i = target.cardIds.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [target.cardIds[i], target.cardIds[j]] = [target.cardIds[j], target.cardIds[i]];
+                    }
+                    playSound('shuffle');
+                }
+
+                ui.selectedIds = [target.id];
+                logEvent(`Merged ${validDecks.length} decks into "${target.name}" (${target.cardIds.length} cards)${shouldShuffle ? ' and shuffled' : ''}.`);
+                replenishMarketRivers();
+                notify();
+                return target;
+            },
+            splitDeckTopN(deckId, count = 30, newDeckName = null, shuffleSourceFirst = false) {
+                const src = state.boardObjects[deckId];
+                if (!src || src.type !== 'DECK' || !Array.isArray(src.cardIds) || src.cardIds.length === 0) return null;
+                pushHistory();
+
+                if (shuffleSourceFirst && src.cardIds.length > 1) {
+                    for (let i = src.cardIds.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [src.cardIds[i], src.cardIds[j]] = [src.cardIds[j], src.cardIds[i]];
+                    }
+                }
+
+                const n = Math.min(Math.max(1, Math.round(Number(count) || 30)), src.cardIds.length);
+                const splitCardIds = src.cardIds.splice(0, n);
+                const newDeckId = uid('inst_deck');
+                const cleanName = (newDeckName && String(newDeckName).trim())
+                    ? String(newDeckName).trim().slice(0, 80)
+                    : `${src.name || 'Deck'} (Top ${n})`;
+
+                state.boardObjects[newDeckId] = {
+                    id: newDeckId,
+                    type: 'DECK',
+                    name: cleanName,
+                    x: Math.round((src.x || 0) + (src.width || 140) + 28),
+                    y: Math.round(src.y || 0),
+                    width: src.width || 140,
+                    height: src.height || 200,
+                    zIndex: nextZInTier(state.boardObjects, 'DECK'),
+                    rotation: 0,
+                    isLocked: false,
+                    faceUp: false,
+                    backImageUrl: src.backImageUrl || null,
+                    cardIds: splitCardIds,
+                    autoShuffleOnReset: false,
+                    linkedDiscardId: src.linkedDiscardId || null,
+                    parentSourceDeckId: src.id
+                };
+
+                playSound('shuffle');
+                ui.selectedIds = [newDeckId];
+                logEvent(`Dealt top ${n} cards from "${src.name || 'Deck'}" into new deck "${cleanName}" (${src.cardIds.length} remaining).`);
+                replenishMarketRivers();
+                notify();
+                return state.boardObjects[newDeckId];
             },
             rollDie(dieId) {
                 const die = state.boardObjects[dieId];

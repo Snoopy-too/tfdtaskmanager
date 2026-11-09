@@ -206,10 +206,14 @@
             onObjectContextMenu(e, obj) {
                 e.preventDefault();
                 e.stopPropagation();
-                store.setSelected([obj.id]);
+                const state = store.getState();
                 const ui = store.getUI();
+                if (!ui.selectedIds.includes(obj.id)) {
+                    store.setSelected([obj.id]);
+                }
                 const worldPt = screenToWorld(e.clientX, e.clientY);
                 const items = [];
+                const selectedDecks = (ui.selectedIds || []).filter((id) => state.boardObjects[id] && state.boardObjects[id].type === 'DECK');
 
                 if (obj.type === 'CARD') {
                     items.push({ label: obj.faceUp ? 'Flip Face-Down' : 'Flip Face-Up', shortcut: 'F', action: () => store.flipCards([obj.id]) });
@@ -224,6 +228,33 @@
                     items.push({ label: 'Draw 3 Cards', shortcut: '3', action: () => store.drawCards(obj.id, 3) });
                     items.push({ label: 'Shuffle Deck', shortcut: 'S', action: () => store.shuffleDeck(obj.id) });
                     items.push({ label: 'Search / Peek Deck...', action: () => handlers.onDeckSearch(obj) });
+                    items.push({ divider: true });
+                    items.push({
+                        label: '✂️ Deal Top 30 as Round Deck',
+                        action: () => store.splitDeckTopN(obj.id, 30, `${obj.name || 'Deck'} (Round 30)`, false)
+                    });
+                    items.push({
+                        label: '✂️ Split / Deal Top N Cards...',
+                        action: () => window.SandboxWorkspaceModals && window.SandboxWorkspaceModals.openSplitDeckModal(store, obj)
+                    });
+                    if (selectedDecks.length >= 2) {
+                        items.push({
+                            label: `🔀 Merge & Shuffle Selected Decks (${selectedDecks.length})`,
+                            action: () => store.mergeDecks(selectedDecks, null, true)
+                        });
+                    } else {
+                        items.push({
+                            label: '🔀 Merge with Another Deck...',
+                            action: () => window.SandboxWorkspaceModals && window.SandboxWorkspaceModals.openMergeDecksModal(store, obj)
+                        });
+                    }
+                    if (obj.parentSourceDeckId && state.boardObjects[obj.parentSourceDeckId]) {
+                        const parentDeck = state.boardObjects[obj.parentSourceDeckId];
+                        items.push({
+                            label: `↩ Return to "${parentDeck.name || 'Main Deck'}" & Shuffle`,
+                            action: () => store.mergeDecks([parentDeck.id, obj.id], parentDeck.name, true)
+                        });
+                    }
                 } else if (obj.type === 'DIE') {
                     items.push({ label: `Roll d${obj.faces || 6}`, action: () => store.rollDie(obj.id) });
                 } else if (obj.type === 'BOARD') {
@@ -345,6 +376,16 @@
                             return;
                         }
                     }
+                    if (obj.type === 'DECK') {
+                        const hitDeck = Object.values(state.boardObjects).find(
+                            (d) => d && d.type === 'DECK' && d.id !== obj.id && Math.hypot((obj.x + 70) - (d.x + 70), (obj.y + 100) - (d.y + 100)) < 75
+                        );
+                        if (hitDeck) {
+                            store.mergeDecks([hitDeck.id, obj.id], null, true);
+                            dragState = null;
+                            return;
+                        }
+                    }
                     if (obj.type === 'CARD') {
                         const hitDeck = Object.values(state.boardObjects).find((d) => d && d.type === 'DECK' && Math.hypot((obj.x + 70) - (d.x + 70), (obj.y + 100) - (d.y + 100)) < 75);
                         if (hitDeck) {
@@ -400,14 +441,20 @@
 
         viewportEl.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            const state = store.getState();
             const worldPt = screenToWorld(e.clientX, e.clientY);
             const ui = store.getUI();
             const items = [
                 { label: 'Drop Sticky Feedback Pin Here...', action: () => window.SandboxWorkspaceModals && window.SandboxWorkspaceModals.openStickyNoteModal(store, worldPt.x, worldPt.y, null) },
                 { label: 'Ping Location for Table', shortcut: 'G+Click', action: () => triggerSpatialPing(worldPt.x, worldPt.y) }
             ];
-            if (ui.selectedIds.length >= 2) {
-                items.unshift({ label: `Form Deck from Selected (${ui.selectedIds.length})`, action: () => store.formDeckFromSelection(ui.selectedIds, 'Custom Deck') });
+            const selectedDecks = (ui.selectedIds || []).filter((id) => state.boardObjects[id] && state.boardObjects[id].type === 'DECK');
+            const selectedCards = (ui.selectedIds || []).filter((id) => state.boardObjects[id] && state.boardObjects[id].type === 'CARD');
+            if (selectedDecks.length >= 2) {
+                items.unshift({ label: `🔀 Merge & Shuffle Selected Decks (${selectedDecks.length})`, action: () => store.mergeDecks(selectedDecks, null, true) });
+            }
+            if (selectedCards.length >= 2) {
+                items.unshift({ label: `Form Deck from Selected Cards (${selectedCards.length})`, action: () => store.formDeckFromSelection(selectedCards, 'Custom Deck') });
             }
             showContextMenu(e.clientX, e.clientY, items);
         });
@@ -420,9 +467,21 @@
             try {
                 const payload = JSON.parse(raw);
                 const pt = screenToWorld(e.clientX, e.clientY);
-                if (payload.dragKind === 'HAND_CARD') store.playCardFromHand(payload.cardId, pt.x - 70, pt.y - 100, !e.shiftKey);
+                if ( payload.dragKind === 'HAND_CARD' ) store.playCardFromHand(payload.cardId, pt.x - 70, pt.y - 100, !e.shiftKey);
                 else if (payload.dragKind === 'ASSET_SPAWN') {
-                    if (payload.spawnType === 'CARD_BATCH') store.spawnCardBatchAsDeck(payload.batch, pt.x - 70, pt.y - 100);
+                    if (payload.spawnType === 'CARD_BATCH') {
+                        const state = store.getState();
+                        const hitDeck = Object.values(state.boardObjects).find(
+                            (d) => d && d.type === 'DECK' && Math.hypot((pt.x - 70 + 70) - (d.x + 70), (pt.y - 100 + 100) - (d.y + 100)) < 90
+                        );
+                        store.spawnCardBatchAsDeck(payload.batch, pt.x - 70, pt.y - 100);
+                        if (hitDeck) {
+                            const newDeckId = store.getUI().selectedIds[0];
+                            if (newDeckId && newDeckId !== hitDeck.id) {
+                                store.mergeDecks([hitDeck.id, newDeckId], null, true);
+                            }
+                        }
+                    }
                     else if (payload.spawnType === 'ZONE') store.spawnZone(Object.assign({}, payload.spec, { x: Math.round(pt.x - 200), y: Math.round(pt.y - 100) }));
                     else store.spawnObject(Object.assign({}, payload.spec, { x: Math.round(pt.x - (payload.spec.width || 80) / 2), y: Math.round(pt.y - (payload.spec.height || 80) / 2) }));
                 }

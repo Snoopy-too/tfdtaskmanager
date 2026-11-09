@@ -74,6 +74,118 @@
         renderModalBody('');
     }
 
+    // 1b. Split / Deal Top N Cards into New Deck Modal
+    function openSplitDeckModal(store, deck) {
+        const cardCount = Array.isArray(deck.cardIds) ? deck.cardIds.length : 0;
+        const defaultCount = Math.min(30, Math.max(1, cardCount));
+        const defaultName = `${deck.name || 'Deck'} (Round Deck)`;
+
+        modalContent.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-extrabold text-white">✂️ Split / Deal Top N Cards</h3>
+                    <p class="text-xs text-slate-400">Extract the top cards from <strong>${escapeHtml(deck.name || 'Deck')}</strong> (${cardCount} cards) into a separate round deck.</p>
+                </div>
+                <button type="button" id="sbx-modal-close" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">Cancel</button>
+            </div>
+            <form id="sbx-split-deck-form" class="space-y-3 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Number of Top Cards to Take (Max ${cardCount})</label>
+                        <input type="number" id="sbx-split-count" min="1" max="${Math.max(1, cardCount)}" value="${defaultCount}" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">New Round Deck Name</label>
+                        <input type="text" id="sbx-split-name" maxlength="80" value="${escapeHtml(defaultName)}" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 text-slate-300 pt-1 cursor-pointer">
+                    <input type="checkbox" id="sbx-split-shuffle" checked>
+                    <span>Shuffle <strong>${escapeHtml(deck.name || 'Deck')}</strong> before dealing out the top cards</span>
+                </label>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold">Create Round Deck</button>
+                </div>
+            </form>
+        `;
+
+        modalContent.querySelector('#sbx-modal-close').onclick = closeModal;
+        modalContent.querySelector('#sbx-split-deck-form').onsubmit = (e) => {
+            e.preventDefault();
+            const cnt = Number(modalContent.querySelector('#sbx-split-count').value) || 30;
+            const name = modalContent.querySelector('#sbx-split-name').value;
+            const shuffleFirst = Boolean(modalContent.querySelector('#sbx-split-shuffle').checked);
+            store.splitDeckTopN(deck.id, cnt, name, shuffleFirst);
+            closeModal();
+        };
+        modalBackdrop.classList.remove('hidden');
+        const countInput = modalContent.querySelector('#sbx-split-count');
+        countInput.focus();
+        countInput.select();
+    }
+
+    // 1c. Merge Decks Modal
+    function openMergeDecksModal(store, primaryDeck) {
+        const state = store.getState();
+        const otherDecks = Object.values(state.boardObjects || {}).filter(
+            (o) => o && o.type === 'DECK' && o.id !== primaryDeck.id
+        );
+
+        modalContent.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-extrabold text-white">🔀 Merge & Shuffle Decks Together</h3>
+                    <p class="text-xs text-slate-400">Combine other deck(s) on the table into <strong>${escapeHtml(primaryDeck.name || 'Deck')}</strong> (${(primaryDeck.cardIds || []).length} cards).</p>
+                </div>
+                <button type="button" id="sbx-modal-close" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">Cancel</button>
+            </div>
+            ${otherDecks.length === 0 ? `
+                <div class="text-xs text-slate-400 py-6 text-center">No other decks on the table yet. Spawn another deck from the Project drawer first, or drag one deck directly onto another!</div>
+            ` : `
+                <form id="sbx-merge-decks-form" class="space-y-3 text-xs">
+                    <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        <div class="text-slate-400 font-semibold mb-1">Select deck(s) to merge into "${escapeHtml(primaryDeck.name || 'Deck')}":</div>
+                        ${otherDecks.map((d, idx) => `
+                            <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-indigo-500/50 cursor-pointer">
+                                <span class="flex items-center gap-2 font-bold text-slate-100">
+                                    <input type="checkbox" name="merge_deck_id" value="${escapeHtml(d.id)}" ${idx === 0 ? 'checked' : ''}>
+                                    <span>${escapeHtml(d.name || 'Deck')}</span>
+                                </span>
+                                <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">${(d.cardIds || []).length} cards</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Combined Deck Name (leave blank to auto-name)</label>
+                        <input type="text" id="sbx-merge-name" maxlength="80" placeholder="e.g. Combined Fight Deck (Blue + Red)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                    </div>
+                    <label class="flex items-center gap-2 text-slate-300 pt-1 cursor-pointer">
+                        <input type="checkbox" id="sbx-merge-shuffle" checked>
+                        <span>Shuffle combined deck immediately after merging</span>
+                    </label>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold">Merge & Shuffle</button>
+                    </div>
+                </form>
+            `}
+        `;
+
+        modalContent.querySelector('#sbx-modal-close').onclick = closeModal;
+        const form = modalContent.querySelector('#sbx-merge-decks-form');
+        if (form) {
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                const checked = Array.from(form.querySelectorAll('input[name="merge_deck_id"]:checked')).map((el) => el.value);
+                if (checked.length === 0) return;
+                const name = modalContent.querySelector('#sbx-merge-name').value;
+                const shouldShuffle = Boolean(modalContent.querySelector('#sbx-merge-shuffle').checked);
+                store.mergeDecks([primaryDeck.id, ...checked], name, shouldShuffle);
+                closeModal();
+            };
+        }
+        modalBackdrop.classList.remove('hidden');
+    }
+
     // 2. Mid-Game Scenario Save/Load Modal (spec §5.4)
     function openScenariosModal(store) {
         const state = store.getState();
@@ -245,6 +357,8 @@
 
     window.SandboxWorkspaceModals = {
         openDeckSearchModal,
+        openSplitDeckModal,
+        openMergeDecksModal,
         openScenariosModal,
         openStickyNoteModal,
         openAddResourceModal,
