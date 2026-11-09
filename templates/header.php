@@ -239,6 +239,10 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
                             <i class="bi bi-book text-xs"></i>
                             <span>Rulebooks</span>
                         </a>
+                        <a href="<?php echo $studioBase; ?>sandboxes.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo in_array($current_page, ['sandboxes.php', 'sandbox.php'], true) ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
+                            <i class="bi bi-joystick text-xs"></i>
+                            <span>Sandbox</span>
+                        </a>
                         <a href="<?php echo $studioBase; ?>export.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo ($current_page === 'export.php') ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
                             <i class="bi bi-printer text-xs"></i>
                             <span>Export Sheets</span>

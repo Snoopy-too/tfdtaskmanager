@@ -28,6 +28,9 @@ use App\Infrastructure\Repository\PDOBgRulebookRepository;
 use App\Infrastructure\Repository\PDOBgGlossaryRepository;
 use App\Application\Services\BgRulebookService;
 use App\Application\Services\BgBoxDielineService;
+use App\Infrastructure\Repository\PDOBgSandboxRepository;
+use App\Application\Services\BgSandboxService;
+use App\Domain\Sandbox\SandboxStateSchema;
 use PDO;
 
 class DIContainer
@@ -153,6 +156,21 @@ class DIContainer
 
         $this->services[BgExportService::class] = function() {
             return new BgExportService();
+        };
+
+        $this->services[SandboxStateSchema::class] = function() {
+            return new SandboxStateSchema();
+        };
+
+        $this->services[PDOBgSandboxRepository::class] = function() {
+            return new PDOBgSandboxRepository($this->get(PDO::class));
+        };
+
+        $this->services[BgSandboxService::class] = function() {
+            return new BgSandboxService(
+                $this->get(PDOBgSandboxRepository::class),
+                $this->get(SandboxStateSchema::class)
+            );
         };
 
         $this->services[BgRulebookService::class] = function() {

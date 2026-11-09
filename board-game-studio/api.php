@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 $container = require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/api-datasets.php';
 require_once __DIR__ . '/api-rulebooks.php';
+require_once __DIR__ . '/api-sandboxes.php';
 
 use App\Infrastructure\Security\SecurityHelper;
 use App\Application\Services\BgTemplateService;
@@ -13,6 +14,7 @@ use App\Application\Services\BgAssetService;
 use App\Application\Services\BgDatasetService;
 use App\Application\Services\BgRulebookService;
 use App\Application\Services\ProjectService;
+use App\Application\Services\BgSandboxService;
 
 // API requires active login session
 SecurityHelper::initSession();
@@ -27,6 +29,7 @@ $assetService = $container->get(BgAssetService::class);
 $datasetService = $container->get(BgDatasetService::class);
 $rulebookService = $container->get(BgRulebookService::class);
 $projectService = $container->get(ProjectService::class);
+$sandboxService = $container->get(BgSandboxService::class);
 
 $currentUserId = (int)($_SESSION['user_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
@@ -698,7 +701,7 @@ try {
             break;
 
         default:
-            if (!handleDatasetApiAction($action, $method, $datasetService, $projectService) && !handleRulebookApiAction($action, $method, $rulebookService, $projectService)) {
+            if (!handleDatasetApiAction($action, $method, $datasetService, $projectService) && !handleRulebookApiAction($action, $method, $rulebookService, $projectService) && !handleSandboxApiAction($action, $method, $sandboxService, $projectService)) {
                 http_response_code(400);
                 echo json_encode(['error' => 'Invalid action or route.']);
             }

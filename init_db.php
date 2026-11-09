@@ -305,6 +305,48 @@ try {
     ");
     echo "- 'bg_glossary' table created.\n";
 
+    // 15. Board Game Playtest Sandboxes table (2D Playtest Sandbox module)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `bg_sandboxes` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `project_id` INT NOT NULL,
+            `name` VARCHAR(150) NOT NULL,
+            `default_player_count` TINYINT UNSIGNED NOT NULL DEFAULT 4,
+            `table_state` JSON NOT NULL,
+            `starting_snapshot` JSON DEFAULT NULL,
+            `created_by` INT NOT NULL,
+            `locked_by_user_id` INT DEFAULT NULL,
+            `locked_at` TIMESTAMP NULL DEFAULT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_bg_sandboxes_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_bg_sandboxes_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+            CONSTRAINT `fk_bg_sandboxes_locked_user` FOREIGN KEY (`locked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+            CONSTRAINT `chk_bg_sandboxes_players` CHECK (`default_player_count` BETWEEN 1 AND 6),
+            INDEX `idx_bg_sandboxes_project` (`project_id`, `updated_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    echo "- 'bg_sandboxes' table created.\n";
+
+    // 16. Board Game Playtest Sandbox Live Rooms table (Multiplayer sync)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `bg_sandbox_rooms` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `sandbox_id` INT NOT NULL,
+            `room_code` VARCHAR(32) NOT NULL UNIQUE,
+            `host_user_id` INT NOT NULL,
+            `room_state` JSON NOT NULL,
+            `presence_state` JSON NOT NULL,
+            `version` INT UNSIGNED NOT NULL DEFAULT 1,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_bg_sandbox_rooms_sandbox` FOREIGN KEY (`sandbox_id`) REFERENCES `bg_sandboxes` (`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_bg_sandbox_rooms_host` FOREIGN KEY (`host_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+            INDEX `idx_bg_sandbox_rooms_sandbox` (`sandbox_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    echo "- 'bg_sandbox_rooms' table created.\n";
+
 
     // Seed default Super-Admin if not exists
     $adminEmail = 'admin@tfdtaskmgr.local';

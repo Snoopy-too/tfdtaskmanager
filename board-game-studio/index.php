@@ -360,7 +360,7 @@ require_once __DIR__ . '/../templates/header.php';
         <?php endif; ?>
 
         <!-- Quick Stats / Navigation Links -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             <!-- Asset Library Card -->
             <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
                 <div class="flex justify-between items-start">
@@ -413,6 +413,25 @@ require_once __DIR__ . '/../templates/header.php';
                 <div class="mt-6">
                     <a href="export.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
                         <span>Generate Exports</span>
+                        <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Playtest Sandbox Card -->
+            <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-sky-400 transition">Playtest Sandbox</h3>
+                        <p class="text-xs text-slate-400 mt-1">Stage a 2D table and playtest with your project components.</p>
+                    </div>
+                    <svg class="h-8 w-8 text-sky-400/60 bg-sky-500/10 p-1.5 rounded-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm4 2h.01M16 8h.01M12 12h.01M8 16h.01M16 16h.01"/>
+                    </svg>
+                </div>
+                <div class="mt-6">
+                    <a href="sandboxes.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
+                        <span>Open Sandboxes</span>
                         <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
                 </div>

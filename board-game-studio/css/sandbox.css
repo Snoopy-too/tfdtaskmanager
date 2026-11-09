@@ -1,0 +1,89 @@
+/* Board Game Studio — 2D Playtest Sandbox Styles */
+
+#sandbox-workspace {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+#sbx-viewport:focus {
+    outline: none;
+}
+
+.sbx-grid-surface {
+    position: absolute;
+    left: -10000px;
+    top: -10000px;
+    width: 20000px;
+    height: 20000px;
+    background-color: #070b14;
+    background-image:
+        linear-gradient(to right, rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+        linear-gradient(to right, rgba(148, 163, 184, 0.11) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.11) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px, 200px 200px, 200px 200px;
+    pointer-events: none;
+}
+
+.sbx-obj {
+    position: absolute;
+    transform-origin: center center;
+    user-select: none;
+    transition: box-shadow 120ms ease;
+}
+
+.sbx-obj.is-selected {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.22), 0 12px 24px rgba(0, 0, 0, 0.55);
+}
+
+.sbx-obj.is-dragging {
+    z-index: 950 !important;
+    cursor: grabbing !important;
+    box-shadow: 0 20px 38px rgba(0, 0, 0, 0.65);
+}
+
+.sbx-obj.is-tuck-target {
+    outline: 2px dashed #fbbf24;
+    outline-offset: 4px;
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.45);
+}
+
+.sbx-die-rolling {
+    animation: sbx-die-shake 300ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes sbx-die-shake {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    20% { transform: translate(-6px, -5px) rotate(-18deg) scale(1.12); }
+    40% { transform: translate(6px, 4px) rotate(16deg) scale(1.15); }
+    60% { transform: translate(-5px, 5px) rotate(-12deg) scale(1.1); }
+    80% { transform: translate(4px, -4px) rotate(10deg) scale(1.06); }
+}
+
+.sbx-ping-ring {
+    position: absolute;
+    width: 72px;
+    height: 72px;
+    margin-left: -36px;
+    margin-top: -36px;
+    border-radius: 9999px;
+    border: 3px solid currentColor;
+    animation: sbx-ping-pulse 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    pointer-events: none;
+}
+
+@keyframes sbx-ping-pulse {
+    0% { transform: scale(0.25); opacity: 0.95; }
+    80% { transform: scale(1.65); opacity: 0; }
+    100% { transform: scale(1.75); opacity: 0; }
+}
+
+.sbx-snap-node {
+    position: absolute;
+    border-radius: 9999px;
+    border: 1.5px dashed rgba(56, 189, 248, 0.65);
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(56, 189, 248, 0.03) 70%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
