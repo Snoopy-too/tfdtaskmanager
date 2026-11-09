@@ -9,15 +9,49 @@
     const renderedCache = new Map();
     const inFlightPromises = new Map();
 
+    function getAssetMap() {
+        return (
+            (window.sandboxBootstrap &&
+                window.sandboxBootstrap.projectAssets &&
+                window.sandboxBootstrap.projectAssets.importedAssets &&
+                window.sandboxBootstrap.projectAssets.importedAssets.assetMap) ||
+            {}
+        );
+    }
+
+    function resolveAssetFilename(rawVal) {
+        if (!rawVal) return null;
+        const clean = String(rawVal).replace(/^\[|\]$/g, '').trim();
+        if (!clean) return null;
+        if (clean.startsWith('http') || clean.startsWith('../') || clean.startsWith('icons/') || clean.startsWith('uploads/')) {
+            return clean;
+        }
+        const map = getAssetMap();
+        const lower = clean.toLowerCase();
+        if (map[lower]) return map[lower];
+        const noExt = lower.replace(/\.[a-z0-9]+$/i, '');
+        return map[noExt] || null;
+    }
+
+    function getRowValue(row, rawBinding) {
+        if (!row || !rawBinding) return undefined;
+        const colName = String(rawBinding).replace(/\{\{|\}\}/g, '').trim();
+        if (!colName) return undefined;
+        if (row[colName] !== undefined) return row[colName];
+        const lowerCol = colName.toLowerCase();
+        const matchKey = Object.keys(row).find((k) => k.toLowerCase().trim() === lowerCol);
+        return matchKey !== undefined ? row[matchKey] : undefined;
+    }
+
     /**
      * Renders a Fabric.js template JSON string into a crisp image Data URL.
      */
-    function renderTemplateAsync(templateId, canvasJson, rowData = null, targetWidth = 1000, targetHeight = 700) {
+    function renderTemplateAsync(templateId, canvasJson, rowData = null, nativeWidth = 1000, nativeHeight = 700, cacheKeyOverride = null) {
         if (!canvasJson) {
             return Promise.resolve(null);
         }
 
-        const cacheKey = `tpl_${templateId}_${rowData ? JSON.stringify(rowData) : 'base'}`;
+        const cacheKey = cacheKeyOverride || `tpl_${templateId}_${rowData ? JSON.stringify(rowData) : 'base'}`;
         if (renderedCache.has(cacheKey)) {
             return Promise.resolve(renderedCache.get(cacheKey));
         }
@@ -52,84 +86,118 @@
                 return;
             }
 
-            // Determine dimensions from template or fallback
-            const origW = parsed.width || targetWidth || 1000;
-            const origH = parsed.height || targetHeight || 700;
+            const origW = Math.max(80, Number(nativeWidth) || Number(parsed.width) || 1000);
+            const origH = Math.max(80, Number(nativeHeight) || Number(parsed.height) || 700);
             const maxDim = Math.max(origW, origH);
-            const scale = Math.min(1.0, 1400 / maxDim);
-            const scaledW = Math.max(80, Math.round(origW * scale));
-            const scaledH = Math.max(80, Math.round(origH * scale));
+            const scale = Math.min(1.0, 1200 / maxDim);
 
             const hiddenCanvasEl = document.createElement('canvas');
-            hiddenCanvasEl.width = scaledW;
-            hiddenCanvasEl.height = scaledH;
+            hiddenCanvasEl.width = origW;
+            hiddenCanvasEl.height = origH;
 
             const staticCanvas = new fabric.StaticCanvas(hiddenCanvasEl, {
-                width: scaledW,
-                height: scaledH,
+                width: origW,
+                height: origH,
                 backgroundColor: parsed.background || parsed.backgroundColor || '#ffffff',
+                preserveObjectStacking: true,
                 renderOnAddRemove: false
             });
 
-            staticCanvas.setZoom(scale);
-
             staticCanvas.loadFromJSON(parsed, () => {
-                const objects = staticCanvas.getObjects();
                 const toRemove = [];
+                const imageSwapPromises = [];
 
-                objects.forEach((obj) => {
-                    const id = String(obj.id || '');
-                    // Strip editor guide overlays
-                    if (id === 'safe-zone-guide' || id === 'bleed-zone-guide' || id.startsWith('box-dieline-') || obj.isBoxDieline) {
-                        toRemove.push(obj);
-                        return;
-                    }
-
-                    // Apply row data bindings if card template is bound to a dataset
-                    if (rowData && typeof rowData === 'object') {
-                        if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
-                            let text = obj.text || '';
-                            Object.entries(rowData).forEach(([col, val]) => {
-                                if (val !== null && val !== undefined) {
-                                    const regex = new RegExp(`\\{\\{\\s*${col}\\s*\\}\\}`, 'gi');
-                                    text = text.replace(regex, String(val));
-                                }
-                            });
-                            obj.set('text', text);
+                function walkObjects(objList) {
+                    (objList || []).forEach((obj) => {
+                        const id = String(obj.id || '');
+                        if (id === 'safe-zone-guide' || id === 'bleed-zone-guide' || id.startsWith('box-dieline-') || obj.isBoxDieline) {
+                            toRemove.push(obj);
+                            return;
                         }
-                    }
-                });
 
+                        if (obj.type === 'group' && typeof obj.getObjects === 'function') {
+                            walkObjects(obj.getObjects());
+                        }
+
+                        if (!rowData || typeof rowData !== 'object') return;
+
+                        if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                            let rawText = obj.variable_binding || obj.text || '';
+                            let subText = String(rawText);
+                            const matches = subText.match(/\{\{([a-zA-Z0-9_\- ]+)\}\}/g);
+                            if (matches) {
+                                matches.forEach((ph) => {
+                                    const val = getRowValue(rowData, ph);
+                                    if (val !== undefined && val !== null) {
+                                        subText = subText.replaceAll(ph, String(val));
+                                    }
+                                });
+                            } else if (obj.variable_binding) {
+                                const val = getRowValue(rowData, obj.variable_binding);
+                                if (val !== undefined && val !== null) {
+                                    subText = String(val);
+                                }
+                            }
+                            // Strip inline style tags like [b], [/b], [color=...] for clean canvas text
+                            subText = subText.replace(/\[\/?[a-zA-Z0-9_=#\s]+\]/g, '');
+                            obj.set('text', subText);
+                            if (typeof obj.initDimensions === 'function') obj.initDimensions();
+                            obj.dirty = true;
+                        } else if (obj.type === 'image' && obj.variable_binding) {
+                            const rawVal = getRowValue(rowData, obj.variable_binding);
+                            const resolvedUrl = resolveAssetFilename(rawVal);
+                            if (resolvedUrl && typeof obj.setSrc === 'function') {
+                                const targetW = (obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1);
+                                const targetH = (obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1);
+                                imageSwapPromises.push(
+                                    new Promise((imgResolve) => {
+                                        obj.setSrc(
+                                            resolvedUrl,
+                                            () => {
+                                                if (targetW > 0 && obj.width > 0) obj.set('scaleX', targetW / obj.width);
+                                                if (targetH > 0 && obj.height > 0) obj.set('scaleY', targetH / obj.height);
+                                                obj.setCoords();
+                                                imgResolve();
+                                            },
+                                            { crossOrigin: 'anonymous' }
+                                        );
+                                    })
+                                );
+                            }
+                        }
+                    });
+                }
+
+                walkObjects(staticCanvas.getObjects());
                 toRemove.forEach((obj) => staticCanvas.remove(obj));
 
-                // Render the complete canvas
-                staticCanvas.renderAll();
+                Promise.all(imageSwapPromises).then(() => {
+                    staticCanvas.renderAll();
 
-                let dataUrl = null;
-                try {
-                    dataUrl = staticCanvas.toDataURL({
-                        format: 'jpeg',
-                        quality: 0.88,
-                        multiplier: 1
-                    });
-                } catch (e) {
-                    console.warn('[SandboxTemplateRenderer] toDataURL error (tainted canvas):', e);
-                }
-
-                // Clean up static canvas instance
-                staticCanvas.dispose();
-                hiddenCanvasEl.remove();
-
-                if (dataUrl) {
-                    renderedCache.set(cacheKey, dataUrl);
-                    // Persist thumbnail to server cache in background
-                    if (!rowData && window.sandboxBootstrap && window.sandboxBootstrap.csrfToken) {
-                        cacheThumbnailOnServer(templateId, dataUrl);
+                    let dataUrl = null;
+                    try {
+                        dataUrl = staticCanvas.toDataURL({
+                            format: 'jpeg',
+                            quality: 0.86,
+                            multiplier: scale
+                        });
+                    } catch (e) {
+                        console.warn('[SandboxTemplateRenderer] toDataURL error:', e);
                     }
-                }
 
-                inFlightPromises.delete(cacheKey);
-                resolve(dataUrl);
+                    staticCanvas.dispose();
+                    hiddenCanvasEl.remove();
+
+                    if (dataUrl) {
+                        renderedCache.set(cacheKey, dataUrl);
+                        if (!rowData && window.sandboxBootstrap && window.sandboxBootstrap.csrfToken) {
+                            cacheThumbnailOnServer(templateId, dataUrl);
+                        }
+                    }
+
+                    inFlightPromises.delete(cacheKey);
+                    resolve(dataUrl);
+                });
             });
         });
 
@@ -137,9 +205,6 @@
         return renderPromise;
     }
 
-    /**
-     * Non-blocking background POST to cache pre-rendered template thumbnail on disk.
-     */
     function cacheThumbnailOnServer(templateId, dataUrl) {
         if (!templateId || !dataUrl || !window.sandboxBootstrap) return;
         try {
@@ -152,105 +217,132 @@
                 method: 'POST',
                 body: formData,
                 headers: { 'X-CSRF-Token': window.sandboxBootstrap.csrfToken }
-            }).catch(() => {});
+            })
+                .then((r) => r.json())
+                .then((res) => {
+                    if (res && res.success && res.url && window.sandboxActiveStore) {
+                        const state = window.sandboxActiveStore.getState();
+                        Object.values(state.boardObjects || {}).forEach((obj) => {
+                            if (obj && obj.type === 'BOARD' && obj.assetId === `tpl_board_${templateId}` && !obj.imageUrl) {
+                                obj.imageUrl = res.url;
+                            }
+                        });
+                    }
+                })
+                .catch(() => {});
         } catch (_) {}
     }
 
+    function findBoardDef(board) {
+        const assets = (window.sandboxBootstrap && window.sandboxBootstrap.projectAssets && window.sandboxBootstrap.projectAssets.importedAssets) || {};
+        const bList = assets.boards || [];
+        return bList.find(
+            (b) =>
+                (board.assetId && b.assetId === board.assetId) ||
+                (board.templateId && b.templateId === board.templateId) ||
+                (board.name && b.name === board.name && b.canvasJson)
+        );
+    }
+
     /**
-     * Ensures a spawned Board has its complete artwork rendered.
+     * Synchronously returns the best available URL for a board, or triggers async render and calls onReady(url).
      */
-    function getOrRenderBoard(board, store) {
+    function resolveBoardImage(board, onReady) {
         if (board.imageUrl && !board.imageUrl.startsWith('tpl_')) {
-            return;
+            return board.imageUrl;
+        }
+        const def = findBoardDef(board);
+        const tplId = board.templateId || (def && def.templateId) || (board.assetId && board.assetId.startsWith('tpl_board_') ? Number(board.assetId.replace('tpl_board_', '')) : null);
+        if (!tplId) return null;
+
+        if (def && def.imageUrl && !def.imageUrl.startsWith('data:')) {
+            return def.imageUrl;
         }
 
-        const tplId = board.templateId || (board.assetId && board.assetId.startsWith('tpl_board_') ? Number(board.assetId.replace('tpl_board_', '')) : null);
-        if (!tplId) return;
-
-        let canvasJson = board.canvasJson;
-        if (!canvasJson && window.sandboxBootstrap && window.sandboxBootstrap.projectAssets) {
-            const bList = window.sandboxBootstrap.projectAssets.importedAssets.boards || [];
-            const match = bList.find((b) => b.templateId === tplId || b.assetId === `tpl_board_${tplId}`);
-            if (match) {
-                canvasJson = match.canvasJson;
-                if (!board.canvasWidth && match.canvasWidth) board.canvasWidth = match.canvasWidth;
-                if (!board.canvasHeight && match.canvasHeight) board.canvasHeight = match.canvasHeight;
-            }
+        const cacheKey = `tpl_${tplId}_base`;
+        if (renderedCache.has(cacheKey)) {
+            return renderedCache.get(cacheKey);
         }
 
-        if (!canvasJson) return;
+        const canvasJson = board.canvasJson || (def && def.canvasJson);
+        if (!canvasJson) return null;
 
-        const w = board.canvasWidth || board.width || 1200;
-        const h = board.canvasHeight || board.height || 800;
+        const nativeW = board.canvasWidth || (def && def.canvasWidth) || 1200;
+        const nativeH = board.canvasHeight || (def && def.canvasHeight) || 800;
 
-        renderTemplateAsync(tplId, canvasJson, null, w, h).then((dataUrl) => {
-            if (dataUrl && board.imageUrl !== dataUrl) {
-                board.imageUrl = dataUrl;
-                store.notify();
+        renderTemplateAsync(tplId, canvasJson, null, nativeW, nativeH, cacheKey).then((dataUrl) => {
+            if (dataUrl && typeof onReady === 'function') {
+                onReady(dataUrl);
             }
         });
+
+        return null;
     }
 
     /**
-     * Ensures a spawned Card has its complete artwork rendered.
+     * Synchronously returns the best available URL for a card, or triggers async render and calls onReady(url).
      */
-    function getOrRenderCard(card, store) {
+    function resolveCardImage(card, onReady) {
         if (card.frontImageUrl && !card.frontImageUrl.startsWith('tpl_')) {
-            return;
+            return card.frontImageUrl;
         }
 
-        const tplId = card.templateId;
-        if (!tplId) return;
+        const assets = (window.sandboxBootstrap && window.sandboxBootstrap.projectAssets && window.sandboxBootstrap.projectAssets.importedAssets) || {};
+        const batches = assets.cardBatches || [];
+        let matchedBatch = null;
+        let matchedCardDef = null;
 
-        let canvasJson = card.canvasJson;
-        if (!canvasJson && window.sandboxBootstrap && window.sandboxBootstrap.projectAssets) {
-            const batches = window.sandboxBootstrap.projectAssets.importedAssets.cardBatches || [];
-            const match = batches.find((b) => b.templateId === tplId || b.batchId === `cb_${tplId}`);
-            if (match) canvasJson = match.canvasJson;
+        for (let i = 0; i < batches.length; i++) {
+            const b = batches[i];
+            if (card.templateId && b.templateId === card.templateId) {
+                matchedBatch = b;
+            }
+            const cDef = (b.cards || []).find((c) => c.cardAssetId === card.cardAssetId);
+            if (cDef) {
+                matchedBatch = b;
+                matchedCardDef = cDef;
+                break;
+            }
         }
 
-        if (!canvasJson) return;
+        if (matchedCardDef && matchedCardDef.frontImageUrl) {
+            return matchedCardDef.frontImageUrl;
+        }
 
-        renderTemplateAsync(tplId, canvasJson, card.rowData || null, card.width || 140, card.height || 200).then((dataUrl) => {
-            if (dataUrl && card.frontImageUrl !== dataUrl) {
-                card.frontImageUrl = dataUrl;
-                store.notify();
+        const tplId = card.templateId || (matchedBatch && matchedBatch.templateId);
+        if (!tplId) return null;
+
+        const cacheKey = `card_${card.cardAssetId || tplId}`;
+        if (renderedCache.has(cacheKey)) {
+            return renderedCache.get(cacheKey);
+        }
+
+        const canvasJson = card.canvasJson || (matchedBatch && matchedBatch.canvasJson);
+        if (!canvasJson) return null;
+
+        const rowData = card.rowData || (matchedCardDef && matchedCardDef.rowData) || card.metadata || null;
+        const nativeW = (matchedBatch && matchedBatch.canvasWidth) || 744;
+        const nativeH = (matchedBatch && matchedBatch.canvasHeight) || 1039;
+
+        renderTemplateAsync(tplId, canvasJson, rowData, nativeW, nativeH, cacheKey).then((dataUrl) => {
+            if (dataUrl && typeof onReady === 'function') {
+                onReady(dataUrl);
             }
         });
+
+        return null;
     }
 
-    /**
-     * Pre-renders all project design templates in background on sandbox startup.
-     */
     function preloadProjectTemplates(bootstrap, store) {
+        window.sandboxActiveStore = store;
         if (!bootstrap || !bootstrap.projectAssets) return;
         const assets = bootstrap.projectAssets.importedAssets || {};
         const boards = assets.boards || [];
-        const decks = assets.cardBatches || [];
 
         boards.forEach((b) => {
             if (b.templateId && b.canvasJson && !b.imageUrl) {
-                renderTemplateAsync(b.templateId, b.canvasJson, null, b.canvasWidth || 1200, b.canvasHeight || 800).then((url) => {
+                renderTemplateAsync(b.templateId, b.canvasJson, null, b.canvasWidth || 1200, b.canvasHeight || 800, `tpl_${b.templateId}_base`).then((url) => {
                     if (url) {
-                        b.imageUrl = url;
-                        // Also update any board already placed on table
-                        const state = store.getState();
-                        Object.values(state.boardObjects || {}).forEach((obj) => {
-                            if (obj && obj.type === 'BOARD' && obj.templateId === b.templateId && !obj.imageUrl) {
-                                obj.imageUrl = url;
-                            }
-                        });
-                        store.notify();
-                    }
-                });
-            }
-        });
-
-        decks.forEach((d) => {
-            if (d.templateId && d.canvasJson) {
-                renderTemplateAsync(d.templateId, d.canvasJson, null, 140, 200).then((url) => {
-                    if (url) {
-                        d.previewImageUrl = url;
                         store.notify(true);
                     }
                 });
@@ -260,8 +352,8 @@
 
     window.SandboxTemplateRenderer = {
         renderTemplateAsync,
-        getOrRenderBoard,
-        getOrRenderCard,
+        resolveBoardImage,
+        resolveCardImage,
         preloadProjectTemplates,
         renderedCache
     };

@@ -28,12 +28,17 @@
             el.style.transform = `rotate(${board.rotation || 0}deg)`;
             el.style.backgroundColor = board.fill || '#111a2e';
 
-            if (!board.imageUrl && window.SandboxTemplateRenderer) {
-                window.SandboxTemplateRenderer.getOrRenderBoard(board, store);
-            }
+            const resolvedBoardUrl = window.SandboxTemplateRenderer
+                ? window.SandboxTemplateRenderer.resolveBoardImage(board, (url) => {
+                      el.style.backgroundImage = `url("${url}")`;
+                      el.style.backgroundSize = '100% 100%';
+                      el.style.backgroundPosition = 'center';
+                      el.style.backgroundRepeat = 'no-repeat';
+                  })
+                : board.imageUrl;
 
-            if (board.imageUrl) {
-                el.style.backgroundImage = `url("${escapeHtml(board.imageUrl)}")`;
+            if (resolvedBoardUrl) {
+                el.style.backgroundImage = `url("${escapeHtml(resolvedBoardUrl)}")`;
                 el.style.backgroundSize = '100% 100%';
                 el.style.backgroundPosition = 'center';
                 el.style.backgroundRepeat = 'no-repeat';

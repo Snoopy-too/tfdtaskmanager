@@ -56,15 +56,17 @@
 
             const tuckedCount = Array.isArray(card.tuckedChildren) ? card.tuckedChildren.length : 0;
 
-            if (!card.frontImageUrl && window.SandboxTemplateRenderer) {
-                window.SandboxTemplateRenderer.getOrRenderCard(card, store);
-            }
+            const resolvedFrontUrl = window.SandboxTemplateRenderer
+                ? window.SandboxTemplateRenderer.resolveCardImage(card, () => {
+                      if (window.sandboxActiveStore) window.sandboxActiveStore.notify(true);
+                  })
+                : card.frontImageUrl;
 
             if (showFront) {
-                if (card.frontImageUrl) {
+                if (resolvedFrontUrl) {
                     el.innerHTML = `
                         <div class="w-full h-full rounded-xl overflow-hidden relative shadow-md bg-slate-950">
-                            <img src="${escapeHtml(card.frontImageUrl)}" class="w-full h-full object-cover pointer-events-none select-none" alt="${escapeHtml(card.name || 'Card')}">
+                            <img src="${escapeHtml(resolvedFrontUrl)}" class="w-full h-full object-cover pointer-events-none select-none" alt="${escapeHtml(card.name || 'Card')}">
                             ${card.isTapped ? '<span class="absolute top-1 right-1 px-1 py-0.5 rounded bg-amber-500/90 text-slate-950 text-[8px] font-black">90°</span>' : ''}
                             ${isSomeonePeeking ? '<span class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/90 text-slate-950 text-[9px] font-extrabold" title="Player peeking">👁 Peek</span>' : ''}
                             ${tuckedCount > 0 ? `<span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-sky-500/90 text-slate-950 text-[9px] font-bold">+${tuckedCount} tucked</span>` : ''}

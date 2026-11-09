@@ -92,6 +92,19 @@ $assetUrlFor = static function ($a): string {
 $boards = [];
 $tokens = [];
 $cardBatches = [];
+$assetFilenameMap = [];
+
+foreach ($rawAssets as $a) {
+    $url = $assetUrlFor($a);
+    $origLower = strtolower($a->getOriginalFilename());
+    $baseLower = strtolower(pathinfo($a->getOriginalFilename(), PATHINFO_FILENAME));
+    $assetFilenameMap[$origLower] = $url;
+    $assetFilenameMap[$baseLower] = $url;
+    $rawTag = trim((string)($a->getTag() ?? ''), " \t\n\r\0\x0B[]");
+    if ($rawTag !== '') {
+        $assetFilenameMap[strtolower($rawTag)] = $url;
+    }
+}
 
 foreach ($rawTemplates as $tpl) {
     $compType = $tpl->getComponentTypeId();
@@ -120,6 +133,8 @@ foreach ($rawTemplates as $tpl) {
             'name' => $tpl->getName(),
             'imageUrl' => $thumbUrl,
             'canvasJson' => $tpl->getCanvasJson(),
+            'canvasWidth' => $tpl->getCanvasWidthPx(),
+            'canvasHeight' => $tpl->getCanvasHeightPx(),
             'width' => 56,
             'height' => 56,
         ];
@@ -133,12 +148,14 @@ foreach ($rawTemplates as $tpl) {
                     $rowArr = is_array($row) ? $row : [];
                     $cardName = (string)($rowArr['name'] ?? $rowArr['Name'] ?? $rowArr['title'] ?? $rowArr['Title'] ?? ($tpl->getName() . ' #' . ($idx + 1)));
                     $frontImg = (string)($rowArr['image'] ?? $rowArr['art'] ?? $rowArr['icon'] ?? '');
+                    if ($frontImg !== '' && isset($assetFilenameMap[strtolower(trim($frontImg, '[]'))])) {
+                        $frontImg = $assetFilenameMap[strtolower(trim($frontImg, '[]'))];
+                    }
                     $cards[] = [
                         'cardAssetId' => 'c_' . $tpl->getId() . '_' . ($idx + 1),
                         'templateId' => $tpl->getId(),
                         'name' => $cardName,
-                        'frontImageUrl' => $frontImg !== '' ? $frontImg : $thumbUrl,
-                        'canvasJson' => $tpl->getCanvasJson(),
+                        'frontImageUrl' => $frontImg !== '' ? $frontImg : null,
                         'rowData' => $rowArr,
                         'metadata' => array_slice($rowArr, 0, 8),
                     ];
@@ -152,7 +169,6 @@ foreach ($rawTemplates as $tpl) {
                     'templateId' => $tpl->getId(),
                     'name' => $tpl->getName() . ' #' . $k,
                     'frontImageUrl' => $thumbUrl,
-                    'canvasJson' => $tpl->getCanvasJson(),
                     'metadata' => ['template' => $tpl->getName(), 'copy' => $k],
                 ];
             }
@@ -163,6 +179,8 @@ foreach ($rawTemplates as $tpl) {
             'name' => $tpl->getName(),
             'backImageUrl' => null,
             'canvasJson' => $tpl->getCanvasJson(),
+            'canvasWidth' => $tpl->getCanvasWidthPx(),
+            'canvasHeight' => $tpl->getCanvasHeightPx(),
             'previewImageUrl' => $thumbUrl,
             'width' => 140,
             'height' => 200,
@@ -290,6 +308,7 @@ $importedAssetsPayload = [
         'boards' => $boards,
         'cardBatches' => $cardBatches,
         'tokens' => $tokens,
+        'assetMap' => $assetFilenameMap,
     ],
 ];
 

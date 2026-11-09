@@ -257,6 +257,7 @@
         if (!bootstrap) return;
 
         const store = window.SandboxStoreFactory.createStore(bootstrap);
+        window.sandboxActiveStore = store;
         const canvasCtrl = window.SandboxCanvasController.createCanvasController(store, bootstrap);
 
         const topBarEl = document.getElementById('sbx-top-bar');
