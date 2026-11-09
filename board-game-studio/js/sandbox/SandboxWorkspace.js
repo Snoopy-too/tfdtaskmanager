@@ -278,5 +278,9 @@
         store.subscribe(renderWorkspace);
         window.SandboxMultiplayer.init(store, bootstrap);
         renderWorkspace();
+
+        if (window.SandboxTemplateRenderer) {
+            window.SandboxTemplateRenderer.preloadProjectTemplates(bootstrap, store);
+        }
     });
 })();

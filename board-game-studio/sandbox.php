@@ -98,19 +98,28 @@ foreach ($rawTemplates as $tpl) {
     $w = max(80, (int)round($tpl->getCanvasWidthPx() / 4));
     $h = max(80, (int)round($tpl->getCanvasHeightPx() / 4));
 
+    $thumbFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . $tpl->getProjectId() . DIRECTORY_SEPARATOR . 'tpl_thumb_' . $tpl->getId() . '.jpg';
+    $thumbUrl = file_exists($thumbFile) ? ('../uploads/board-game-studio/' . $tpl->getProjectId() . '/tpl_thumb_' . $tpl->getId() . '.jpg') : null;
+
     if (in_array($compType, [3, 5, 6, 7, 8], true)) {
         $boards[] = [
             'assetId' => 'tpl_board_' . $tpl->getId(),
+            'templateId' => $tpl->getId(),
             'name' => $tpl->getName(),
-            'imageUrl' => null,
+            'imageUrl' => $thumbUrl,
+            'canvasJson' => $tpl->getCanvasJson(),
+            'canvasWidth' => $tpl->getCanvasWidthPx(),
+            'canvasHeight' => $tpl->getCanvasHeightPx(),
             'width' => min(1600, max(420, $w)),
             'height' => min(1200, max(320, $h)),
         ];
     } elseif ($compType === 4) {
         $tokens[] = [
             'assetId' => 'tpl_token_' . $tpl->getId(),
+            'templateId' => $tpl->getId(),
             'name' => $tpl->getName(),
-            'imageUrl' => null,
+            'imageUrl' => $thumbUrl,
+            'canvasJson' => $tpl->getCanvasJson(),
             'width' => 56,
             'height' => 56,
         ];
@@ -126,8 +135,11 @@ foreach ($rawTemplates as $tpl) {
                     $frontImg = (string)($rowArr['image'] ?? $rowArr['art'] ?? $rowArr['icon'] ?? '');
                     $cards[] = [
                         'cardAssetId' => 'c_' . $tpl->getId() . '_' . ($idx + 1),
+                        'templateId' => $tpl->getId(),
                         'name' => $cardName,
-                        'frontImageUrl' => $frontImg !== '' ? $frontImg : null,
+                        'frontImageUrl' => $frontImg !== '' ? $frontImg : $thumbUrl,
+                        'canvasJson' => $tpl->getCanvasJson(),
+                        'rowData' => $rowArr,
                         'metadata' => array_slice($rowArr, 0, 8),
                     ];
                 }
@@ -137,16 +149,21 @@ foreach ($rawTemplates as $tpl) {
             for ($k = 1; $k <= 5; $k++) {
                 $cards[] = [
                     'cardAssetId' => 'c_' . $tpl->getId() . '_' . $k,
+                    'templateId' => $tpl->getId(),
                     'name' => $tpl->getName() . ' #' . $k,
-                    'frontImageUrl' => null,
+                    'frontImageUrl' => $thumbUrl,
+                    'canvasJson' => $tpl->getCanvasJson(),
                     'metadata' => ['template' => $tpl->getName(), 'copy' => $k],
                 ];
             }
         }
         $cardBatches[] = [
             'batchId' => 'cb_' . $tpl->getId(),
+            'templateId' => $tpl->getId(),
             'name' => $tpl->getName(),
             'backImageUrl' => null,
+            'canvasJson' => $tpl->getCanvasJson(),
+            'previewImageUrl' => $thumbUrl,
             'width' => 140,
             'height' => 200,
             'cards' => $cards,
@@ -372,6 +389,8 @@ require_once __DIR__ . '/../templates/header.php';
 <script src="js/sandbox/snapEngine.js?v=<?php echo file_exists(__DIR__ . '/js/sandbox/snapEngine.js') ? filemtime(__DIR__ . '/js/sandbox/snapEngine.js') : '1'; ?>"></script>
 <script src="js/sandbox/tuckingEngine.js?v=<?php echo file_exists(__DIR__ . '/js/sandbox/tuckingEngine.js') ? filemtime(__DIR__ . '/js/sandbox/tuckingEngine.js') : '1'; ?>"></script>
 <script src="js/sandbox/sandboxStore.js?v=<?php echo file_exists(__DIR__ . '/js/sandbox/sandboxStore.js') ? filemtime(__DIR__ . '/js/sandbox/sandboxStore.js') : '1'; ?>"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="js/sandbox/TemplateRenderer.js?v=<?php echo file_exists(__DIR__ . '/js/sandbox/TemplateRenderer.js') ? filemtime(__DIR__ . '/js/sandbox/TemplateRenderer.js') : '1'; ?>"></script>
 <script src="js/sandbox/BoardLayer.js?v=<?php echo file_exists(__DIR__ . '/js/sandbox/BoardLayer.js') ? filemtime(__DIR__ . '/js/sandbox/BoardLayer.js') : '1'; ?>"></script>
 <script src="js/sandbox/CardComponent.js?v=<?php echo file_exists(__DIR__ . '/js/sandbox/CardComponent.js') ? filemtime(__DIR__ . '/js/sandbox/CardComponent.js') : '1'; ?>"></script>
 <script src="js/sandbox/DeckComponent.js?v=<?php echo file_exists(__DIR__ . '/js/sandbox/DeckComponent.js') ? filemtime(__DIR__ . '/js/sandbox/DeckComponent.js') : '1'; ?>"></script>

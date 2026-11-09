@@ -28,10 +28,15 @@
             el.style.transform = `rotate(${board.rotation || 0}deg)`;
             el.style.backgroundColor = board.fill || '#111a2e';
 
+            if (!board.imageUrl && window.SandboxTemplateRenderer) {
+                window.SandboxTemplateRenderer.getOrRenderBoard(board, store);
+            }
+
             if (board.imageUrl) {
                 el.style.backgroundImage = `url("${escapeHtml(board.imageUrl)}")`;
-                el.style.backgroundSize = 'cover';
+                el.style.backgroundSize = '100% 100%';
                 el.style.backgroundPosition = 'center';
+                el.style.backgroundRepeat = 'no-repeat';
             }
 
             // Optional Cartesian grid overlay

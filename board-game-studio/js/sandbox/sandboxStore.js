@@ -174,6 +174,8 @@
                     const cid = uid('inst_card');
                     state.boardObjects[cid] = {
                         id: cid, type: 'CARD', cardAssetId: c.cardAssetId || `c_${idx + 1}`,
+                        templateId: c.templateId || batch.templateId || null,
+                        canvasJson: c.canvasJson || batch.canvasJson || null, rowData: c.rowData || null,
                         name: c.name || `${batch.name} #${idx + 1}`,
                         frontImageUrl: c.frontImageUrl || null, backImageUrl: batch.backImageUrl || null,
                         metadata: c.metadata || {}, x: Math.round(x), y: Math.round(y),

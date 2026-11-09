@@ -119,7 +119,61 @@ try {
             }
 
             $templateService->saveCanvas($templateId, $canvasJson, $layers);
+            if (!empty($_POST['thumbnail']) && is_string($_POST['thumbnail'])) {
+                if (preg_match('/^data:image\/(jpeg|png|webp);base64,(.+)$/', $_POST['thumbnail'], $matches)) {
+                    $imgRaw = base64_decode($matches[2]);
+                    if ($imgRaw !== false && strlen($imgRaw) > 0) {
+                        $projDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . $template->getProjectId();
+                        if (!is_dir($projDir)) {
+                            @mkdir($projDir, 0755, true);
+                        }
+                        $targetThumb = $projDir . DIRECTORY_SEPARATOR . 'tpl_thumb_' . $templateId . '.jpg';
+                        @file_put_contents($targetThumb, $imgRaw);
+                    }
+                }
+            }
             echo json_encode(['success' => true]);
+            break;
+
+        case 'cache_template_thumbnail':
+            if ($method !== 'POST') {
+                throw new \InvalidArgumentException('Method not allowed.');
+            }
+            $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            $token = $_POST['csrf_token'] ?? $headerToken;
+            if (!SecurityHelper::verifyCsrfToken($token)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF verification failed.']);
+                exit;
+            }
+            $templateId = isset($_POST['template_id']) ? (int)$_POST['template_id'] : 0;
+            $template = $templateService->getTemplateById($templateId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Template not found.']);
+                exit;
+            }
+            $project = $projectService->getProjectById($template->getProjectId(), $currentUserId);
+            if (!$project) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Access denied.']);
+                exit;
+            }
+            $thumbData = $_POST['thumbnail'] ?? '';
+            if (is_string($thumbData) && preg_match('/^data:image\/(jpeg|png|webp);base64,(.+)$/', $thumbData, $matches)) {
+                $imgRaw = base64_decode($matches[2]);
+                if ($imgRaw !== false && strlen($imgRaw) > 0) {
+                    $projDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'board-game-studio' . DIRECTORY_SEPARATOR . $template->getProjectId();
+                    if (!is_dir($projDir)) {
+                        @mkdir($projDir, 0755, true);
+                    }
+                    $targetThumb = $projDir . DIRECTORY_SEPARATOR . 'tpl_thumb_' . $templateId . '.jpg';
+                    @file_put_contents($targetThumb, $imgRaw);
+                    echo json_encode(['success' => true, 'url' => '../uploads/board-game-studio/' . $template->getProjectId() . '/tpl_thumb_' . $templateId . '.jpg']);
+                    exit;
+                }
+            }
+            echo json_encode(['error' => 'Invalid image payload.']);
             break;
 
         case 'heartbeat_lock':

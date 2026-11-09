@@ -246,6 +246,15 @@
         formData.append('template_id', window.studioConfig.templateId.toString());
         formData.append('canvas_json', canvasJson);
         formData.append('layers', JSON.stringify(layers));
+        try {
+            if (canvas && typeof canvas.toDataURL === 'function') {
+                const maxDim = Math.max(canvas.getWidth(), canvas.getHeight());
+                const thumbScale = Math.min(1.0, 1200 / (maxDim || 1000));
+                formData.append('thumbnail', canvas.toDataURL({ format: 'jpeg', quality: 0.85, multiplier: thumbScale }));
+            }
+        } catch (e) {
+            console.warn('Could not generate save thumbnail:', e);
+        }
 
         return fetch('api.php?action=save_canvas', {
             method: 'POST',

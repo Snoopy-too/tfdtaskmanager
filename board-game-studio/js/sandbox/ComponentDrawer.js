@@ -255,7 +255,13 @@
             btn.type = 'button';
             btn.className = 'w-full text-left px-2.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 flex items-center justify-between transition';
             btn.innerHTML = `<span class="truncate font-semibold text-slate-200">${escapeHtml(b.name)}</span><span class="text-[10px] text-sky-400">+ Spawn</span>`;
-            const spec = { type: 'BOARD', assetId: b.assetId, name: b.name, imageUrl: b.imageUrl || null, width: b.width || 800, height: b.height || 600, x: -200, y: -120, isLocked: false };
+            const spec = {
+                type: 'BOARD', assetId: b.assetId, templateId: b.templateId || null,
+                canvasJson: b.canvasJson || null, canvasWidth: b.canvasWidth || b.width || 800,
+                canvasHeight: b.canvasHeight || b.height || 600, name: b.name,
+                imageUrl: b.imageUrl || null, width: b.width || 800, height: b.height || 600,
+                x: -200, y: -120, isLocked: false
+            };
             btn.onclick = () => store.spawnObject(spec);
             boardsBox.appendChild(btn);
         });

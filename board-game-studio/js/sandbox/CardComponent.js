@@ -56,22 +56,34 @@
 
             const tuckedCount = Array.isArray(card.tuckedChildren) ? card.tuckedChildren.length : 0;
 
+            if (!card.frontImageUrl && window.SandboxTemplateRenderer) {
+                window.SandboxTemplateRenderer.getOrRenderCard(card, store);
+            }
+
             if (showFront) {
-                el.innerHTML = `
-                    <div class="w-full h-full rounded-xl bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 p-2 flex flex-col justify-between overflow-hidden relative">
-                        <div class="flex items-start justify-between gap-1">
-                            <span class="text-[11px] font-extrabold text-white leading-tight line-clamp-2">${escapeHtml(card.name || 'Card')}</span>
-                            ${card.isTapped ? '<span class="px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[8px] font-bold">90°</span>' : ''}
+                if (card.frontImageUrl) {
+                    el.innerHTML = `
+                        <div class="w-full h-full rounded-xl overflow-hidden relative shadow-md bg-slate-950">
+                            <img src="${escapeHtml(card.frontImageUrl)}" class="w-full h-full object-cover pointer-events-none select-none" alt="${escapeHtml(card.name || 'Card')}">
+                            ${card.isTapped ? '<span class="absolute top-1 right-1 px-1 py-0.5 rounded bg-amber-500/90 text-slate-950 text-[8px] font-black">90°</span>' : ''}
+                            ${isSomeonePeeking ? '<span class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/90 text-slate-950 text-[9px] font-extrabold" title="Player peeking">👁 Peek</span>' : ''}
+                            ${tuckedCount > 0 ? `<span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-sky-500/90 text-slate-950 text-[9px] font-bold">+${tuckedCount} tucked</span>` : ''}
                         </div>
-                        ${card.frontImageUrl
-                            ? `<div class="my-1 flex-1 rounded-lg bg-slate-950/60 bg-center bg-contain bg-no-repeat" style="background-image:url('${escapeHtml(card.frontImageUrl)}')"></div>`
-                            : `<div class="my-1 flex-1 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-center text-[10px] text-slate-400 px-2 text-center">${escapeHtml(card.name || 'Component')}</div>`
-                        }
-                        <div class="flex flex-wrap gap-1">${metaPills}</div>
-                        ${isSomeonePeeking ? '<span class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/90 text-slate-950 text-[9px] font-extrabold" title="Player peeking">👁 Peek</span>' : ''}
-                        ${tuckedCount > 0 ? `<span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 text-[9px] font-bold">+${tuckedCount} tucked</span>` : ''}
-                    </div>
-                `;
+                    `;
+                } else {
+                    el.innerHTML = `
+                        <div class="w-full h-full rounded-xl bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 p-2 flex flex-col justify-between overflow-hidden relative">
+                            <div class="flex items-start justify-between gap-1">
+                                <span class="text-[11px] font-extrabold text-white leading-tight line-clamp-2">${escapeHtml(card.name || 'Card')}</span>
+                                ${card.isTapped ? '<span class="px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[8px] font-bold">90°</span>' : ''}
+                            </div>
+                            <div class="my-1 flex-1 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-center text-[10px] text-slate-400 px-2 text-center">${escapeHtml(card.name || 'Component')}</div>
+                            <div class="flex flex-wrap gap-1">${metaPills}</div>
+                            ${isSomeonePeeking ? '<span class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/90 text-slate-950 text-[9px] font-extrabold" title="Player peeking">👁 Peek</span>' : ''}
+                            ${tuckedCount > 0 ? `<span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 text-[9px] font-bold">+${tuckedCount} tucked</span>` : ''}
+                        </div>
+                    `;
+                }
             } else {
                 el.innerHTML = `
                     <div class="w-full h-full rounded-xl bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 p-2 flex flex-col items-center justify-center relative border border-indigo-500/30">
