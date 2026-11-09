@@ -312,7 +312,8 @@ final class SandboxStateSchema
         if ($v === '') {
             return null;
         }
-        if (mb_strlen($v) > 500 || preg_match('/^\s*(javascript|vbscript|data:text\/html)/i', $v)) {
+        $len = function_exists('mb_strlen') ? mb_strlen($v) : strlen($v);
+        if ($len > 500 || preg_match('/^\s*(javascript|vbscript|data:text\/html)/i', $v)) {
             throw new InvalidSandboxStateException("{$path} contains an unsafe URL.");
         }
         return $v;
@@ -329,11 +330,11 @@ final class SandboxStateSchema
             if (++$count > 30 || !is_string($k)) {
                 break;
             }
-            $cleanKey = mb_substr(trim($k), 0, 50);
+            $cleanKey = function_exists('mb_substr') ? mb_substr(trim($k), 0, 50) : substr(trim($k), 0, 50);
             if (is_int($val) || is_float($val) || is_bool($val)) {
                 $out[$cleanKey] = $val;
             } elseif (is_string($val)) {
-                $out[$cleanKey] = mb_substr(trim($val), 0, 200);
+                $out[$cleanKey] = function_exists('mb_substr') ? mb_substr(trim($val), 0, 200) : substr(trim($val), 0, 200);
             }
         }
         return $out;
@@ -442,7 +443,8 @@ final class SandboxStateSchema
             throw new InvalidSandboxStateException("{$path} must be text.");
         }
         $v = trim((string)preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $v));
-        if (mb_strlen($v) > $maxLen) {
+        $len = function_exists('mb_strlen') ? mb_strlen($v) : strlen($v);
+        if ($len > $maxLen) {
             throw new InvalidSandboxStateException("{$path} exceeds {$maxLen} characters.");
         }
         if (!$allowEmpty && $v === '') {

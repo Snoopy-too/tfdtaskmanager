@@ -44,7 +44,8 @@ final class BgSandboxService
         if ($name === '') {
             throw new ValidationException('Sandbox name cannot be empty.');
         }
-        if (mb_strlen($name) > BgSandbox::MAX_NAME_LENGTH) {
+        $nameLen = function_exists('mb_strlen') ? mb_strlen($name) : strlen($name);
+        if ($nameLen > BgSandbox::MAX_NAME_LENGTH) {
             throw new ValidationException('Sandbox name must be ' . BgSandbox::MAX_NAME_LENGTH . ' characters or fewer.');
         }
         if ($playerCount < BgSandbox::MIN_PLAYERS || $playerCount > BgSandbox::MAX_PLAYERS) {
@@ -302,9 +303,10 @@ final class BgSandboxService
         }
 
         if (isset($payload['cursor']) && is_array($payload['cursor'])) {
+            $cName = $userName !== '' ? $userName : 'Tester';
             $presence['cursors'][(string)$userId] = [
                 'userId' => $userId,
-                'name' => mb_substr($userName !== '' ? $userName : 'Tester', 0, 40),
+                'name' => function_exists('mb_substr') ? mb_substr($cName, 0, 40) : substr($cName, 0, 40),
                 'color' => (string)($payload['cursor']['color'] ?? '#38BDF8'),
                 'x' => round((float)($payload['cursor']['x'] ?? 0), 1),
                 'y' => round((float)($payload['cursor']['y'] ?? 0), 1),
@@ -313,10 +315,11 @@ final class BgSandboxService
         }
 
         if (isset($payload['ping']) && is_array($payload['ping'])) {
+            $pName = $userName !== '' ? $userName : 'Tester';
             $presence['pings'][] = [
                 'id' => 'ping_' . bin2hex(random_bytes(3)),
                 'userId' => $userId,
-                'name' => mb_substr($userName !== '' ? $userName : 'Tester', 0, 40),
+                'name' => function_exists('mb_substr') ? mb_substr($pName, 0, 40) : substr($pName, 0, 40),
                 'color' => (string)($payload['ping']['color'] ?? '#F43F5E'),
                 'x' => round((float)($payload['ping']['x'] ?? 0), 1),
                 'y' => round((float)($payload['ping']['y'] ?? 0), 1),
