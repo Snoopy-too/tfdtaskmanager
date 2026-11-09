@@ -99,14 +99,18 @@
             }
         }
 
+        let lastPersistedJson = null;
+
         async function persistToServer() {
             try {
                 const payload = window.SandboxSchema.serializeForSave(state);
+                const jsonStr = JSON.stringify(payload);
+                lastPersistedJson = jsonStr;
                 const fd = new FormData();
                 fd.append('action', 'save_sandbox_state');
                 fd.append('sandbox_id', String(bootstrap.sandboxId));
                 fd.append('csrf_token', bootstrap.csrfToken);
-                fd.append('state', JSON.stringify(payload));
+                fd.append('state', jsonStr);
                 const res = await fetch('api.php', { method: 'POST', body: fd });
                 const data = await res.json();
                 if (data && data.success) {
@@ -122,6 +126,32 @@
             }
             listeners.forEach((fn) => fn(state, ui));
         }
+
+        function flushPendingSave() {
+            if (saveTimer) {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+            }
+            try {
+                const payload = window.SandboxSchema.serializeForSave(state);
+                const jsonStr = JSON.stringify(payload);
+                if (jsonStr === lastPersistedJson) return;
+                lastPersistedJson = jsonStr;
+                const fd = new FormData();
+                fd.append('action', 'save_sandbox_state');
+                fd.append('sandbox_id', String(bootstrap.sandboxId));
+                fd.append('csrf_token', bootstrap.csrfToken);
+                fd.append('state', jsonStr);
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('api.php', fd);
+                } else {
+                    fetch('api.php', { method: 'POST', body: fd, keepalive: true }).catch(() => {});
+                }
+            } catch (_) {}
+        }
+
+        window.addEventListener('pagehide', flushPendingSave);
+        window.addEventListener('beforeunload', flushPendingSave);
 
         function replenishMarketRivers() {
             (state.zones || []).forEach((zone) => {

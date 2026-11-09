@@ -39,7 +39,7 @@
         function fitCameraToObjects() {
             const state = store.getState();
             const objs = Object.values(state.boardObjects || {}).filter(
-                (o) => o && o.ownerSeat === undefined || o.ownerSeat === null
+                (o) => o && (o.ownerSeat === undefined || o.ownerSeat === null)
             );
             const inDeckIds = new Set();
             objs.forEach((o) => {
@@ -67,11 +67,11 @@
                 if (y + h > maxY) maxY = y + h;
             });
             const rect = viewportEl.getBoundingClientRect();
-            const vw = Math.max(400, rect.width || 900);
-            const vh = Math.max(300, rect.height || 600);
+            const vw = rect.width > 120 ? rect.width : Math.max(520, (window.innerWidth || 1280) - 620);
+            const vh = rect.height > 120 ? rect.height : Math.max(420, (window.innerHeight || 800) - 240);
             const bw = Math.max(200, maxX - minX);
             const bh = Math.max(200, maxY - minY);
-            const scale = Math.min(1.1, Math.max(0.3, Math.min((vw - 120) / bw, (vh - 120) / bh)));
+            const scale = Math.min(1.05, Math.max(0.32, Math.min((vw - 120) / bw, (vh - 120) / bh)));
             cam.scale = scale;
             cam.x = Math.round(vw / 2 - ((minX + maxX) / 2) * scale);
             cam.y = Math.round(vh / 2 - ((minY + maxY) / 2) * scale);
@@ -570,6 +570,8 @@
         }
 
         fitCameraToObjects();
+        window.addEventListener('load', () => setTimeout(fitCameraToObjects, 120));
+        setTimeout(fitCameraToObjects, 250);
         return { renderAll, screenToWorld, fitCameraToObjects };
     }
 

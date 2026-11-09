@@ -13,6 +13,15 @@
         const ui = store.getUI();
         const ts = state.turnState || { activeSeat: 1, roundNumber: 1, currentPhase: 'Action Phase' };
         const activeSeatObj = state.seats.find((s) => s.seatIndex === ts.activeSeat) || state.seats[0];
+        const inDeckIds = new Set();
+        Object.values(state.boardObjects || {}).forEach((o) => {
+            if (o && o.type === 'DECK' && Array.isArray(o.cardIds)) {
+                o.cardIds.forEach((cid) => inDeckIds.add(cid));
+            }
+        });
+        const visibleTableCount = Object.values(state.boardObjects || {}).filter(
+            (o) => o && (o.ownerSeat === undefined || o.ownerSeat === null) && !(o.type === 'CARD' && inDeckIds.has(o.id))
+        ).length;
 
         barEl.innerHTML = `
             <div class="flex items-center gap-2 min-w-0">
@@ -31,7 +40,7 @@
                     </button>
                 </div>
 
-                <span class="text-[11px] ${String(ui.saveStatus || '').startsWith('Save error') ? 'text-rose-400 border-rose-500/40 bg-rose-500/10 font-bold' : 'text-slate-400 bg-slate-950/90 border-slate-800'} border px-2 py-0.5 rounded-full hidden lg:inline">${escapeHtml(ui.saveStatus)}</span>
+                <span class="text-[11px] ${String(ui.saveStatus || '').startsWith('Save error') ? 'text-rose-400 border-rose-500/40 bg-rose-500/10 font-bold' : 'text-slate-400 bg-slate-950/90 border-slate-800'} border px-2 py-0.5 rounded-full hidden lg:inline">${escapeHtml(ui.saveStatus)} · ${visibleTableCount} on table</span>
             </div>
 
             <!-- Turn & Phase Tracker -->
