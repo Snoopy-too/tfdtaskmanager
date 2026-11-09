@@ -39,19 +39,25 @@ final class SandboxStateSchema
     ];
 
     private const TYPE_FIELDS = [
-        'BOARD' => ['assetId' => 'refOrNull', 'snapGrid' => 'snapGrid', 'snapPoints' => 'snapPoints'],
+        'BOARD' => [
+            'assetId' => 'refOrNull', 'templateId' => 'intOrNull',
+            'canvasWidth' => 'size', 'canvasHeight' => 'size',
+            'snapGrid' => 'snapGrid', 'snapPoints' => 'snapPoints',
+        ],
         'CARD' => [
-            'cardAssetId' => 'refOrNull', 'frontImageUrl' => 'urlOrNull', 'backImageUrl' => 'urlOrNull',
+            'cardAssetId' => 'refOrNull', 'templateId' => 'intOrNull',
+            'frontImageUrl' => 'urlOrNull', 'backImageUrl' => 'urlOrNull',
             'isTapped' => 'bool', 'faceUp' => 'bool', 'ownerSeat' => 'seatOrNull',
             'parentId' => 'idOrNull', 'tuckedChildren' => 'tuckedChildren',
-            'peekingUserIds' => 'intList', 'metadata' => 'metadataMap',
+            'peekingUserIds' => 'intList', 'metadata' => 'metadataMap', 'rowData' => 'metadataMap',
         ],
         'DECK' => [
-            'backAssetId' => 'refOrNull', 'backImageUrl' => 'urlOrNull', 'faceUp' => 'bool', 'cardIds' => 'idList',
-            'autoShuffleOnReset' => 'bool', 'linkedDiscardId' => 'idOrNull',
+            'backAssetId' => 'refOrNull', 'backImageUrl' => 'urlOrNull', 'templateId' => 'intOrNull',
+            'faceUp' => 'bool', 'cardIds' => 'idList',
+            'autoShuffleOnReset' => 'bool', 'linkedDiscardId' => 'idOrNull', 'parentSourceDeckId' => 'idOrNull',
         ],
-        'TOKEN' => ['assetId' => 'refOrNull', 'color' => 'colorOrNull'],
-        'SPAWNER' => ['assetId' => 'refOrNull', 'infinite' => 'bool', 'color' => 'colorOrNull'],
+        'TOKEN' => ['assetId' => 'refOrNull', 'templateId' => 'intOrNull', 'color' => 'colorOrNull'],
+        'SPAWNER' => ['assetId' => 'refOrNull', 'templateId' => 'intOrNull', 'infinite' => 'bool', 'color' => 'colorOrNull'],
         'DIE' => ['faces' => 'dieFaces', 'value' => 'dieValue', 'customFaces' => 'faceLabels', 'color' => 'colorOrNull'],
     ];
 

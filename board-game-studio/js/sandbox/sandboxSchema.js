@@ -57,6 +57,14 @@
 
     function serializeForSave(state) {
         const copy = cloneDeep(state);
+        const boardObjects = {};
+        Object.entries(copy.boardObjects || {}).forEach(([id, obj]) => {
+            if (!obj || typeof obj !== 'object') return;
+            const clean = Object.assign({}, obj);
+            // Strip heavy template JSON before network transport; TemplateRenderer resolves it from projectAssets
+            delete clean.canvasJson;
+            boardObjects[id] = clean;
+        });
         return {
             mode: copy.mode === 'PLAY' ? 'PLAY' : 'SETUP',
             turnState: copy.turnState || {
@@ -66,7 +74,7 @@
                 phases: ['Draw', 'Action Phase', 'Cleanup']
             },
             seats: Array.isArray(copy.seats) ? copy.seats : [],
-            boardObjects: copy.boardObjects || {},
+            boardObjects,
             zones: Array.isArray(copy.zones) ? copy.zones : [],
             notes: Array.isArray(copy.notes) ? copy.notes : [],
             scenarios: Array.isArray(copy.scenarios) ? copy.scenarios.slice(0, 20) : [],

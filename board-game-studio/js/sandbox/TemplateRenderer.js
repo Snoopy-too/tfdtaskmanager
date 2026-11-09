@@ -292,9 +292,12 @@
         let matchedBatch = null;
         let matchedCardDef = null;
 
+        const tplPrefixMatch = typeof card.cardAssetId === 'string' ? card.cardAssetId.match(/^c_(\d+)_\d+$/) : null;
+        const inferredTplId = tplPrefixMatch ? Number(tplPrefixMatch[1]) : null;
+
         for (let i = 0; i < batches.length; i++) {
             const b = batches[i];
-            if (card.templateId && b.templateId === card.templateId) {
+            if ((card.templateId && b.templateId === card.templateId) || (inferredTplId && b.templateId === inferredTplId)) {
                 matchedBatch = b;
             }
             const cDef = (b.cards || []).find((c) => c.cardAssetId === card.cardAssetId);

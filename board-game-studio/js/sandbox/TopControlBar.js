@@ -31,7 +31,7 @@
                     </button>
                 </div>
 
-                <span class="text-[11px] text-slate-400 bg-slate-950/90 border border-slate-800 px-2 py-0.5 rounded-full hidden lg:inline">${escapeHtml(ui.saveStatus)}</span>
+                <span class="text-[11px] ${String(ui.saveStatus || '').startsWith('Save error') ? 'text-rose-400 border-rose-500/40 bg-rose-500/10 font-bold' : 'text-slate-400 bg-slate-950/90 border-slate-800'} border px-2 py-0.5 rounded-full hidden lg:inline">${escapeHtml(ui.saveStatus)}</span>
             </div>
 
             <!-- Turn & Phase Tracker -->

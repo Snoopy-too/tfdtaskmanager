@@ -36,6 +36,48 @@
             return { x: (clientX - rect.left - cam.x) / cam.scale, y: (clientY - rect.top - cam.y) / cam.scale };
         }
 
+        function fitCameraToObjects() {
+            const state = store.getState();
+            const objs = Object.values(state.boardObjects || {}).filter(
+                (o) => o && o.ownerSeat === undefined || o.ownerSeat === null
+            );
+            const inDeckIds = new Set();
+            objs.forEach((o) => {
+                if (o.type === 'DECK' && Array.isArray(o.cardIds)) {
+                    o.cardIds.forEach((cid) => inDeckIds.add(cid));
+                }
+            });
+            const visible = objs.filter((o) => !(o.type === 'CARD' && inDeckIds.has(o.id)));
+            if (visible.length === 0) {
+                cam.x = 420;
+                cam.y = 260;
+                cam.scale = 0.85;
+                applyCamera();
+                return;
+            }
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            visible.forEach((o) => {
+                const x = Number(o.x) || 0;
+                const y = Number(o.y) || 0;
+                const w = Number(o.width) || 140;
+                const h = Number(o.height) || 200;
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x + w > maxX) maxX = x + w;
+                if (y + h > maxY) maxY = y + h;
+            });
+            const rect = viewportEl.getBoundingClientRect();
+            const vw = Math.max(400, rect.width || 900);
+            const vh = Math.max(300, rect.height || 600);
+            const bw = Math.max(200, maxX - minX);
+            const bh = Math.max(200, maxY - minY);
+            const scale = Math.min(1.1, Math.max(0.3, Math.min((vw - 120) / bw, (vh - 120) / bh)));
+            cam.scale = scale;
+            cam.x = Math.round(vw / 2 - ((minX + maxX) / 2) * scale);
+            cam.y = Math.round(vh / 2 - ((minY + maxY) / 2) * scale);
+            applyCamera();
+        }
+
         function renderCanvasHud() {
             const ui = store.getUI();
             const pct = Math.round(cam.scale * 100);
@@ -60,7 +102,7 @@
             `;
             hudEl.querySelector('#sbx-zoom-out').onclick = () => zoomBy(0.85);
             hudEl.querySelector('#sbx-zoom-in').onclick = () => zoomBy(1.15);
-            hudEl.querySelector('#sbx-zoom-reset').onclick = () => { cam.x = 420; cam.y = 260; cam.scale = 0.85; applyCamera(); };
+            hudEl.querySelector('#sbx-zoom-reset').onclick = () => fitCameraToObjects();
         }
 
         function zoomBy(factor, clientX, clientY) {
@@ -527,8 +569,8 @@
             renderCanvasHud();
         }
 
-        applyCamera();
-        return { renderAll, screenToWorld };
+        fitCameraToObjects();
+        return { renderAll, screenToWorld, fitCameraToObjects };
     }
 
     window.SandboxCanvasController = { createCanvasController };

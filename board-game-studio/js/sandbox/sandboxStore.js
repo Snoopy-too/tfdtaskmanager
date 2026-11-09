@@ -109,9 +109,17 @@
                 fd.append('state', JSON.stringify(payload));
                 const res = await fetch('api.php', { method: 'POST', body: fd });
                 const data = await res.json();
-                ui.saveStatus = data && data.success ? 'All changes saved' : 'Offline (local)';
+                if (data && data.success) {
+                    ui.saveStatus = 'All changes saved';
+                } else {
+                    console.error('[SandboxStore] Save error:', data && data.error ? data.error : data);
+                    ui.saveStatus = (data && data.error) ? `Save error: ${data.error}` : 'Save error';
+                }
                 if (ui.isMultiplayerActive && window.SandboxMultiplayer) window.SandboxMultiplayer.broadcastFullState(payload);
-            } catch (_) { ui.saveStatus = 'Save error'; }
+            } catch (err) {
+                console.error('[SandboxStore] Network/parse error during save:', err);
+                ui.saveStatus = 'Save error';
+            }
             listeners.forEach((fn) => fn(state, ui));
         }
 
