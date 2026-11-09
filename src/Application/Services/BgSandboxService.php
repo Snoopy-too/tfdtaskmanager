@@ -74,7 +74,7 @@ final class BgSandboxService
         if (strlen($rawJson) > SandboxStateSchema::MAX_STATE_BYTES) {
             throw new ValidationException('Sandbox state is too large to save.');
         }
-        if (!json_validate($rawJson)) {
+        if (!SandboxStateSchema::isValidJson($rawJson)) {
             throw new ValidationException('Sandbox state is not valid JSON.');
         }
         $decoded = json_decode($rawJson, true, 64, JSON_THROW_ON_ERROR);
@@ -103,7 +103,7 @@ final class BgSandboxService
         $this->assertNotLockedByOther($sandbox, $userId);
 
         if ($rawJson !== null && trim($rawJson) !== '') {
-            if (strlen($rawJson) > SandboxStateSchema::MAX_STATE_BYTES || !json_validate($rawJson)) {
+            if (strlen($rawJson) > SandboxStateSchema::MAX_STATE_BYTES || !SandboxStateSchema::isValidJson($rawJson)) {
                 throw new ValidationException('Invalid starting snapshot JSON.');
             }
             $decoded = json_decode($rawJson, true, 64, JSON_THROW_ON_ERROR);
@@ -289,7 +289,7 @@ final class BgSandboxService
                 $roomState['boardObjects'][$objId]['lockedByUserId'] = null;
                 $bumpVersion = true;
             }
-        } elseif ($subAction === 'COMMIT_STATE' && isset($payload['state']) && is_string($payload['state']) && json_validate($payload['state'])) {
+        } elseif ($subAction === 'COMMIT_STATE' && isset($payload['state']) && is_string($payload['state']) && SandboxStateSchema::isValidJson($payload['state'])) {
             $decoded = json_decode($payload['state'], true);
             if (is_array($decoded)) {
                 try {

@@ -11,45 +11,81 @@ namespace App\Domain\Entities;
  */
 final class BgSandbox
 {
-    public const int MIN_PLAYERS = 1;
-    public const int MAX_PLAYERS = 6;
-    public const int MAX_NAME_LENGTH = 150;
-    public const int LOCK_TTL_SECONDS = 60;
+    public const MIN_PLAYERS = 1;
+    public const MAX_PLAYERS = 6;
+    public const MAX_NAME_LENGTH = 150;
+    public const LOCK_TTL_SECONDS = 60;
 
     /**
      * @param array<string,mixed>      $tableState
      * @param array<string,mixed>|null $startingSnapshot
      */
     public function __construct(
-        public private(set) ?int $id,
-        public private(set) int $projectId,
-        public private(set) string $name,
-        public private(set) int $defaultPlayerCount,
-        public private(set) array $tableState,
-        public private(set) ?array $startingSnapshot,
-        public private(set) int $createdBy,
-        public private(set) string $createdAt = '',
-        public private(set) string $updatedAt = '',
-        public private(set) ?int $lockedByUserId = null,
-        public private(set) ?string $lockedAt = null,
+        private ?int $id,
+        private int $projectId,
+        private string $name,
+        private int $defaultPlayerCount,
+        private array $tableState,
+        private ?array $startingSnapshot,
+        private int $createdBy,
+        private string $createdAt = '',
+        private string $updatedAt = '',
+        private ?int $lockedByUserId = null,
+        private ?string $lockedAt = null
     ) {
     }
+
+    public function __get(string $property): mixed
+    {
+        return match ($property) {
+            'id' => $this->id,
+            'projectId' => $this->projectId,
+            'name' => $this->name,
+            'defaultPlayerCount' => $this->defaultPlayerCount,
+            'tableState' => $this->tableState,
+            'startingSnapshot' => $this->startingSnapshot,
+            'createdBy' => $this->createdBy,
+            'createdAt' => $this->createdAt,
+            'updatedAt' => $this->updatedAt,
+            'lockedByUserId' => $this->lockedByUserId,
+            'lockedAt' => $this->lockedAt,
+            default => null,
+        };
+    }
+
+    public function getId(): ?int { return $this->id; }
+    public function getProjectId(): int { return $this->projectId; }
+    public function getName(): string { return $this->name; }
+    public function getDefaultPlayerCount(): int { return $this->defaultPlayerCount; }
+    public function getTableState(): array { return $this->tableState; }
+    public function getStartingSnapshot(): ?array { return $this->startingSnapshot; }
+    public function getCreatedBy(): int { return $this->createdBy; }
+    public function getCreatedAt(): string { return $this->createdAt; }
+    public function getUpdatedAt(): string { return $this->updatedAt; }
+    public function getLockedByUserId(): ?int { return $this->lockedByUserId; }
+    public function getLockedAt(): ?string { return $this->lockedAt; }
 
     /** @param array<string,mixed> $tableState */
     public function withTableState(array $tableState): self
     {
-        return clone($this, ['tableState' => $tableState]);
+        $clone = clone $this;
+        $clone->tableState = $tableState;
+        return $clone;
     }
 
     /** @param array<string,mixed>|null $startingSnapshot */
     public function withStartingSnapshot(?array $startingSnapshot): self
     {
-        return clone($this, ['startingSnapshot' => $startingSnapshot]);
+        $clone = clone $this;
+        $clone->startingSnapshot = $startingSnapshot;
+        return $clone;
     }
 
     public function withId(int $id): self
     {
-        return clone($this, ['id' => $id]);
+        $clone = clone $this;
+        $clone->id = $id;
+        return $clone;
     }
 
     /**

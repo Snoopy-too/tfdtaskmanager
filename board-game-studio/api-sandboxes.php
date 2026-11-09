@@ -6,6 +6,7 @@ use App\Application\Exceptions\ValidationException;
 use App\Application\Services\BgSandboxService;
 use App\Application\Services\ProjectService;
 use App\Domain\Entities\BgSandbox;
+use App\Domain\Sandbox\SandboxStateSchema;
 use App\Infrastructure\Security\SecurityHelper;
 
 /**
@@ -97,7 +98,7 @@ function handleSandboxApiAction(string $action, string $method, BgSandboxService
 
             case 'sync_sandbox_room':
                 $rawPayload = $_POST['payload'] ?? '{}';
-                $payload = is_string($rawPayload) && json_validate($rawPayload)
+                $payload = is_string($rawPayload) && SandboxStateSchema::isValidJson($rawPayload)
                     ? (json_decode($rawPayload, true) ?: [])
                     : [];
                 $sync = $sandboxService->syncLiveRoom($sandbox, $currentUserId, $currentUserName, $payload);

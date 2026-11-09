@@ -14,31 +14,31 @@ namespace App\Domain\Sandbox;
  */
 final class SandboxStateSchema
 {
-    public const int MAX_STATE_BYTES = 2_000_000;
-    public const int MAX_OBJECTS = 5000;
-    public const array MODES = ['SETUP', 'PLAY'];
-    public const array SEAT_COLORS = ['#E53935', '#1E88E5', '#43A047', '#FDD835', '#8E24AA', '#FB8C00'];
+    public const MAX_STATE_BYTES = 2000000;
+    public const MAX_OBJECTS = 5000;
+    public const MODES = ['SETUP', 'PLAY'];
+    public const SEAT_COLORS = ['#E53935', '#1E88E5', '#43A047', '#FDD835', '#8E24AA', '#FB8C00'];
 
-    private const int MAX_SEATS = 6;
-    private const int MAX_ZONES = 200;
-    private const int MAX_NOTES = 500;
-    private const int MAX_LIST = 1000;
-    private const int MAX_RESOURCES = 24;
-    private const float COORD_LIMIT = 1_000_000.0;
-    private const string ID_PATTERN = '/^[A-Za-z][A-Za-z0-9_\-]{0,63}$/';
-    private const string REF_PATTERN = '/^[A-Za-z][A-Za-z0-9_\-:.]{0,95}$/';
-    private const string RESOURCE_KEY_PATTERN = '/^\p{L}[\p{L}\p{N} _\-]{0,39}$/u';
-    private const string COLOR_PATTERN = '/^#[0-9A-Fa-f]{6}$/';
-    private const array ZONE_TYPES = ['MARKET_RIVER', 'DISCARD', 'SNAP_ZONE'];
-    private const array DEFAULT_PHASES = ['Draw', 'Action Phase', 'Cleanup'];
+    private const MAX_SEATS = 6;
+    private const MAX_ZONES = 200;
+    private const MAX_NOTES = 500;
+    private const MAX_LIST = 1000;
+    private const MAX_RESOURCES = 24;
+    private const COORD_LIMIT = 1000000.0;
+    private const ID_PATTERN = '/^[A-Za-z][A-Za-z0-9_\-]{0,63}$/';
+    private const REF_PATTERN = '/^[A-Za-z][A-Za-z0-9_\-:.]{0,95}$/';
+    private const RESOURCE_KEY_PATTERN = '/^\p{L}[\p{L}\p{N} _\-]{0,39}$/u';
+    private const COLOR_PATTERN = '/^#[0-9A-Fa-f]{6}$/';
+    private const ZONE_TYPES = ['MARKET_RIVER', 'DISCARD', 'SNAP_ZONE'];
+    private const DEFAULT_PHASES = ['Draw', 'Action Phase', 'Cleanup'];
 
-    private const array COMMON_FIELDS = [
+    private const COMMON_FIELDS = [
         'x' => 'coord', 'y' => 'coord', 'rotation' => 'angle', 'isLocked' => 'bool',
         'width' => 'size', 'height' => 'size', 'name' => 'label', 'label' => 'label', 'fill' => 'colorOrNull',
         'imageUrl' => 'urlOrNull', 'lockedByUserId' => 'intOrNull',
     ];
 
-    private const array TYPE_FIELDS = [
+    private const TYPE_FIELDS = [
         'BOARD' => ['assetId' => 'refOrNull', 'snapGrid' => 'snapGrid', 'snapPoints' => 'snapPoints'],
         'CARD' => [
             'cardAssetId' => 'refOrNull', 'frontImageUrl' => 'urlOrNull', 'backImageUrl' => 'urlOrNull',
@@ -55,29 +55,28 @@ final class SandboxStateSchema
         'DIE' => ['faces' => 'dieFaces', 'value' => 'dieValue', 'customFaces' => 'faceLabels', 'color' => 'colorOrNull'],
     ];
 
+    public static function isValidJson(?string $json): bool
+    {
+        if ($json === null || trim($json) === '') return false;
+        if (function_exists('json_validate')) return json_validate($json);
+        json_decode($json);
+        return json_last_error() === JSON_ERROR_NONE;
+    }
+
     /** @return array<string,mixed> */
     public function createInitial(int $playerCount): array
     {
         $seats = [];
         for ($i = 1; $i <= $playerCount; $i++) {
             $seats[] = [
-                'seatIndex' => $i,
-                'color' => self::SEAT_COLORS[$i - 1],
-                'assignedUserId' => null,
-                'playerName' => 'Player ' . $i,
-                'handCardIds' => [],
-                'resources' => ['Money' => 10, 'VP' => 0],
+                'seatIndex' => $i, 'color' => self::SEAT_COLORS[$i - 1], 'assignedUserId' => null,
+                'playerName' => 'Player ' . $i, 'handCardIds' => [], 'resources' => ['Money' => 10, 'VP' => 0],
             ];
         }
         return [
             'mode' => 'SETUP',
             'turnState' => ['activeSeat' => 1, 'roundNumber' => 1, 'currentPhase' => self::DEFAULT_PHASES[0], 'phases' => self::DEFAULT_PHASES],
-            'seats' => $seats,
-            'boardObjects' => [],
-            'zones' => [],
-            'notes' => [],
-            'scenarios' => [],
-            'eventLog' => [],
+            'seats' => $seats, 'boardObjects' => [], 'zones' => [], 'notes' => [], 'scenarios' => [], 'eventLog' => [],
         ];
     }
 
