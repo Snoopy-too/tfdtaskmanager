@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <polygon points="32,6 39,23 58,24 43,36 48,54 32,43 16,54 21,36 6,24 25,23" fill="#EAB308" stroke="#A16207" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="32,6 32,43 16,54 21,36 6,24 25,23" fill="#FACC15" stroke="#A16207" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="32,16 36,26 48,27 38,34 42,45 32,38" fill="#FEF08A" opacity="0.8"/>
+  <text x="32" y="38" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="12" fill="#713F12" text-anchor="middle">VP</text>
+</svg>

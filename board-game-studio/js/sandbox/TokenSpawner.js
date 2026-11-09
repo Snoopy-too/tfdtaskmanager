@@ -25,11 +25,19 @@
             el.style.transform = `rotate(${item.rotation || 0}deg)`;
 
             if (item.type === 'SPAWNER') {
-                el.className = `sbx-obj rounded-2xl border-2 border-dashed ${isSelected ? 'is-selected border-sky-400' : 'border-emerald-400/70'} bg-emerald-950/70 flex flex-col items-center justify-center p-1 cursor-grab shadow-lg`;
-                el.innerHTML = `
-                    <span class="text-[10px] font-black text-emerald-300 uppercase tracking-tighter text-center leading-tight">${escapeHtml(item.name || 'Supply')}</span>
-                    <span class="text-[8px] font-bold text-emerald-400/80 mt-0.5">∞ Drag Out</span>
-                `;
+                el.className = `sbx-obj rounded-2xl border-2 border-dashed ${isSelected ? 'is-selected border-sky-400' : 'border-emerald-400/70'} bg-emerald-950/80 flex flex-col items-center justify-center p-1 cursor-grab shadow-lg`;
+                if (item.imageUrl) {
+                    el.innerHTML = `
+                        <img src="${escapeHtml(item.imageUrl)}" class="w-7 h-7 object-contain mb-0.5 pointer-events-none select-none" alt="">
+                        <span class="text-[9px] font-black text-emerald-300 uppercase tracking-tighter text-center leading-tight truncate max-w-full">${escapeHtml(item.name || 'Supply')}</span>
+                        <span class="text-[8px] font-bold text-emerald-400/80">∞ Drag</span>
+                    `;
+                } else {
+                    el.innerHTML = `
+                        <span class="text-[10px] font-black text-emerald-300 uppercase tracking-tighter text-center leading-tight">${escapeHtml(item.name || 'Supply')}</span>
+                        <span class="text-[8px] font-bold text-emerald-400/80 mt-0.5">∞ Drag Out</span>
+                    `;
+                }
             } else if (item.type === 'DIE') {
                 const faces = Number(item.faces) || 6;
                 const val = item.value || 1;
@@ -53,16 +61,15 @@
                     setTimeout(() => handlers.onDieRoll(item.id), 160);
                 });
             } else {
-                // TOKEN / Meeple
+                // TOKEN / Meeple / Resource
                 const bg = item.color || '#E53935';
-                el.className = `sbx-obj rounded-full border-2 ${isSelected ? 'is-selected border-sky-400' : 'border-white/70'} flex items-center justify-center cursor-grab shadow-md`;
-                el.style.backgroundColor = bg;
                 if (item.imageUrl) {
-                    el.style.backgroundImage = `url("${escapeHtml(item.imageUrl)}")`;
-                    el.style.backgroundSize = 'contain';
-                    el.style.backgroundRepeat = 'no-repeat';
-                    el.style.backgroundPosition = 'center';
+                    el.className = `sbx-obj ${isSelected ? 'is-selected ring-2 ring-sky-400 rounded-lg' : ''} flex items-center justify-center cursor-grab filter drop-shadow-md`;
+                    el.style.backgroundColor = 'transparent';
+                    el.innerHTML = `<img src="${escapeHtml(item.imageUrl)}" class="w-full h-full object-contain pointer-events-none select-none" alt="${escapeHtml(item.name || 'Token')}">`;
                 } else {
+                    el.className = `sbx-obj rounded-full border-2 ${isSelected ? 'is-selected border-sky-400' : 'border-white/70'} flex items-center justify-center cursor-grab shadow-md`;
+                    el.style.backgroundColor = bg;
                     el.innerHTML = `<span class="text-[10px] font-extrabold text-white drop-shadow px-1 truncate">${escapeHtml((item.name || 'T').slice(0, 4))}</span>`;
                 }
             }

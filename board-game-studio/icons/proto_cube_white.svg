@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <polygon points="32,6 58,21 32,36 6,21" fill="#F8FAFC" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="6,21 32,36 32,58 6,43" fill="#E2E8F0" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="32,36 58,21 58,43 32,58" fill="#CBD5E1" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="32,8 54,21 32,34 10,21" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.8"/>
+</svg>

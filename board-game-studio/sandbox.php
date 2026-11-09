@@ -61,6 +61,16 @@ if ($isLockedByOther && $sandbox->lockedByUserId !== null) {
 }
 
 // --- Build Project Asset Importer payload (spec §4.1) ---
+// Self-healing: ensure newly introduced built-in prototyping icons exist in global assets
+$iconsDir = __DIR__ . DIRECTORY_SEPARATOR . 'icons';
+if (is_dir($iconsDir)) {
+    $existingGlobalAssets = $assetService->getAssetsByProject(null, false);
+    $svgIconCount = count(glob($iconsDir . DIRECTORY_SEPARATOR . '*.svg') ?: []);
+    if (count($existingGlobalAssets) < $svgIconCount) {
+        $assetService->syncBuiltinGlobalIcons($currentUserId);
+    }
+}
+
 $rawAssets = $assetService->getAssetsByProject($sandbox->projectId, true);
 $rawTemplates = $templateService->getTemplatesByProject($sandbox->projectId);
 
@@ -194,6 +204,69 @@ if ($cardBatches === []) {
     ];
 }
 
+$prototypingKit = [
+    'cubes' => [
+        ['name' => 'Red Cube', 'color' => '#EF4444', 'imageUrl' => 'icons/proto_cube_red.svg'],
+        ['name' => 'Blue Cube', 'color' => '#3B82F6', 'imageUrl' => 'icons/proto_cube_blue.svg'],
+        ['name' => 'Green Cube', 'color' => '#10B981', 'imageUrl' => 'icons/proto_cube_green.svg'],
+        ['name' => 'Yellow Cube', 'color' => '#EAB308', 'imageUrl' => 'icons/proto_cube_yellow.svg'],
+        ['name' => 'Purple Cube', 'color' => '#9333EA', 'imageUrl' => 'icons/proto_cube_purple.svg'],
+        ['name' => 'Orange Cube', 'color' => '#F97316', 'imageUrl' => 'icons/proto_cube_orange.svg'],
+        ['name' => 'Black Cube', 'color' => '#374151', 'imageUrl' => 'icons/proto_cube_black.svg'],
+        ['name' => 'White Cube', 'color' => '#F3F4F6', 'imageUrl' => 'icons/proto_cube_white.svg'],
+    ],
+    'meeples' => [
+        ['name' => 'Red Meeple', 'color' => '#EF4444', 'imageUrl' => 'icons/proto_meeple_red.svg'],
+        ['name' => 'Blue Meeple', 'color' => '#3B82F6', 'imageUrl' => 'icons/proto_meeple_blue.svg'],
+        ['name' => 'Green Meeple', 'color' => '#10B981', 'imageUrl' => 'icons/proto_meeple_green.svg'],
+        ['name' => 'Yellow Meeple', 'color' => '#EAB308', 'imageUrl' => 'icons/proto_meeple_yellow.svg'],
+        ['name' => 'Purple Meeple', 'color' => '#9333EA', 'imageUrl' => 'icons/proto_meeple_purple.svg'],
+        ['name' => 'Orange Meeple', 'color' => '#F97316', 'imageUrl' => 'icons/proto_meeple_orange.svg'],
+        ['name' => 'Black Meeple', 'color' => '#374151', 'imageUrl' => 'icons/proto_meeple_black.svg'],
+        ['name' => 'White Meeple', 'color' => '#F3F4F6', 'imageUrl' => 'icons/proto_meeple_white.svg'],
+    ],
+    'discs' => [
+        ['name' => 'Red Disc', 'color' => '#EF4444', 'imageUrl' => 'icons/proto_disc_red.svg'],
+        ['name' => 'Blue Disc', 'color' => '#3B82F6', 'imageUrl' => 'icons/proto_disc_blue.svg'],
+        ['name' => 'Green Disc', 'color' => '#10B981', 'imageUrl' => 'icons/proto_disc_green.svg'],
+        ['name' => 'Yellow Disc', 'color' => '#EAB308', 'imageUrl' => 'icons/proto_disc_yellow.svg'],
+        ['name' => 'Purple Disc', 'color' => '#9333EA', 'imageUrl' => 'icons/proto_disc_purple.svg'],
+        ['name' => 'Orange Disc', 'color' => '#F97316', 'imageUrl' => 'icons/proto_disc_orange.svg'],
+    ],
+    'coins' => [
+        ['name' => '1 Coin', 'value' => 1, 'imageUrl' => 'icons/proto_coin_1.svg'],
+        ['name' => '5 Coin', 'value' => 5, 'imageUrl' => 'icons/proto_coin_5.svg'],
+        ['name' => '10 Coin', 'value' => 10, 'imageUrl' => 'icons/proto_coin_10.svg'],
+        ['name' => '25 Coin', 'value' => 25, 'imageUrl' => 'icons/proto_coin_25.svg'],
+        ['name' => '50 Coin', 'value' => 50, 'imageUrl' => 'icons/proto_coin_50.svg'],
+        ['name' => '100 Coin', 'value' => 100, 'imageUrl' => 'icons/proto_coin_100.svg'],
+    ],
+    'trackers' => [
+        ['name' => 'First Player Crown', 'imageUrl' => 'icons/proto_marker_first_player.svg'],
+        ['name' => 'Round Marker', 'imageUrl' => 'icons/proto_marker_round.svg'],
+        ['name' => 'Damage / Wound', 'imageUrl' => 'icons/proto_marker_damage.svg'],
+        ['name' => 'Shield / Armor', 'imageUrl' => 'icons/proto_marker_shield.svg'],
+        ['name' => 'VP Star Marker', 'imageUrl' => 'icons/proto_marker_star_vp.svg'],
+    ],
+    'resources' => [
+        ['name' => 'Wood Log', 'imageUrl' => 'icons/proto_res_wood.svg'],
+        ['name' => 'Stone Ore', 'imageUrl' => 'icons/proto_res_stone.svg'],
+        ['name' => 'Clay Brick', 'imageUrl' => 'icons/proto_res_brick.svg'],
+        ['name' => 'Wheat Grain', 'imageUrl' => 'icons/proto_res_grain.svg'],
+        ['name' => 'Gem Crystal', 'imageUrl' => 'icons/proto_res_crystal.svg'],
+    ],
+    'blankDecks' => [
+        ['name' => 'Poker Deck (20 Cards)', 'width' => 140, 'height' => 200, 'count' => 20],
+        ['name' => 'Square Tiles (16 Tiles)', 'width' => 160, 'height' => 160, 'count' => 16],
+        ['name' => 'Tarot Deck (12 Cards)', 'width' => 150, 'height' => 240, 'count' => 12],
+    ],
+    'blankBoards' => [
+        ['name' => 'Modular Board (800×600)', 'width' => 800, 'height' => 600],
+        ['name' => 'Player Mat (480×300)', 'width' => 480, 'height' => 300],
+        ['name' => 'Track Board (1000×260)', 'width' => 1000, 'height' => 260],
+    ],
+];
+
 $importedAssetsPayload = [
     'projectId' => 'proj_' . $sandbox->projectId,
     'importedAssets' => [
@@ -290,7 +363,8 @@ require_once __DIR__ . '/../templates/header.php';
         autoHost: <?php echo $autoHost ? 'true' : 'false'; ?>,
         roomCode: <?php echo json_encode($roomInfo['roomCode'] ?? null); ?>,
         initialState: <?php echo json_encode($sandboxService->presentState($sandbox), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
-        projectAssets: <?php echo json_encode($importedAssetsPayload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>
+        projectAssets: <?php echo json_encode($importedAssetsPayload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
+        prototypingKit: <?php echo json_encode($prototypingKit, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>
     };
 </script>
 

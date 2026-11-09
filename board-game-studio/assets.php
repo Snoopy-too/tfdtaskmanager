@@ -57,6 +57,17 @@ require_once __DIR__ . '/asset-actions.php';
 
 
 // Load assets (loads global assets when activeProjectId is null)
+// Self-healing: ensure newly introduced built-in prototyping icons exist in global assets
+if ($activeProjectId === null) {
+    $iconsDir = __DIR__ . DIRECTORY_SEPARATOR . 'icons';
+    if (is_dir($iconsDir)) {
+        $svgIconCount = count(glob($iconsDir . DIRECTORY_SEPARATOR . '*.svg') ?: []);
+        $existingCount = count($assetService->getAssetsByProject(null, false));
+        if ($existingCount < $svgIconCount) {
+            $assetService->syncBuiltinGlobalIcons($currentUserId);
+        }
+    }
+}
 $assets = $assetService->getAssetsByProject($activeProjectId, false);
 
 // Filters & Sorting
