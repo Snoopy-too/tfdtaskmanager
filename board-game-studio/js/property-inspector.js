@@ -228,14 +228,32 @@
         const btnCropImage = document.getElementById('btn-crop-image');
         if (btnCropImage) {
             btnCropImage.addEventListener('click', () => {
-                if (activeObj && activeObj.type === 'image') startImageCrop(activeObj);
+                if (activeObj && activeObj.type === 'image' && window.inspectorCrop) {
+                    window.inspectorCrop.startImageCrop(activeObj);
+                }
+            });
+        }
+        const btnCropReset = document.getElementById('btn-crop-reset');
+        if (btnCropReset) {
+            btnCropReset.addEventListener('click', () => {
+                if (activeObj && activeObj.type === 'image' && window.inspectorCrop) {
+                    window.inspectorCrop.resetImageCrop(activeObj);
+                }
             });
         }
         const btnCropApply = document.getElementById('btn-crop-apply');
-        if (btnCropApply) btnCropApply.addEventListener('click', applyImageCrop);
+        if (btnCropApply) {
+            btnCropApply.addEventListener('click', () => {
+                if (window.inspectorCrop) window.inspectorCrop.applyImageCrop();
+            });
+        }
 
         const btnCropCancel = document.getElementById('btn-crop-cancel');
-        if (btnCropCancel) btnCropCancel.addEventListener('click', cancelImageCrop);
+        if (btnCropCancel) {
+            btnCropCancel.addEventListener('click', () => {
+                if (window.inspectorCrop) window.inspectorCrop.cancelImageCrop();
+            });
+        }
 
         const btnFitContain = document.getElementById('btn-inspector-fit-contain');
         if (btnFitContain) {

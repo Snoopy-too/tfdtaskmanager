@@ -243,6 +243,70 @@
                         return matchKey !== undefined ? r[matchKey] : undefined;
                     }
 
+                    function applyExportCrop(targetObj, tW, tH) {
+                        if (!targetObj || targetObj.type !== 'image') return;
+                        if (window.inspectorCrop && typeof window.inspectorCrop.applyCropToFabricImage === 'function') {
+                            window.inspectorCrop.applyCropToFabricImage(targetObj, tW, tH);
+                            return;
+                        }
+
+                        const imgEl = (typeof targetObj.getElement === 'function') ? targetObj.getElement() : targetObj._element;
+                        const natW  = (imgEl && imgEl.naturalWidth)  || (targetObj._element && targetObj._element.naturalWidth)  || targetObj.width  || 1;
+                        const natH  = (imgEl && imgEl.naturalHeight) || (targetObj._element && targetObj._element.naturalHeight) || targetObj.height || 1;
+
+                        let crop = targetObj.crop_data;
+                        if (!crop) {
+                            const hasLegacyCrop = (targetObj.cropX && targetObj.cropX > 0) ||
+                                                  (targetObj.cropY && targetObj.cropY > 0) ||
+                                                  (targetObj.width && natW > 1 && targetObj.width < natW - 1) ||
+                                                  (targetObj.height && natH > 1 && targetObj.height < natH - 1);
+                            if (hasLegacyCrop) {
+                                crop = {
+                                    relX: (targetObj.cropX || 0) / natW,
+                                    relY: (targetObj.cropY || 0) / natH,
+                                    relW: (targetObj.width || natW) / natW,
+                                    relH: (targetObj.height || natH) / natH
+                                };
+                                targetObj.crop_data = crop;
+                            }
+                        }
+
+                        const visW = (tW && tW > 0) ? tW : ((targetObj.width || 0) * (targetObj.scaleX !== undefined ? targetObj.scaleX : 1));
+                        const visH = (tH && tH > 0) ? tH : ((targetObj.height || 0) * (targetObj.scaleY !== undefined ? targetObj.scaleY : 1));
+
+                        if (crop) {
+                            let cropX = Math.round(crop.relX * natW);
+                            let cropY = Math.round(crop.relY * natH);
+                            let cropW = Math.round(crop.relW * natW);
+                            let cropH = Math.round(crop.relH * natH);
+
+                            cropX = Math.max(0, Math.min(cropX, natW - 1));
+                            cropY = Math.max(0, Math.min(cropY, natH - 1));
+                            if (cropX + cropW > natW) cropW = natW - cropX;
+                            if (cropY + cropH > natH) cropH = natH - cropY;
+                            cropW = Math.max(1, cropW);
+                            cropH = Math.max(1, cropH);
+
+                            targetObj.set({
+                                cropX: cropX,
+                                cropY: cropY,
+                                width: cropW,
+                                height: cropH,
+                                scaleX: (visW > 0 && cropW > 0) ? (visW / cropW) : (targetObj.scaleX || 1),
+                                scaleY: (visH > 0 && cropH > 0) ? (visH / cropH) : (targetObj.scaleY || 1)
+                            });
+                        } else {
+                            targetObj.set({
+                                cropX: 0,
+                                cropY: 0,
+                                width: natW,
+                                height: natH,
+                                scaleX: (visW > 0 && natW > 0) ? (visW / natW) : (targetObj.scaleX || 1),
+                                scaleY: (visH > 0 && natH > 0) ? (visH / natH) : (targetObj.scaleY || 1)
+                            });
+                        }
+                    }
+
                     function applyStyledTextToObject(obj, rawText) {
                         if (window.textStyleParser) {
                             window.textStyleParser.applyStyledTextToObject(obj, rawText);
@@ -348,12 +412,7 @@
                         const swapPromise = prepPromise.then(resolvedUrl => {
                             return new Promise((imgResolve) => {
                                 obj.setSrc(resolvedUrl, () => {
-                                    if (targetWidth > 0 && obj.width > 0) {
-                                        obj.set('scaleX', targetWidth / obj.width);
-                                    }
-                                    if (targetHeight > 0 && obj.height > 0) {
-                                        obj.set('scaleY', targetHeight / obj.height);
-                                    }
+                                    applyExportCrop(obj, targetWidth, targetHeight);
                                     obj.setCoords();
                                     imgResolve();
                                 }, { crossOrigin: 'anonymous' });
@@ -379,12 +438,7 @@
                                 const swapPromise = prepPromise.then(resolvedUrl => {
                                     return new Promise((imgResolve) => {
                                         obj.setSrc(resolvedUrl, () => {
-                                            if (targetWidth > 0 && obj.width > 0) {
-                                                obj.set('scaleX', targetWidth / obj.width);
-                                            }
-                                            if (targetHeight > 0 && obj.height > 0) {
-                                                obj.set('scaleY', targetHeight / obj.height);
-                                            }
+                                            applyExportCrop(obj, targetWidth, targetHeight);
                                             obj.setCoords();
                                             imgResolve();
                                         }, { crossOrigin: 'anonymous' });
@@ -397,6 +451,7 @@
                                     return new Promise((imgResolve) => {
                                         fabric.Image.fromURL(resolvedUrl, (newImg) => {
                                             if (!newImg) return imgResolve();
+                                            newImg.crop_data = obj.crop_data ? { ...obj.crop_data } : null;
                                             const scaleX = (targetWidth > 0 && newImg.width > 0) ? (targetWidth / newImg.width) : (obj.scaleX || 1);
                                             const scaleY = (targetHeight > 0 && newImg.height > 0) ? (targetHeight / newImg.height) : (obj.scaleY || 1);
                                             newImg.set({
@@ -413,6 +468,7 @@
                                                 id: obj.id,
                                                 original_filename: val
                                             });
+                                            applyExportCrop(newImg, targetWidth, targetHeight);
                                             const idx = canvas.getObjects().indexOf(obj);
                                             canvas.remove(obj);
                                             if (idx >= 0) {

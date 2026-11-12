@@ -158,6 +158,16 @@
 
         const imgBindSelect = document.getElementById('prop-image-bind');
         if (imgBindSelect) imgBindSelect.value = obj.variable_binding || '';
+
+        const btnCropReset = document.getElementById('btn-crop-reset');
+        if (btnCropReset) {
+            const isCropped = Boolean(obj.crop_data || (obj.cropX && obj.cropX > 0) || (obj.cropY && obj.cropY > 0));
+            if (isCropped) {
+                btnCropReset.classList.remove('hidden');
+            } else {
+                btnCropReset.classList.add('hidden');
+            }
+        }
     }
 
     function updateDatasetColumns(columnMap) {

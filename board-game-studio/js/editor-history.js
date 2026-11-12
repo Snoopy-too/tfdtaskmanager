@@ -31,7 +31,7 @@
 
         historyTimeout = setTimeout(() => {
             sanitizeTextStyles(canvas);
-            const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
+            const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil', 'crop_data']));
             if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
 
             historyStack.push(json);
@@ -49,7 +49,7 @@
         if (isUndoingRedoing || !canvas) return;
 
         sanitizeTextStyles(canvas);
-        const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
+        const json = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil', 'crop_data']));
         if (historyStack.length > 0 && historyStack[historyStack.length - 1] === json) return;
 
         historyStack.push(json);

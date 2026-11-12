@@ -212,7 +212,8 @@
                         scaleX: obj.scaleX,
                         scaleY: obj.scaleY,
                         width: obj.width,
-                        height: obj.height
+                        height: obj.height,
+                        crop_data: obj.crop_data ? { ...obj.crop_data } : null
                     });
                 }
 
@@ -234,13 +235,17 @@
                                     return new Promise((resolve) => {
                                         obj.setSrc(resolvedUrl, () => {
                                             obj.asset_url = assetUrl;
-                                            if (targetWidth > 0 && obj.width > 0) {
-                                                obj.set('scaleX', targetWidth / obj.width);
+                                            if (window.inspectorCrop && typeof window.inspectorCrop.applyCropToFabricImage === 'function') {
+                                                window.inspectorCrop.applyCropToFabricImage(obj, targetWidth, targetHeight);
+                                            } else {
+                                                if (targetWidth > 0 && obj.width > 0) {
+                                                    obj.set('scaleX', targetWidth / obj.width);
+                                                }
+                                                if (targetHeight > 0 && obj.height > 0) {
+                                                    obj.set('scaleY', targetHeight / obj.height);
+                                                }
+                                                obj.setCoords();
                                             }
-                                            if (targetHeight > 0 && obj.height > 0) {
-                                                obj.set('scaleY', targetHeight / obj.height);
-                                            }
-                                            obj.setCoords();
                                             resolve();
                                         }, { crossOrigin: 'anonymous' });
                                     });
@@ -262,13 +267,17 @@
                         return new Promise((resolve) => {
                             obj.setSrc(resolvedUrl, () => {
                                 obj.asset_url = origSrc;
-                                if (targetWidth > 0 && obj.width > 0) {
-                                    obj.set('scaleX', targetWidth / obj.width);
+                                if (window.inspectorCrop && typeof window.inspectorCrop.applyCropToFabricImage === 'function') {
+                                    window.inspectorCrop.applyCropToFabricImage(obj, targetWidth, targetHeight);
+                                } else {
+                                    if (targetWidth > 0 && obj.width > 0) {
+                                        obj.set('scaleX', targetWidth / obj.width);
+                                    }
+                                    if (targetHeight > 0 && obj.height > 0) {
+                                        obj.set('scaleY', targetHeight / obj.height);
+                                    }
+                                    obj.setCoords();
                                 }
-                                if (targetHeight > 0 && obj.height > 0) {
-                                    obj.set('scaleY', targetHeight / obj.height);
-                                }
-                                obj.setCoords();
                                 resolve();
                             }, { crossOrigin: 'anonymous' });
                         });
@@ -295,13 +304,17 @@
                                         return new Promise((resolve) => {
                                             obj.setSrc(resolvedUrl, () => {
                                                 obj.asset_url = assetUrl;
-                                                if (targetWidth > 0 && obj.width > 0) {
-                                                    obj.set('scaleX', targetWidth / obj.width);
+                                                if (window.inspectorCrop && typeof window.inspectorCrop.applyCropToFabricImage === 'function') {
+                                                    window.inspectorCrop.applyCropToFabricImage(obj, targetWidth, targetHeight);
+                                                } else {
+                                                    if (targetWidth > 0 && obj.width > 0) {
+                                                        obj.set('scaleX', targetWidth / obj.width);
+                                                    }
+                                                    if (targetHeight > 0 && obj.height > 0) {
+                                                        obj.set('scaleY', targetHeight / obj.height);
+                                                    }
+                                                    obj.setCoords();
                                                 }
-                                                if (targetHeight > 0 && obj.height > 0) {
-                                                    obj.set('scaleY', targetHeight / obj.height);
-                                                }
-                                                obj.setCoords();
                                                 resolve();
                                             }, { crossOrigin: 'anonymous' });
                                         });
@@ -315,6 +328,7 @@
                                     return new Promise((resolve) => {
                                         fabric.Image.fromURL(resolvedUrl, (newImg) => {
                                             if (!newImg) return resolve();
+                                            newImg.crop_data = obj.crop_data ? { ...obj.crop_data } : null;
                                             const scaleX = (targetWidth > 0 && newImg.width > 0) ? (targetWidth / newImg.width) : (obj.scaleX || 1);
                                             const scaleY = (targetHeight > 0 && newImg.height > 0) ? (targetHeight / newImg.height) : (obj.scaleY || 1);
                                             newImg.set({
@@ -332,6 +346,9 @@
                                                 original_filename: val,
                                                 asset_url: assetUrl
                                             });
+                                            if (window.inspectorCrop && typeof window.inspectorCrop.applyCropToFabricImage === 'function') {
+                                                window.inspectorCrop.applyCropToFabricImage(newImg, targetWidth, targetHeight);
+                                            }
                                             const index = canvas.getObjects().indexOf(obj);
                                             canvas.remove(obj);
                                             if (index >= 0) {

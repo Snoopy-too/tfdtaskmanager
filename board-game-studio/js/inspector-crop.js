@@ -33,7 +33,8 @@
             scaleX: img.scaleX,
             scaleY: img.scaleY,
             left: img.left,
-            top: img.top
+            top: img.top,
+            crop_data: img.crop_data ? { ...img.crop_data } : null
         };
 
         // Show Apply/Cancel UI
@@ -146,6 +147,17 @@
         const visW = _cropBox.width  * _cropBox.scaleX;
         const visH = _cropBox.height * _cropBox.scaleY;
 
+        // Proportional normalized crop coordinates (relative to source natural width/height)
+        const isFullImage = (cropX <= 1 && cropY <= 1 && Math.abs(newW - natW) <= 2 && Math.abs(newH - natH) <= 2);
+        const crop_data = isFullImage ? null : {
+            relX: cropX / natW,
+            relY: cropY / natH,
+            relW: newW / natW,
+            relH: newH / natH
+        };
+
+        img.crop_data = crop_data;
+
         img.set({
             cropX,
             cropY,
@@ -163,7 +175,121 @@
     function cancelImageCrop() {
         if (!isCropMode || !activeCropImage) return;
         activeCropImage.set(_cropOrigState);
+        if (_cropOrigState) {
+            activeCropImage.crop_data = _cropOrigState.crop_data || null;
+        }
         _exitCropMode(false);
+    }
+
+    /**
+     * Applies normalized crop (crop_data) to any Fabric image object.
+     * Keeps visual rendered bounding dimensions on canvas consistent while slicing the correct proportional region.
+     */
+    function applyCropToFabricImage(obj, targetWidth, targetHeight) {
+        if (!obj || obj.type !== 'image') return;
+
+        const imgEl = (typeof obj.getElement === 'function') ? obj.getElement() : obj._element;
+        const natW  = (imgEl && imgEl.naturalWidth)  || (obj._element && obj._element.naturalWidth)  || obj.width  || 1;
+        const natH  = (imgEl && imgEl.naturalHeight) || (obj._element && obj._element.naturalHeight) || obj.height || 1;
+
+        // Auto-infer crop_data for legacy templates that stored cropX/cropY without crop_data
+        let crop = obj.crop_data;
+        if (!crop) {
+            const hasLegacyCrop = (obj.cropX && obj.cropX > 0) ||
+                                  (obj.cropY && obj.cropY > 0) ||
+                                  (obj.width && natW > 1 && obj.width < natW - 1) ||
+                                  (obj.height && natH > 1 && obj.height < natH - 1);
+            if (hasLegacyCrop) {
+                crop = {
+                    relX: (obj.cropX || 0) / natW,
+                    relY: (obj.cropY || 0) / natH,
+                    relW: (obj.width || natW) / natW,
+                    relH: (obj.height || natH) / natH
+                };
+                obj.crop_data = crop;
+            }
+        }
+
+        const visW = (targetWidth && targetWidth > 0)
+            ? targetWidth
+            : ((obj.width || 0) * (obj.scaleX !== undefined ? obj.scaleX : 1));
+        const visH = (targetHeight && targetHeight > 0)
+            ? targetHeight
+            : ((obj.height || 0) * (obj.scaleY !== undefined ? obj.scaleY : 1));
+
+        if (crop) {
+            let cropX = Math.round(crop.relX * natW);
+            let cropY = Math.round(crop.relY * natH);
+            let cropW = Math.round(crop.relW * natW);
+            let cropH = Math.round(crop.relH * natH);
+
+            cropX = Math.max(0, Math.min(cropX, natW - 1));
+            cropY = Math.max(0, Math.min(cropY, natH - 1));
+            if (cropX + cropW > natW) cropW = natW - cropX;
+            if (cropY + cropH > natH) cropH = natH - cropY;
+            cropW = Math.max(1, cropW);
+            cropH = Math.max(1, cropH);
+
+            obj.set({
+                cropX: cropX,
+                cropY: cropY,
+                width: cropW,
+                height: cropH,
+                scaleX: (visW > 0 && cropW > 0) ? (visW / cropW) : (obj.scaleX || 1),
+                scaleY: (visH > 0 && cropH > 0) ? (visH / cropH) : (obj.scaleY || 1)
+            });
+        } else {
+            obj.set({
+                cropX: 0,
+                cropY: 0,
+                width: natW,
+                height: natH,
+                scaleX: (visW > 0 && natW > 0) ? (visW / natW) : (obj.scaleX || 1),
+                scaleY: (visH > 0 && natH > 0) ? (visH / natH) : (obj.scaleY || 1)
+            });
+        }
+        obj.setCoords();
+    }
+
+    /**
+     * Resets the crop on an image object, returning it to full natural framing.
+     */
+    function resetImageCrop(img) {
+        if (!img || img.type !== 'image' || !window.editorCanvas) return;
+        const canvas = window.editorCanvas;
+        const imgEl = img.getElement ? img.getElement() : img._element;
+        const natW = (imgEl && imgEl.naturalWidth) || img.width || 1;
+        const natH = (imgEl && imgEl.naturalHeight) || img.height || 1;
+
+        const visW = (img.width || 0) * (img.scaleX !== undefined ? img.scaleX : 1);
+        const visH = (img.height || 0) * (img.scaleY !== undefined ? img.scaleY : 1);
+
+        img.crop_data = null;
+        img.set({
+            cropX: 0,
+            cropY: 0,
+            width: natW,
+            height: natH,
+            scaleX: (visW > 0 && natW > 0) ? (visW / natW) : 1,
+            scaleY: (visH > 0 && natH > 0) ? (visH / natH) : 1
+        });
+        img.setCoords();
+        canvas.renderAll();
+
+        if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
+            window.propertyInspector.inspect(img);
+        }
+
+        if (window.editorCore && typeof window.editorCore.saveCanvas === 'function') {
+            window.editorCore.saveCanvas();
+        } else if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
+            window.editorCore.triggerAutoSave();
+        }
+
+        // If this image is dataset-bound, re-apply bindings so all dataset preview rows uncrop
+        if (img.variable_binding && window.templateEngine && typeof window.templateEngine.applyBindings === 'function') {
+            window.templateEngine.applyBindings();
+        }
     }
 
     function _exitCropMode(shouldSave) {
@@ -186,11 +312,13 @@
             if (obj._ce !== undefined) { obj.evented    = obj._ce; delete obj._ce; }
         });
 
-        if (activeCropImage) {
-            activeCropImage.visible = true;
-            canvas.setActiveObject(activeCropImage);
+        const finalizedImg = activeCropImage;
+
+        if (finalizedImg) {
+            finalizedImg.visible = true;
+            canvas.setActiveObject(finalizedImg);
             if (window.propertyInspector && typeof window.propertyInspector.inspect === 'function') {
-                window.propertyInspector.inspect(activeCropImage);
+                window.propertyInspector.inspect(finalizedImg);
             }
         }
 
@@ -200,8 +328,13 @@
         activeCropImage  = null;
         _cropOrigState   = null;
 
-        if (shouldSave && window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
-            window.editorCore.triggerAutoSave();
+        if (shouldSave) {
+            // Save immediately so crop state is stored in template database before navigation/export
+            if (window.editorCore && typeof window.editorCore.saveCanvas === 'function') {
+                window.editorCore.saveCanvas();
+            } else if (window.editorCore && typeof window.editorCore.triggerAutoSave === 'function') {
+                window.editorCore.triggerAutoSave();
+            }
         }
     }
 
@@ -215,6 +348,8 @@
         startImageCrop,
         applyImageCrop,
         cancelImageCrop,
+        resetImageCrop,
+        applyCropToFabricImage,
         isCropMode: () => isCropMode
     };
 })();

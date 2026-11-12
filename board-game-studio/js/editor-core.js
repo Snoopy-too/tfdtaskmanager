@@ -162,6 +162,9 @@
         const origImageToObject = fabric.Image.prototype.toObject;
         fabric.Image.prototype.toObject = function(propertiesToInclude) {
             const obj = origImageToObject.call(this, propertiesToInclude);
+            if (this.crop_data) {
+                obj.crop_data = this.crop_data;
+            }
             if (this.asset_url) {
                 obj.src = this.asset_url;
             } else if (this.stored_filename && window.assetPicker && typeof window.assetPicker.getAssetUrlByFilename === 'function') {
@@ -186,13 +189,36 @@
         });
     }
 
+    function upgradeLegacyImageCrops() {
+        if (!canvas) return;
+        canvas.getObjects().forEach(obj => {
+            if (obj.type === 'image' && !obj.crop_data) {
+                const imgEl = (typeof obj.getElement === 'function') ? obj.getElement() : obj._element;
+                const natW = (imgEl && imgEl.naturalWidth) || obj.width || 1;
+                const natH = (imgEl && imgEl.naturalHeight) || obj.height || 1;
+                const hasCrop = (obj.cropX && obj.cropX > 0) ||
+                                (obj.cropY && obj.cropY > 0) ||
+                                (obj.width && natW > 1 && obj.width < natW - 1) ||
+                                (obj.height && natH > 1 && obj.height < natH - 1);
+                if (hasCrop) {
+                    obj.crop_data = {
+                        relX: (obj.cropX || 0) / natW,
+                        relY: (obj.cropY || 0) / natH,
+                        relW: (obj.width || natW) / natW,
+                        relH: (obj.height || natH) / natH
+                    };
+                }
+            }
+        });
+    }
+
     function saveCanvas() {
         if (isSaving || !canvas) return Promise.resolve();
         isSaving = true;
 
         ensureValidTextStyles();
 
-        const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'original_filename', 'stored_filename', 'asset_url', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil']));
+        const canvasJson = JSON.stringify(canvas.toJSON(['id', 'name', 'layerType', 'variable_binding', 'properties', 'is_locked', 'original_filename', 'stored_filename', 'asset_url', 'isBoxDieline', 'dielineRole', 'boxConfig', 'excludeFromStencil', 'crop_data']));
         
         const layers = [];
         canvas.getObjects().forEach((obj, index) => {
@@ -217,7 +243,8 @@
                 layerType = 'image';
                 properties = {
                     src: obj.src || '',
-                    original_filename: obj.original_filename || ''
+                    original_filename: obj.original_filename || '',
+                    crop_data: obj.crop_data || null
                 };
             } else if (obj.layerType === 'dropzone') {
                 layerType = 'dropzone';
@@ -402,6 +429,7 @@
                     ensureValidTextStyles();
                     upgradeLegacyTextLayers();
                     upgradeSvgImageLayers();
+                    upgradeLegacyImageCrops();
 
                     if (window.boxDieline && typeof window.boxDieline.syncBoxDielineStack === 'function') {
                         window.boxDieline.syncBoxDielineStack();
