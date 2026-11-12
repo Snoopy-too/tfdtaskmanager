@@ -21,16 +21,22 @@
 
         // Millimeter width and height controls
         document.getElementById('prop-width-mm').addEventListener('input', (e) => {
-            const mmVal = parseFloat(e.target.value) || 0;
+            const rawVal = e.target.value;
+            if (rawVal === '' || rawVal.endsWith('.')) return;
+            const mmVal = parseFloat(rawVal);
+            if (isNaN(mmVal) || mmVal <= 0) return;
             const pxVal = Math.round((mmVal / 25.4) * 300);
             document.getElementById('prop-width').value = pxVal;
-            updateActiveScaleWidth(pxVal);
+            updateActiveScaleWidth(pxVal, true);
         });
         document.getElementById('prop-height-mm').addEventListener('input', (e) => {
-            const mmVal = parseFloat(e.target.value) || 0;
+            const rawVal = e.target.value;
+            if (rawVal === '' || rawVal.endsWith('.')) return;
+            const mmVal = parseFloat(rawVal);
+            if (isNaN(mmVal) || mmVal <= 0) return;
             const pxVal = Math.round((mmVal / 25.4) * 300);
             document.getElementById('prop-height').value = pxVal;
-            updateActiveScaleHeight(pxVal);
+            updateActiveScaleHeight(pxVal, true);
         });
         document.getElementById('prop-rotation').addEventListener('input', (e) => updateActiveProp('angle', parseFloat(e.target.value) || 0));
         document.getElementById('prop-opacity').addEventListener('input', (e) => updateActiveProp('opacity', (parseFloat(e.target.value) || 0) / 100));
@@ -98,7 +104,7 @@
                             fabric.util.charWidthsCache = {};
                         }
                     }
-                    if (activeObj && (activeObj.type === 'i-text' || activeObj.type === 'text')) {
+                    if (activeObj && (activeObj.type === 'i-text' || activeObj.type === 'text' || activeObj.type === 'textbox')) {
                         activeObj.dirty = true;
                         if (typeof activeObj.initDimensions === 'function') {
                             activeObj.initDimensions();
@@ -331,12 +337,15 @@
     }
 
     // Handle scaling logic when width/height inputs change
-    function updateActiveScaleWidth(width) {
+    function updateActiveScaleWidth(width, skipMmSync) {
         if (!activeObj || isUpdatingForm) return;
 
         const rawW = (activeObj.width && activeObj.width > 0) ? activeObj.width : 1;
         if (activeObj.type === 'textbox') {
             activeObj.set({ width: width, scaleX: 1 });
+            if (typeof activeObj.initDimensions === 'function') {
+                activeObj.initDimensions();
+            }
         } else {
             const scaleX = width / rawW;
             activeObj.set('scaleX', scaleX);
@@ -345,14 +354,19 @@
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
 
-        // Sync corresponding MM input
-        const wMm = (width * 25.4) / 300;
-        document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
+        // Sync corresponding MM input unless typing directly into MM input
+        if (!skipMmSync) {
+            const wMm = (width * 25.4) / 300;
+            document.getElementById('prop-width-mm').value = Math.round(wMm * 10) / 10;
+        }
     }
 
-    function updateActiveScaleHeight(height) {
+    function updateActiveScaleHeight(height, skipMmSync) {
         if (!activeObj || isUpdatingForm) return;
 
+        if (activeObj.type === 'textbox' && typeof activeObj.initDimensions === 'function') {
+            activeObj.initDimensions();
+        }
         const rawH = (activeObj.height && activeObj.height > 0) ? activeObj.height : 1;
         const scaleY = height / rawH;
         activeObj.set('scaleY', scaleY);
@@ -360,9 +374,11 @@
         window.editorCanvas.renderAll();
         window.editorCore.triggerAutoSave();
 
-        // Sync corresponding MM input
-        const hMm = (height * 25.4) / 300;
-        document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
+        // Sync corresponding MM input unless typing directly into MM input
+        if (!skipMmSync) {
+            const hMm = (height * 25.4) / 300;
+            document.getElementById('prop-height-mm').value = Math.round(hMm * 10) / 10;
+        }
     }
 
     function applyTextContentChange(newVal) {
