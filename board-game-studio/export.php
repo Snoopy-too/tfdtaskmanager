@@ -534,11 +534,8 @@ if ($activeProject) {
     </script>
     <script src="js/asset-picker.js?v=<?php echo filemtime(__DIR__ . '/js/asset-picker.js'); ?>"></script>
     <script src="js/text-style-parser.js?v=<?php echo filemtime(__DIR__ . '/js/text-style-parser.js'); ?>"></script>
-<<<<<<< HEAD
     <script src="js/inspector-crop.js?v=<?php echo filemtime(__DIR__ . '/js/inspector-crop.js'); ?>"></script>
-=======
     <script src="js/box-measurements.js?v=<?php echo filemtime(__DIR__ . '/js/box-measurements.js'); ?>"></script>
->>>>>>> UX+
     <script src="js/export-pdf.js?v=<?php echo filemtime(__DIR__ . '/js/export-pdf.js'); ?>"></script>
     <script src="js/export-tts.js?v=<?php echo filemtime(__DIR__ . '/js/export-tts.js'); ?>"></script>
     <script src="js/export-handler.js?v=<?php echo filemtime(__DIR__ . '/js/export-handler.js'); ?>"></script>

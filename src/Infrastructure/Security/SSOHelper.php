@@ -217,9 +217,6 @@ class SSOHelper
         $_SESSION['oauth_state'] = $state;
 
         $tfdDomain = self::getTfdDomain();
-<<<<<<< HEAD
-        return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode("https://tasks.{$tfdDomain}/auth_callback.php") . "&scope=openid%20profile%20email&state=" . urlencode($state);
-=======
         $host = $_SERVER['HTTP_HOST'] ?? 'tasks.theflyingdutchmen.games';
 
         if (strpos($host, 'dev.englishjones.com') !== false) {
@@ -228,8 +225,6 @@ class SSOHelper
             $redirectUri = "https://tasks.{$tfdDomain}/auth_callback.php";
         }
 
-        return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode($redirectUri) . "&scope=openid%20profile%20email";
->>>>>>> UX+
         return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode($redirectUri) . "&scope=openid%20profile%20email&state=" . urlencode($state);
     }
 
