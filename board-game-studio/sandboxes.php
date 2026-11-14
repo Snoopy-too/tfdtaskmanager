@@ -83,17 +83,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $sandboxes = $activeProjectId !== null ? $sandboxService->getSandboxesByProject($activeProjectId) : [];
 
 require_once __DIR__ . '/../templates/header.php';
+
+if ($activeProject) {
+    renderPageHeader($activeProject->getName(), 'Playtest Sandbox', '', 'index.php');
+} else {
+    renderPageHeader('Playtest Sandbox', 'Game Studio', '', 'index.php');
+}
 ?>
 
-<div class="space-y-8">
+<div class="page-container space-y-6">
+    <?php if ($activeProject): ?>
+        <?php
+        $activeTab = 'sandbox';
+        include __DIR__ . '/views/studio-nav.php';
+        ?>
+    <?php endif; ?>
+
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <a href="index.php" class="text-xs font-semibold text-slate-400 hover:text-white transition inline-flex items-center">
-                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
-                Studio Dashboard
-            </a>
-            <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent mt-1">Playtest Sandbox</h1>
-            <p class="text-slate-400 mt-1">Stage a 2D table with your project components, then playtest solo or with your team.</p>
+            <h2 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">Playtest Sandbox</h2>
+            <p class="text-slate-400 mt-1 text-sm">Stage a 2D table with your project components, then playtest solo or with your team.</p>
         </div>
 
         <?php if (!empty($projects)): ?>
