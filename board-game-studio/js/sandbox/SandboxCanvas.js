@@ -227,14 +227,17 @@
 
                 store.pushHistory();
                 const startWorld = screenToWorld(e.clientX, e.clientY);
-                if (activeObj.type === 'CARD' && activeObj.parentId) {
+                const wasAttachedToParent = Boolean(activeObj.type === 'CARD' && activeObj.parentId);
+                if (wasAttachedToParent) {
                     window.SandboxTuckingEngine.detachFromParent(state.boardObjects, activeObj.id);
                 }
                 activeObj.zIndex = nextZInTier(state.boardObjects, activeObj.type);
                 if (activeObj.type === 'CARD') window.SandboxTuckingEngine.syncChildrenPositions(state.boardObjects, activeObj.id);
+                store.setActiveDragObjectId(activeObj.id);
+                store.bumpLocalMutationSeq();
                 if (window.SandboxMultiplayer) window.SandboxMultiplayer.sendLockRequest(activeObj.id);
 
-                dragState = { kind: 'OBJECT', objectId: activeObj.id, startWorldX: startWorld.x, startWorldY: startWorld.y, origX: activeObj.x || 0, origY: activeObj.y || 0 };
+                dragState = { kind: 'OBJECT', objectId: activeObj.id, startWorldX: startWorld.x, startWorldY: startWorld.y, origX: activeObj.x || 0, origY: activeObj.y || 0, detachedFromParent: wasAttachedToParent };
             },
 
             onZonePointerDown(e, zone) {
@@ -406,8 +409,11 @@
                 viewportEl.style.cursor = isSpaceDown ? 'grab' : '';
             } else if (dragState.kind === 'OBJECT') {
                 const obj = state.boardObjects[dragState.objectId];
+                store.setActiveDragObjectId(null);
                 ui.tuckHighlightParentId = null;
+                let shouldPersistFullState = true;
                 if (obj) {
+                    obj.lockedByUserId = null;
                     if (obj.type === 'TOKEN') {
                         const hitBag = Object.values(state.boardObjects).find((s) => s && s.type === 'SPAWNER' && Math.hypot((obj.x + 24) - (s.x + 32), (obj.y + 24) - (s.y + 32)) < 48);
                         if (hitBag) {
@@ -455,10 +461,20 @@
                     obj.x = snapped.x;
                     obj.y = snapped.y;
                     if (obj.type === 'CARD') window.SandboxTuckingEngine.syncChildrenPositions(state.boardObjects, obj.id);
-                    if (window.SandboxMultiplayer) window.SandboxMultiplayer.sendObjectDrop(obj.id, obj.x, obj.y);
+                    const marketReplenished = store.replenishMarketRivers();
+                    if (ui.isMultiplayerActive && window.SandboxMultiplayer) {
+                        window.SandboxMultiplayer.sendObjectDrop(obj.id, obj.x, obj.y, obj.zIndex);
+                        shouldPersistFullState = Boolean(dragState.detachedFromParent || marketReplenished);
+                    }
+                } else {
+                    store.replenishMarketRivers();
                 }
-                store.replenishMarketRivers();
-                store.notify();
+                if (shouldPersistFullState) {
+                    store.notify();
+                } else {
+                    store.bumpLocalMutationSeq();
+                    store.notify(true);
+                }
             } else if (dragState.kind === 'ZONE') {
                 store.replenishMarketRivers();
                 store.notify();

@@ -14,13 +14,26 @@
     let bootstrapRef = null;
     let bc = null;
     let pollTimer = null;
+    let roomStatusTimer = null;
     let lockHeartbeatTimer = null;
     let lastKnownVersion = 0;
     let lastCursorSentAt = 0;
     let lastBcDragSentAt = 0;
     let lastHttpDragSentAt = 0;
     let dragHttpInFlight = false;
+    let pendingDragPayload = null;
     let pendingCursor = null;
+    let mutationQueue = Promise.resolve();
+    let pendingMutationCount = 0;
+
+    function enqueueMutation(fn) {
+        pendingMutationCount++;
+        const run = mutationQueue.then(fn, fn);
+        mutationQueue = run.catch(() => ({ success: false }));
+        return run.finally(() => {
+            pendingMutationCount = Math.max(0, pendingMutationCount - 1);
+        });
+    }
 
     function init(store, bootstrap) {
         storeRef = store;
@@ -54,8 +67,12 @@
         });
 
         if (store.getUI().isMultiplayerActive) {
+            stopRoomStatusPolling();
             startLivePolling();
             syncWithServer({ subAction: 'POLL' });
+        } else {
+            fetchRoomStatus();
+            startRoomStatusPolling();
         }
     }
 
@@ -86,6 +103,7 @@
                 storeRef.notify(true);
             }, 1600);
         } else if (msg.type === 'OBJECT_DRAG_MOVE') {
+            if (storeRef.getActiveDragObjectId && storeRef.getActiveDragObjectId() === msg.objectId) return;
             const o = state.boardObjects[msg.objectId];
             if (o) {
                 o.x = msg.x;
@@ -97,10 +115,14 @@
                 storeRef.notify(true);
             }
         } else if (msg.type === 'OBJECT_DROP') {
+            if (storeRef.getActiveDragObjectId && storeRef.getActiveDragObjectId() === msg.objectId) return;
             const o = state.boardObjects[msg.objectId];
             if (o) {
                 o.x = msg.x;
                 o.y = msg.y;
+                if (typeof msg.zIndex === 'number' && Number.isFinite(msg.zIndex)) {
+                    o.zIndex = msg.zIndex;
+                }
                 o.lockedByUserId = null;
                 if (o.type === 'CARD') {
                     window.SandboxTuckingEngine.syncChildrenPositions(state.boardObjects, o.id);
@@ -149,10 +171,19 @@
             if (data && data.success) {
                 const ui = storeRef.getUI();
                 ui.roomStatus = data;
+                bootstrapRef.activeRoomExists = Boolean(data.active);
                 if (data.active) {
+                    bootstrapRef.roomCode = data.roomCode || '';
                     ui.liveRoomCode = data.roomCode || ui.liveRoomCode;
                     ui.hostUserId = data.hostUserId ? Number(data.hostUserId) : ui.hostUserId;
                     ui.roomMembers = Array.isArray(data.members) ? data.members : [];
+                } else {
+                    bootstrapRef.roomCode = '';
+                    if (!ui.isMultiplayerActive) {
+                        ui.liveRoomCode = '';
+                        ui.hostUserId = null;
+                        ui.roomMembers = [];
+                    }
                 }
                 storeRef.notify(true);
                 return data;
@@ -161,6 +192,31 @@
             // Ignore transient status fetch failure
         }
         return null;
+    }
+
+    function handleRoomVisibilityRefresh() {
+        if (document.visibilityState && document.visibilityState !== 'visible') return;
+        if (!storeRef || storeRef.getUI().isMultiplayerActive) return;
+        fetchRoomStatus();
+    }
+
+    function startRoomStatusPolling() {
+        if (roomStatusTimer) return;
+        window.addEventListener('focus', handleRoomVisibilityRefresh);
+        document.addEventListener('visibilitychange', handleRoomVisibilityRefresh);
+        roomStatusTimer = setInterval(() => {
+            if (!storeRef || storeRef.getUI().isMultiplayerActive) return;
+            fetchRoomStatus();
+        }, 3500);
+    }
+
+    function stopRoomStatusPolling() {
+        if (roomStatusTimer) {
+            clearInterval(roomStatusTimer);
+            roomStatusTimer = null;
+        }
+        window.removeEventListener('focus', handleRoomVisibilityRefresh);
+        document.removeEventListener('visibilitychange', handleRoomVisibilityRefresh);
     }
 
     async function hostRoom(forceReset = false) {
@@ -220,6 +276,7 @@
         ui.roomMembers = [];
         ui.saveStatus = 'Saved';
         storeRef.notify(true);
+        fetchRoomStatus();
     }
 
     async function endRoom() {
@@ -232,6 +289,8 @@
         const data = await res.json();
         if (data && data.success) {
             stopLivePolling();
+            bootstrapRef.activeRoomExists = false;
+            bootstrapRef.roomCode = '';
             const ui = storeRef.getUI();
             ui.isMultiplayerActive = false;
             ui.liveRoomCode = null;
@@ -247,6 +306,7 @@
     }
 
     function startLivePolling() {
+        stopRoomStatusPolling();
         if (pollTimer) clearInterval(pollTimer);
         pollTimer = setInterval(() => {
             syncWithServer({ subAction: 'POLL' });
@@ -258,6 +318,9 @@
             clearInterval(pollTimer);
             pollTimer = null;
         }
+        pendingDragPayload = null;
+        dragHttpInFlight = false;
+        startRoomStatusPolling();
     }
 
     async function syncWithServer(extraPayload, expectedSeq = null) {
@@ -303,25 +366,40 @@
                 }
 
                 const remoteVersion = Number(data.version) || 0;
-                const noNewLocalEdits = seqAtStart === storeRef.getLocalMutationSeq() && !storeRef.hasPendingLocalSave();
+                const activeDragId = storeRef.getActiveDragObjectId ? storeRef.getActiveDragObjectId() : null;
+                const maxAllowedQueue = payload.subAction === 'POLL' ? 0 : 1;
+                const noNewLocalEdits = !activeDragId
+                    && pendingMutationCount <= maxAllowedQueue
+                    && seqAtStart === storeRef.getLocalMutationSeq()
+                    && !storeRef.hasPendingLocalSave();
 
                 if (payload.subAction === 'POLL') {
                     if (remoteVersion > lastKnownVersion && data.state && noNewLocalEdits) {
                         lastKnownVersion = remoteVersion;
                         storeRef.applyRemoteCore(data.state);
-                    } else if (remoteVersion > lastKnownVersion && !data.state) {
+                    } else if (remoteVersion > lastKnownVersion && !data.state && noNewLocalEdits) {
                         lastKnownVersion = remoteVersion;
                     }
                 } else {
-                    if (remoteVersion > lastKnownVersion) {
-                        lastKnownVersion = remoteVersion;
-                    }
-                    const shouldApplyAckState = (payload.subAction === 'COMMIT_STATE' || payload.subAction === 'CLAIM_SEAT' || payload.subAction === 'RELEASE_SEAT')
-                        && data.state
-                        && noNewLocalEdits;
+                    const isAckApplyAction = (
+                        payload.subAction === 'OBJECT_DROP'
+                        || payload.subAction === 'COMMIT_STATE'
+                        || payload.subAction === 'CLAIM_SEAT'
+                        || payload.subAction === 'RELEASE_SEAT'
+                    );
+                    const shouldApplyAckState = isAckApplyAction && Boolean(data.state) && noNewLocalEdits;
                     if (shouldApplyAckState) {
+                        if (remoteVersion > lastKnownVersion) {
+                            lastKnownVersion = remoteVersion;
+                        }
                         storeRef.applyRemoteCore(data.state);
                     } else {
+                        if (
+                            remoteVersion === lastKnownVersion + 1
+                            && (payload.subAction === 'LOCK_REQUEST' || payload.subAction === 'OBJECT_DRAG_MOVE')
+                        ) {
+                            lastKnownVersion = remoteVersion;
+                        }
                         storeRef.notify(true);
                     }
                 }
@@ -334,7 +412,27 @@
     }
 
     function sendLockRequest(objectId) {
-        syncWithServer({ subAction: 'LOCK_REQUEST', objectId });
+        return enqueueMutation(() => syncWithServer({ subAction: 'LOCK_REQUEST', objectId }));
+    }
+
+    function dispatchDragHttp() {
+        if (dragHttpInFlight || !pendingDragPayload) return;
+        const nextDrag = pendingDragPayload;
+        pendingDragPayload = null;
+        lastHttpDragSentAt = performance.now();
+        dragHttpInFlight = true;
+        enqueueMutation(() => syncWithServer({
+            subAction: 'OBJECT_DRAG_MOVE',
+            objectId: nextDrag.objectId,
+            x: nextDrag.x,
+            y: nextDrag.y
+        })).finally(() => {
+            dragHttpInFlight = false;
+            const activeDragId = storeRef && storeRef.getActiveDragObjectId ? storeRef.getActiveDragObjectId() : null;
+            if (pendingDragPayload && activeDragId === pendingDragPayload.objectId) {
+                dispatchDragHttp();
+            }
+        });
     }
 
     function throttledSendDrag(objectId, x, y) {
@@ -349,26 +447,29 @@
                 y
             });
         }
-        if (!dragHttpInFlight && now - lastHttpDragSentAt >= 180) {
-            lastHttpDragSentAt = now;
-            dragHttpInFlight = true;
-            syncWithServer({ subAction: 'OBJECT_DRAG_MOVE', objectId, x, y }).finally(() => {
-                dragHttpInFlight = false;
-            });
+        pendingDragPayload = { objectId, x, y };
+        if (!dragHttpInFlight && now - lastHttpDragSentAt >= 150) {
+            dispatchDragHttp();
         }
     }
 
-    function sendObjectDrop(objectId, x, y) {
+    function sendObjectDrop(objectId, x, y, zIndex) {
+        pendingDragPayload = null;
         if (bc) {
             bc.postMessage({
                 type: 'OBJECT_DROP',
                 senderId: bootstrapRef.currentUserId,
                 objectId,
                 x,
-                y
+                y,
+                zIndex
             });
         }
-        syncWithServer({ subAction: 'OBJECT_DROP', objectId, x, y });
+        const payload = { subAction: 'OBJECT_DROP', objectId, x, y };
+        if (typeof zIndex === 'number' && Number.isFinite(zIndex)) {
+            payload.zIndex = zIndex;
+        }
+        return enqueueMutation(() => syncWithServer(payload));
     }
 
     function throttledSendCursor(x, y) {
@@ -396,11 +497,11 @@
         if (bc) {
             bc.postMessage({ type: 'PING', senderId: bootstrapRef.currentUserId, ping });
         }
-        syncWithServer({ subAction: 'PING', ping });
+        enqueueMutation(() => syncWithServer({ subAction: 'PING', ping }));
     }
 
     async function claimSeat(seatIndex) {
-        const res = await syncWithServer({ subAction: 'CLAIM_SEAT', seatIndex });
+        const res = await enqueueMutation(() => syncWithServer({ subAction: 'CLAIM_SEAT', seatIndex }));
         if (res && res.success) {
             if (seatIndex !== null && seatIndex !== undefined) {
                 storeRef.setViewerSeat(seatIndex, false);
@@ -410,7 +511,7 @@
     }
 
     async function releaseSeat(seatIndex) {
-        return syncWithServer({ subAction: 'RELEASE_SEAT', seatIndex });
+        return enqueueMutation(() => syncWithServer({ subAction: 'RELEASE_SEAT', seatIndex }));
     }
 
     async function broadcastFullState(serializedState, seqAtStart) {
@@ -421,7 +522,7 @@
                 state: serializedState
             });
         }
-        const res = await syncWithServer({ subAction: 'COMMIT_STATE', state: JSON.stringify(serializedState) }, seqAtStart);
+        const res = await enqueueMutation(() => syncWithServer({ subAction: 'COMMIT_STATE', state: JSON.stringify(serializedState) }, seqAtStart));
         return Boolean(res && res.success);
     }
 

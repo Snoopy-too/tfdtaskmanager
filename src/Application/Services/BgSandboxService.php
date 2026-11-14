@@ -684,7 +684,7 @@ final class BgSandboxService
             $boardObjects[$cid]['parentId'] = $parentId;
             $boardObjects[$cid]['x'] = round($px + $offsetX, 2);
             $boardObjects[$cid]['y'] = round($py + $offsetY, 2);
-            $boardObjects[$cid]['zIndex'] = SandboxObjectType::CARD->clampZ($pz + $zOffset);
+            $boardObjects[$cid]['zIndex'] = SandboxObjectType::Card->clampZ($pz + $zOffset);
         }
     }
 

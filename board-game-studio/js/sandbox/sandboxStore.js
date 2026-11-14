@@ -63,6 +63,8 @@
         const listeners = new Set();
         let saveTimer = null;
         let localMutationSeq = 0;
+        let activeDragObjectId = null;
+        let commitInFlightCount = 0;
 
         function snapshotCore() {
             return cloneDeep({
@@ -120,7 +122,13 @@
                 lastPersistedJson = jsonStr;
 
                 if (ui.isMultiplayerActive && window.SandboxMultiplayer) {
-                    const ok = await window.SandboxMultiplayer.broadcastFullState(payload, seqAtStart);
+                    commitInFlightCount++;
+                    let ok = false;
+                    try {
+                        ok = await window.SandboxMultiplayer.broadcastFullState(payload, seqAtStart);
+                    } finally {
+                        commitInFlightCount = Math.max(0, commitInFlightCount - 1);
+                    }
                     ui.saveStatus = ok ? 'Synced to room' : 'Room sync error';
                     listeners.forEach((fn) => fn(state, ui));
                     return;
@@ -147,6 +155,7 @@
         }
 
         function flushPendingSave() {
+            const hadPendingTimer = saveTimer !== null;
             if (saveTimer) {
                 clearTimeout(saveTimer);
                 saveTimer = null;
@@ -155,7 +164,7 @@
                 const payload = window.SandboxSchema.serializeForSave(state);
                 const jsonStr = JSON.stringify(payload);
                 if (ui.isMultiplayerActive) {
-                    if (jsonStr !== lastPersistedJson && navigator.sendBeacon) {
+                    if ((hadPendingTimer || commitInFlightCount > 0) && jsonStr !== lastPersistedJson && navigator.sendBeacon) {
                         const commitFd = new FormData();
                         commitFd.append('action', 'sync_sandbox_room');
                         commitFd.append('sandbox_id', String(bootstrap.sandboxId));
@@ -199,6 +208,7 @@
         window.addEventListener('beforeunload', flushPendingSave);
 
         function replenishMarketRivers() {
+            let changed = false;
             (state.zones || []).forEach((zone) => {
                 if (zone.type !== 'MARKET_RIVER' || !zone.autoReplenish || !zone.sourceDeckId) return;
                 const deck = state.boardObjects[zone.sourceDeckId];
@@ -217,10 +227,12 @@
                             card.y = Math.round(zone.y + (zone.height - (card.height || 200)) / 2);
                             card.zIndex = nextZInTier(state.boardObjects, 'CARD');
                             logEvent(`Market "${zone.name || 'Market'}" replenished "${card.name || 'Card'}".`);
+                            changed = true;
                         }
                     }
                 }
             });
+            return changed;
         }
 
         return {
@@ -235,7 +247,10 @@
             canUndo: () => undoStack.length > 0,
             canRedo: () => redoStack.length > 0,
             getLocalMutationSeq: () => localMutationSeq,
-            hasPendingLocalSave: () => saveTimer !== null,
+            bumpLocalMutationSeq() { localMutationSeq++; },
+            setActiveDragObjectId(id) { activeDragObjectId = id || null; },
+            getActiveDragObjectId: () => activeDragObjectId,
+            hasPendingLocalSave: () => saveTimer !== null || commitInFlightCount > 0,
             clearPendingSaveTimer() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; } },
             applyRemoteCore(remoteState) {
                 if (!remoteState) return;
