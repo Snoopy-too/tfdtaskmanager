@@ -375,10 +375,46 @@ $isUsersActive = !$in_studio && ($current_page === 'users.php');
                     <span class="sidebar-item-label whitespace-nowrap">Game Studio</span>
                 </a>
 
+<<<<<<< HEAD
+                <?php if ($in_studio): ?>
+                    <div class="ml-4 pl-3 border-l border-slate-800/80 space-y-1 my-1">
+                        <a href="<?php echo $studioBase; ?>index.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo in_array($current_page, ['index.php', 'editor.php'], true) ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
+                            <i class="bi bi-grid text-xs"></i>
+                            <span>Components</span>
+                        </a>
+                        <a href="<?php echo $studioBase; ?>assets.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo ($current_page === 'assets.php') ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
+                            <i class="bi bi-images text-xs"></i>
+                            <span>Assets</span>
+                        </a>
+                        <a href="<?php echo $studioBase; ?>datasets.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo ($current_page === 'datasets.php') ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
+                            <i class="bi bi-table text-xs"></i>
+                            <span>Datasets</span>
+                        </a>
+                        <a href="<?php echo $studioBase; ?>rulebooks.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo in_array($current_page, ['rulebooks.php', 'rulebook-editor.php'], true) ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
+                            <i class="bi bi-book text-xs"></i>
+                            <span>Rulebooks</span>
+                        </a>
+                        <a href="<?php echo $studioBase; ?>sandboxes.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo in_array($current_page, ['sandboxes.php', 'sandbox.php'], true) ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
+                            <i class="bi bi-joystick text-xs"></i>
+                            <span>Sandbox</span>
+                        </a>
+                        <a href="<?php echo $studioBase; ?>export.php<?php echo $projQuery; ?>" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition duration-150 <?php echo ($current_page === 'export.php') ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'; ?>">
+                            <i class="bi bi-printer text-xs"></i>
+                            <span>Export Sheets</span>
+                        </a>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Meetings (Div/Dev) -->
+                <a href="<?php echo $base_url; ?>meetings.php" class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition duration-150 <?php echo $isMeetingsActive ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'; ?>">
+                    <i class="bi bi-calendar-event text-base <?php echo $isMeetingsActive ? 'text-indigo-400' : 'text-slate-400'; ?>"></i>
+                    <span>Div / Dev Meetings</span>
+=======
                 <!-- Meetings -->
                 <a href="<?php echo $base_url; ?>meetings.php" class="sidebar-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition duration-150 <?php echo $isMeetingsActive ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'; ?>" title="Meetings">
                     <i class="sidebar-item-icon bi bi-calendar-event text-lg flex-shrink-0 <?php echo $isMeetingsActive ? 'text-indigo-400' : 'text-slate-400'; ?>"></i>
                     <span class="sidebar-item-label whitespace-nowrap">Meetings</span>
+>>>>>>> UX+
                 </a>
 
                 <?php if (SecurityHelper::getCurrentUserRole() === 'super_admin'): ?>
