@@ -10,19 +10,30 @@
         const state = store.getState();
         const ui = store.getUI();
         const seats = state.seats || [];
-        const activeSeat = seats.find((s) => s.seatIndex === ui.activeViewerSeat) || seats[0];
+        const currentUserId = window.sandboxBootstrap ? Number(window.sandboxBootstrap.currentUserId) : 0;
+        const isLive = Boolean(ui.isMultiplayerActive);
+        const mySeat = isLive ? seats.find((s) => Number(s.assignedUserId) === currentUserId) : null;
+        const activeSeat = (isLive && mySeat)
+            ? mySeat
+            : (seats.find((s) => s.seatIndex === ui.activeViewerSeat) || seats[0]);
         const handIds = activeSeat && Array.isArray(activeSeat.handCardIds) ? activeSeat.handCardIds : [];
 
         trayEl.innerHTML = `
             <div class="h-8 px-3 border-b border-slate-800/80 flex items-center justify-between gap-2 bg-slate-950/60">
                 <div class="flex items-center gap-1 overflow-x-auto">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Seat Switcher:</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">${isLive ? 'Seats:' : 'Seat Switcher:'}</span>
                     ${seats.map((s) => {
-                        const isCur = !ui.godMode && s.seatIndex === ui.activeViewerSeat;
+                        const holderId = s.assignedUserId ? Number(s.assignedUserId) : null;
+                        const claimedByOther = isLive && holderId !== null && holderId !== currentUserId;
+                        const isMine = isLive && holderId === currentUserId;
+                        const isCur = !ui.godMode && activeSeat && s.seatIndex === activeSeat.seatIndex && (!isLive || isMine);
+                        const title = claimedByOther
+                            ? `Claimed by ${s.playerName}`
+                            : (isLive && !isMine ? 'Click to claim this seat' : '');
                         return `
-                            <button type="button" data-switch-seat="${s.seatIndex}" class="px-2.5 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${isCur ? 'bg-slate-800 text-white border border-slate-600' : 'text-slate-400 hover:text-white'}">
+                            <button type="button" data-switch-seat="${s.seatIndex}" ${claimedByOther ? 'disabled' : ''} title="${escapeHtml(title)}" class="px-2.5 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${isCur ? 'bg-slate-800 text-white border border-slate-600' : (claimedByOther ? 'text-slate-500 opacity-60 cursor-not-allowed' : 'text-slate-400 hover:text-white')}">
                                 <span class="w-2 h-2 rounded-full" style="background:${escapeHtml(s.color)}"></span>
-                                <span>${escapeHtml(s.playerName)}</span>
+                                <span>${escapeHtml(s.playerName)}${isMine ? ' (You)' : ''}</span>
                                 <span class="text-[10px] px-1 rounded bg-slate-900 text-slate-300">${(s.handCardIds || []).length}</span>
                             </button>
                         `;
@@ -48,7 +59,20 @@
         `;
 
         trayEl.querySelectorAll('button[data-switch-seat]').forEach((btn) => {
-            btn.onclick = () => store.setViewerSeat(Number(btn.getAttribute('data-switch-seat')), false);
+            btn.onclick = () => {
+                const idx = Number(btn.getAttribute('data-switch-seat'));
+                if (isLive) {
+                    const targetSeat = seats.find((s) => s.seatIndex === idx);
+                    const holderId = targetSeat && targetSeat.assignedUserId ? Number(targetSeat.assignedUserId) : null;
+                    if (holderId === currentUserId) {
+                        store.setViewerSeat(idx, false);
+                    } else if (holderId === null && window.SandboxMultiplayer) {
+                        window.SandboxMultiplayer.claimSeat(idx);
+                    }
+                } else {
+                    store.setViewerSeat(idx, false);
+                }
+            };
         });
         trayEl.querySelector('#sbx-btn-godmode').onclick = () => store.setViewerSeat(ui.activeViewerSeat, !ui.godMode);
         trayEl.querySelector('#sbx-btn-ready-all').onclick = () => store.readyAllPlayerCards(ui.activeViewerSeat);

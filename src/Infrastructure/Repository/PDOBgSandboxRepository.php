@@ -57,6 +57,21 @@ final class PDOBgSandboxRepository implements BgSandboxRepositoryInterface
                     INDEX `idx_bg_sandbox_rooms_sandbox` (`sandbox_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `bg_sandbox_publications` (
+                    `sandbox_id` INT PRIMARY KEY,
+                    `lobby_game_id` VARCHAR(64) NOT NULL,
+                    `published_version` INT UNSIGNED NOT NULL DEFAULT 1,
+                    `description` TEXT DEFAULT NULL,
+                    `min_players` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+                    `max_players` TINYINT UNSIGNED NOT NULL DEFAULT 4,
+                    `last_published_by` INT DEFAULT NULL,
+                    `published_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    CONSTRAINT `fk_bg_sandbox_publications_sandbox` FOREIGN KEY (`sandbox_id`) REFERENCES `bg_sandboxes` (`id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_bg_sandbox_publications_user` FOREIGN KEY (`last_published_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
         } catch (\Throwable $e) {
             error_log('[PDOBgSandboxRepository] Table creation check notice: ' . $e->getMessage());
         }
@@ -135,7 +150,7 @@ final class PDOBgSandboxRepository implements BgSandboxRepositoryInterface
         $this->ensureTablesExist();
         $existing = $this->findRoomBySandboxId($sandboxId);
         $stateJson = json_encode($initialState, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-        $presenceJson = json_encode(['cursors' => [], 'pings' => [], 'seats' => []], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $presenceJson = json_encode(['cursors' => [], 'pings' => [], 'seats' => [], 'members' => []], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 
         if ($existing !== null) {
             $stmt = $this->pdo->prepare('
@@ -174,19 +189,51 @@ final class PDOBgSandboxRepository implements BgSandboxRepositoryInterface
         $stmt = $this->pdo->prepare('SELECT * FROM bg_sandbox_rooms WHERE sandbox_id = :sandbox_id LIMIT 1');
         $stmt->execute(['sandbox_id' => $sandboxId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) {
+        return $row ? $this->mapRoomRow($row) : null;
+    }
+
+    /** @return array<string,mixed>|null */
+    public function findRoomByCode(string $roomCode): ?array
+    {
+        $this->ensureTablesExist();
+        $cleanCode = strtoupper(trim($roomCode));
+        if ($cleanCode === '') {
             return null;
         }
-        return [
-            'id' => (int)$row['id'],
-            'sandboxId' => (int)$row['sandbox_id'],
-            'roomCode' => (string)$row['room_code'],
-            'hostUserId' => (int)$row['host_user_id'],
-            'roomState' => json_decode((string)$row['room_state'], true) ?: [],
-            'presenceState' => json_decode((string)$row['presence_state'], true) ?: ['cursors' => [], 'pings' => [], 'seats' => []],
-            'version' => (int)$row['version'],
-            'updatedAt' => (string)$row['updated_at'],
-        ];
+        $stmt = $this->pdo->prepare('SELECT * FROM bg_sandbox_rooms WHERE room_code = :room_code LIMIT 1');
+        $stmt->execute(['room_code' => $cleanCode]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $this->mapRoomRow($row) : null;
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function findRoomsByProjectId(int $projectId): array
+    {
+        $this->ensureTablesExist();
+        $stmt = $this->pdo->prepare('
+            SELECT r.sandbox_id, r.room_code, r.host_user_id, r.presence_state, r.version, r.updated_at, u.name AS host_user_name
+            FROM bg_sandbox_rooms r
+            INNER JOIN bg_sandboxes s ON s.id = r.sandbox_id
+            LEFT JOIN users u ON u.id = r.host_user_id
+            WHERE s.project_id = :project_id
+        ');
+        $stmt->execute(['project_id' => $projectId]);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $presence = $this->decodePresence((string)($row['presence_state'] ?? ''));
+            $out[(int)$row['sandbox_id']] = [
+                'sandboxId' => (int)$row['sandbox_id'],
+                'roomCode' => (string)$row['room_code'],
+                'hostUserId' => (int)$row['host_user_id'],
+                'hostUserName' => (string)($row['host_user_name'] ?? ('User #' . (int)$row['host_user_id'])),
+                'presenceState' => $presence,
+                'version' => (int)$row['version'],
+                'updatedAt' => (string)$row['updated_at'],
+            ];
+        }
+        return $out;
     }
 
     /**
@@ -205,6 +252,112 @@ final class PDOBgSandboxRepository implements BgSandboxRepositoryInterface
             'presence_state' => json_encode($presenceState, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             'id' => $roomId,
         ]);
+    }
+
+    public function mutateRoom(int $sandboxId, callable $mutator): ?array
+    {
+        $this->ensureTablesExist();
+        $startedTx = !$this->pdo->inTransaction();
+        if ($startedTx) {
+            $this->pdo->beginTransaction();
+        }
+        try {
+            $stmt = $this->pdo->prepare('SELECT * FROM bg_sandbox_rooms WHERE sandbox_id = :sandbox_id LIMIT 1 FOR UPDATE');
+            $stmt->execute(['sandbox_id' => $sandboxId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                if ($startedTx && $this->pdo->inTransaction()) {
+                    $this->pdo->commit();
+                }
+                return null;
+            }
+
+            $room = $this->mapRoomRow($row);
+            $mutation = $mutator($room);
+            $stateChanged = !empty($mutation['stateChanged']);
+            $presenceChanged = !empty($mutation['presenceChanged']);
+            $bumpVersion = !empty($mutation['bumpVersion']);
+
+            $newRoomState = is_array($mutation['roomState'] ?? null) ? $mutation['roomState'] : $room['roomState'];
+            $newPresence = is_array($mutation['presenceState'] ?? null) ? $mutation['presenceState'] : $room['presenceState'];
+
+            $setClauses = [];
+            $params = ['id' => $room['id']];
+            if ($stateChanged) {
+                $setClauses[] = 'room_state = :room_state';
+                $params['room_state'] = json_encode($newRoomState, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            }
+            if ($presenceChanged) {
+                $setClauses[] = 'presence_state = :presence_state';
+                $params['presence_state'] = json_encode($newPresence, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            }
+            if ($bumpVersion) {
+                $setClauses[] = 'version = version + 1';
+            }
+
+            if ($setClauses !== []) {
+                $sql = 'UPDATE bg_sandbox_rooms SET ' . implode(', ', $setClauses) . ' WHERE id = :id';
+                $upd = $this->pdo->prepare($sql);
+                $upd->execute($params);
+            }
+
+            if ($startedTx && $this->pdo->inTransaction()) {
+                $this->pdo->commit();
+            }
+
+            $room['roomState'] = $newRoomState;
+            $room['presenceState'] = $newPresence;
+            if ($bumpVersion) {
+                $room['version'] = (int)$room['version'] + 1;
+            }
+
+            return [
+                'room' => $room,
+                'result' => $mutation['result'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            if ($startedTx && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public function deleteRoom(int $sandboxId): void
+    {
+        $this->ensureTablesExist();
+        $stmt = $this->pdo->prepare('DELETE FROM bg_sandbox_rooms WHERE sandbox_id = :sandbox_id');
+        $stmt->execute(['sandbox_id' => $sandboxId]);
+    }
+
+    /** @param array<string,mixed> $row @return array<string,mixed> */
+    private function mapRoomRow(array $row): array
+    {
+        return [
+            'id' => (int)$row['id'],
+            'sandboxId' => (int)$row['sandbox_id'],
+            'roomCode' => (string)$row['room_code'],
+            'hostUserId' => (int)$row['host_user_id'],
+            'roomState' => json_decode((string)$row['room_state'], true) ?: [],
+            'presenceState' => $this->decodePresence((string)($row['presence_state'] ?? '')),
+            'version' => (int)$row['version'],
+            'updatedAt' => (string)$row['updated_at'],
+        ];
+    }
+
+    /** @return array<string,mixed> */
+    private function decodePresence(string $json): array
+    {
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+        return [
+            'cursors' => is_array($decoded['cursors'] ?? null) ? $decoded['cursors'] : [],
+            'pings' => is_array($decoded['pings'] ?? null) ? $decoded['pings'] : [],
+            'seats' => is_array($decoded['seats'] ?? null) ? $decoded['seats'] : [],
+            'members' => is_array($decoded['members'] ?? null) ? $decoded['members'] : [],
+        ];
     }
 
     /** @param array<string,mixed> $row */
@@ -226,5 +379,96 @@ final class PDOBgSandboxRepository implements BgSandboxRepositoryInterface
             $row['locked_by_user_id'] !== null ? (int)$row['locked_by_user_id'] : null,
             $row['locked_at'] !== null ? (string)$row['locked_at'] : null
         );
+    }
+
+    public function findPublicationBySandboxId(int $sandboxId): ?array
+    {
+        $this->ensureTablesExist();
+        $stmt = $this->pdo->prepare('SELECT * FROM bg_sandbox_publications WHERE sandbox_id = :sandbox_id LIMIT 1');
+        $stmt->execute(['sandbox_id' => $sandboxId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $this->mapPublicationRow($row) : null;
+    }
+
+    public function findPublicationsByProjectId(int $projectId): array
+    {
+        $this->ensureTablesExist();
+        $stmt = $this->pdo->prepare(
+            'SELECT p.* FROM bg_sandbox_publications p
+             INNER JOIN bg_sandboxes s ON s.id = p.sandbox_id
+             WHERE s.project_id = :project_id'
+        );
+        $stmt->execute(['project_id' => $projectId]);
+        $result = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $mapped = $this->mapPublicationRow($row);
+            $result[(int)$mapped['sandboxId']] = $mapped;
+        }
+        return $result;
+    }
+
+    public function savePublication(int $sandboxId, array $data): array
+    {
+        $this->ensureTablesExist();
+        $stmt = $this->pdo->prepare('
+            INSERT INTO bg_sandbox_publications
+                (sandbox_id, lobby_game_id, published_version, description, min_players, max_players, last_published_by, published_at)
+            VALUES
+                (:sandbox_id, :lobby_game_id, :published_version, :description, :min_players, :max_players, :last_published_by, CURRENT_TIMESTAMP)
+            ON DUPLICATE KEY UPDATE
+                lobby_game_id = VALUES(lobby_game_id),
+                published_version = VALUES(published_version),
+                description = VALUES(description),
+                min_players = VALUES(min_players),
+                max_players = VALUES(max_players),
+                last_published_by = VALUES(last_published_by),
+                published_at = CURRENT_TIMESTAMP
+        ');
+        $stmt->execute([
+            'sandbox_id' => $sandboxId,
+            'lobby_game_id' => (string)$data['lobbyGameId'],
+            'published_version' => (int)$data['publishedVersion'],
+            'description' => (string)($data['description'] ?? ''),
+            'min_players' => (int)$data['minPlayers'],
+            'max_players' => (int)$data['maxPlayers'],
+            'last_published_by' => $data['lastPublishedBy'] ?? null,
+        ]);
+
+        return $this->findPublicationBySandboxId($sandboxId) ?? [
+            'sandboxId' => $sandboxId,
+            'lobbyGameId' => (string)$data['lobbyGameId'],
+            'publishedVersion' => (int)$data['publishedVersion'],
+            'description' => (string)($data['description'] ?? ''),
+            'minPlayers' => (int)$data['minPlayers'],
+            'maxPlayers' => (int)$data['maxPlayers'],
+            'lastPublishedBy' => $data['lastPublishedBy'] ?? null,
+            'publishedAt' => date('Y-m-d H:i:s'),
+        ];
+    }
+
+    public function deletePublication(int $sandboxId): void
+    {
+        $this->ensureTablesExist();
+        $stmt = $this->pdo->prepare('DELETE FROM bg_sandbox_publications WHERE sandbox_id = :sandbox_id');
+        $stmt->execute(['sandbox_id' => $sandboxId]);
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private function mapPublicationRow(array $row): array
+    {
+        return [
+            'sandboxId' => (int)$row['sandbox_id'],
+            'lobbyGameId' => (string)$row['lobby_game_id'],
+            'publishedVersion' => (int)$row['published_version'],
+            'description' => (string)($row['description'] ?? ''),
+            'minPlayers' => (int)$row['min_players'],
+            'maxPlayers' => (int)$row['max_players'],
+            'lastPublishedBy' => $row['last_published_by'] !== null ? (int)$row['last_published_by'] : null,
+            'publishedAt' => (string)$row['published_at'],
+            'updatedAt' => (string)$row['updated_at'],
+        ];
     }
 }

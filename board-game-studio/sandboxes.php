@@ -81,6 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $sandboxes = $activeProjectId !== null ? $sandboxService->getSandboxesByProject($activeProjectId) : [];
+$activeRooms = $activeProjectId !== null ? $sandboxService->getActiveRoomsForProject($activeProjectId) : [];
+$publications = $activeProjectId !== null ? $sandboxService->getPublicationsForProject($activeProjectId) : [];
+$lobbyPublicUrl = $sandboxService->getLobbyPublicUrl();
 
 require_once __DIR__ . '/../templates/header.php';
 
@@ -135,12 +138,18 @@ if ($activeProject) {
             <p class="text-slate-400 text-sm">Choose a project from the menu at the top right to manage its playtest sandboxes.</p>
         </div>
     <?php else: ?>
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-xl font-bold text-slate-200">Sandboxes (<?php echo count($sandboxes); ?>)</h2>
-            <button type="button" id="btn-open-create-sandbox" class="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-xl transition">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                New Sandbox
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <form method="GET" action="sandbox.php" class="flex items-center gap-1.5 m-0">
+                    <input type="text" name="room" maxlength="16" placeholder="Room code (e.g. 99FD3943)" required class="bg-slate-900 border border-slate-800 text-xs text-slate-100 rounded-xl px-3 py-2 w-44 uppercase font-mono focus:ring-emerald-500 focus:border-emerald-500">
+                    <button type="submit" class="px-3 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition">Join Code</button>
+                </form>
+                <button type="button" id="btn-open-create-sandbox" class="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-xl transition">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    New Sandbox
+                </button>
+            </div>
         </div>
 
         <?php if (empty($sandboxes)): ?>
@@ -151,18 +160,38 @@ if ($activeProject) {
         <?php else: ?>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 <?php foreach ($sandboxes as $sbx): /** @var BgSandbox $sbx */ ?>
-                    <?php $lockedByOther = $sbx->isLockedByOther($currentUserId); ?>
-                    <div class="bg-slate-900 border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between hover:border-slate-700/80 transition">
+                    <?php
+                    $lockedByOther = $sbx->isLockedByOther($currentUserId);
+                    $activeRoom = $activeRooms[(int)$sbx->id] ?? null;
+                    $activeMemberCount = $activeRoom !== null ? count($sandboxService->prunePresence($activeRoom['presenceState'])['members']) : 0;
+                    $publication = $publications[(int)$sbx->id] ?? null;
+                    ?>
+                    <div data-sandbox-card="<?php echo (int)$sbx->id; ?>" data-has-publication="<?php echo $publication !== null ? '1' : '0'; ?>" class="bg-slate-900 border <?php echo $activeRoom !== null ? 'border-emerald-500/40' : ($publication !== null ? 'border-amber-500/40' : 'border-slate-800/80'); ?> p-5 rounded-2xl flex flex-col justify-between hover:border-slate-700/80 transition">
                         <div class="space-y-1">
                             <div class="flex items-start justify-between gap-2">
                                 <h3 class="font-bold text-slate-200 truncate"><?php echo SecurityHelper::escape($sbx->name); ?></h3>
-                                <?php if ($lockedByOther): ?>
-                                    <span class="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex-shrink-0">Being edited</span>
-                                <?php endif; ?>
+                                <div class="flex items-center gap-1 flex-shrink-0">
+                                    <?php if ($publication !== null): ?>
+                                        <span class="text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full" title="Published to Game Lobby (Admins Only)">
+                                            Lobby v<?php echo (int)$publication['publishedVersion']; ?> · Admin
+                                        </span>
+                                    <?php endif; ?>
+                                    <span data-sbx-room-badge class="<?php echo $activeRoom !== null ? '' : 'hidden'; ?> text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">
+                                        <?php echo $activeRoom !== null ? ('Live · ' . SecurityHelper::escape($activeRoom['roomCode'])) : ''; ?>
+                                    </span>
+                                    <?php if ($lockedByOther): ?>
+                                        <span class="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Being edited</span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <p class="text-xs text-slate-400">
                                 <?php echo (int)$sbx->defaultPlayerCount; ?> player<?php echo $sbx->defaultPlayerCount === 1 ? '' : 's'; ?>
                                 · <?php echo $sandboxService->countComponents($sbx); ?> components
+                                <span data-sbx-room-host class="<?php echo $activeRoom !== null ? '' : 'hidden'; ?> text-emerald-400 font-semibold">
+                                    <?php if ($activeRoom !== null): ?>
+                                        · Hosted by <?php echo SecurityHelper::escape($activeRoom['hostUserName']); ?><?php echo $activeMemberCount > 0 ? ' (' . $activeMemberCount . ' online)' : ''; ?>
+                                    <?php endif; ?>
+                                </span>
                             </p>
                             <p class="text-[10px] text-slate-500">Last modified: <?php echo SecurityHelper::escape(date('M d, Y H:i', strtotime($sbx->updatedAt) ?: time())); ?></p>
                         </div>
@@ -170,9 +199,15 @@ if ($activeProject) {
                             <a href="sandbox.php?id=<?php echo (int)$sbx->id; ?>" class="text-xs font-semibold text-sky-400 hover:text-sky-300 bg-sky-500/5 hover:bg-sky-500/10 px-3 py-1.5 rounded-lg border border-sky-500/20 transition">
                                 Edit Setup
                             </a>
-                            <a href="sandbox.php?id=<?php echo (int)$sbx->id; ?>&host=1" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/5 hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition">
-                                Host Live Session
-                            </a>
+                            <?php if ($activeRoom !== null): ?>
+                                <a data-sbx-room-action href="sandbox.php?id=<?php echo (int)$sbx->id; ?>&live=1" class="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg transition">
+                                    Join Live Room
+                                </a>
+                            <?php else: ?>
+                                <a data-sbx-room-action href="sandbox.php?id=<?php echo (int)$sbx->id; ?>&host=1" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/5 hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition">
+                                    Host Live Session
+                                </a>
+                            <?php endif; ?>
                             <form method="POST" class="m-0 ml-auto" onsubmit="return showCustomConfirm('Delete this sandbox and its saved table? This cannot be undone.', this);">
                                 <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                 <input type="hidden" name="action" value="delete_sandbox">
@@ -217,6 +252,83 @@ if ($activeProject) {
                     document.getElementById('sandbox_name').focus();
                 });
                 document.getElementById('btn-cancel-create-sandbox').addEventListener('click', () => dialog.close());
+
+                const projectId = <?php echo (int)$activeProjectId; ?>;
+                const csrfToken = <?php echo json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+                const cards = Array.from(document.querySelectorAll('[data-sandbox-card]'));
+                if (!cards.length) return;
+
+                function applyRoomsSnapshot(rooms) {
+                    cards.forEach((card) => {
+                        const sbxId = card.getAttribute('data-sandbox-card');
+                        const hasPub = card.getAttribute('data-has-publication') === '1';
+                        const room = rooms && sbxId ? rooms[sbxId] : null;
+                        const badgeEl = card.querySelector('[data-sbx-room-badge]');
+                        const hostEl = card.querySelector('[data-sbx-room-host]');
+                        const actionEl = card.querySelector('[data-sbx-room-action]');
+
+                        card.classList.remove('border-emerald-500/40', 'border-amber-500/40', 'border-slate-800/80');
+                        if (room) {
+                            card.classList.add('border-emerald-500/40');
+                            if (badgeEl) {
+                                badgeEl.textContent = `Live · ${room.roomCode || ''}`;
+                                badgeEl.classList.remove('hidden');
+                            }
+                            if (hostEl) {
+                                const countText = room.memberCount > 0 ? ` (${room.memberCount} online)` : '';
+                                hostEl.textContent = ` · Hosted by ${room.hostUserName || 'Host'}${countText}`;
+                                hostEl.classList.remove('hidden');
+                            }
+                            if (actionEl) {
+                                actionEl.href = `sandbox.php?id=${encodeURIComponent(sbxId)}&live=1`;
+                                actionEl.textContent = 'Join Live Room';
+                                actionEl.className = 'text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg transition';
+                            }
+                        } else {
+                            card.classList.add(hasPub ? 'border-amber-500/40' : 'border-slate-800/80');
+                            if (badgeEl) {
+                                badgeEl.textContent = '';
+                                badgeEl.classList.add('hidden');
+                            }
+                            if (hostEl) {
+                                hostEl.textContent = '';
+                                hostEl.classList.add('hidden');
+                            }
+                            if (actionEl) {
+                                actionEl.href = `sandbox.php?id=${encodeURIComponent(sbxId)}&host=1`;
+                                actionEl.textContent = 'Host Live Session';
+                                actionEl.className = 'text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/5 hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition';
+                            }
+                        }
+                    });
+                }
+
+                let refreshInFlight = false;
+                async function refreshLiveRooms() {
+                    if (refreshInFlight || document.hidden) return;
+                    refreshInFlight = true;
+                    try {
+                        const fd = new FormData();
+                        fd.append('action', 'get_project_sandbox_rooms');
+                        fd.append('project_id', String(projectId));
+                        fd.append('csrf_token', csrfToken);
+                        const res = await fetch('api.php', { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (data && data.success && data.rooms) {
+                            applyRoomsSnapshot(data.rooms);
+                        }
+                    } catch (_) {
+                        // Ignore transient polling failures
+                    } finally {
+                        refreshInFlight = false;
+                    }
+                }
+
+                setInterval(refreshLiveRooms, 3000);
+                window.addEventListener('pageshow', refreshLiveRooms);
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) refreshLiveRooms();
+                });
             })();
         </script>
     <?php endif; ?>

@@ -31,6 +31,7 @@ use App\Application\Services\BgBoxDielineService;
 use App\Infrastructure\Repository\PDOBgSandboxRepository;
 use App\Application\Services\BgSandboxService;
 use App\Domain\Sandbox\SandboxStateSchema;
+use App\Infrastructure\Http\LobbyPublishClient;
 use PDO;
 
 class DIContainer
@@ -166,10 +167,15 @@ class DIContainer
             return new PDOBgSandboxRepository($this->get(PDO::class));
         };
 
+        $this->services[LobbyPublishClient::class] = function() {
+            return new LobbyPublishClient($this->config['lobby'] ?? []);
+        };
+
         $this->services[BgSandboxService::class] = function() {
             return new BgSandboxService(
                 $this->get(PDOBgSandboxRepository::class),
-                $this->get(SandboxStateSchema::class)
+                $this->get(SandboxStateSchema::class),
+                $this->get(LobbyPublishClient::class)
             );
         };
 

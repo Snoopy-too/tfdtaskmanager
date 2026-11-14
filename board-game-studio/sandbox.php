@@ -30,6 +30,14 @@ $currentUser = $userService->getUserById($currentUserId);
 $currentUserName = $currentUser ? $currentUser->getName() : ('Tester #' . $currentUserId);
 
 $sandboxId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$roomCodeParam = strtoupper(trim((string)($_GET['room'] ?? '')));
+if ($sandboxId <= 0 && $roomCodeParam !== '') {
+    $roomByCode = $sandboxService->getActiveRoomByCode($roomCodeParam);
+    if ($roomByCode !== null) {
+        $sandboxId = (int)$roomByCode['sandboxId'];
+    }
+}
+
 $sandbox = $sandboxService->getSandboxById($sandboxId);
 if ($sandbox === null) {
     header('Location: sandboxes.php');
@@ -45,10 +53,24 @@ if ($project === null) {
 $_SESSION['last_project_id'] = $sandbox->projectId;
 $csrfToken = SecurityHelper::generateCsrfToken();
 
-$autoHost = isset($_GET['host']) && $_GET['host'] === '1';
-$roomInfo = null;
-if ($autoHost) {
-    $roomInfo = $sandboxService->hostLiveSession($sandbox, $currentUserId);
+$wantsHost = isset($_GET['host']) && $_GET['host'] === '1';
+$wantsLive = (isset($_GET['live']) && $_GET['live'] === '1') || $roomCodeParam !== '';
+$activeRoom = $sandboxService->getActiveRoom($sandbox);
+$joinedRoom = null;
+
+if ($wantsHost) {
+    $sandboxService->hostLiveSession($sandbox, $currentUserId, false);
+    $joinedRoom = $sandboxService->joinLiveSession($sandbox, $currentUserId, $currentUserName, false);
+    $activeRoom = $sandboxService->getActiveRoom($sandbox);
+} elseif ($wantsLive && $activeRoom !== null) {
+    $joinedRoom = $sandboxService->joinLiveSession($sandbox, $currentUserId, $currentUserName, false);
+}
+
+$inLiveRoom = $joinedRoom !== null;
+$roomHostName = null;
+if ($activeRoom !== null) {
+    $roomHostUser = $userService->getUserById((int)$activeRoom['hostUserId']);
+    $roomHostName = $roomHostUser ? $roomHostUser->getName() : ('User #' . (int)$activeRoom['hostUserId']);
 }
 
 $isLockedByOther = $sandbox->isLockedByOther($currentUserId);
@@ -56,7 +78,7 @@ $lockOwnerName = null;
 if ($isLockedByOther && $sandbox->lockedByUserId !== null) {
     $lockUser = $userService->getUserById($sandbox->lockedByUserId);
     $lockOwnerName = $lockUser ? $lockUser->getName() : 'Another user';
-} else {
+} elseif (!$inLiveRoom) {
     $sandboxService->acquireOrRefreshLock($sandbox, $currentUserId);
 }
 
@@ -322,12 +344,25 @@ require_once __DIR__ . '/../templates/header.php';
     <!-- Top Control Bar (hud/TopControlBar.js) -->
     <header id="sbx-top-bar" class="h-12 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between gap-2 flex-shrink-0 z-30"></header>
 
-    <?php if ($isLockedByOther): ?>
-        <div class="bg-amber-500/10 border-b border-amber-500/30 text-amber-300 px-4 py-1.5 text-xs flex items-center justify-between flex-shrink-0 z-20">
-            <span><strong>Shared Session Notice:</strong> Setup is currently locked by <strong><?php echo SecurityHelper::escape((string)$lockOwnerName); ?></strong>. Switch to Live Room to test together in real time.</span>
-            <a href="sandboxes.php?project_id=<?php echo (int)$sandbox->projectId; ?>" class="underline hover:text-white">Back to Sandboxes</a>
-        </div>
-    <?php endif; ?>
+    <div id="sbx-room-banner" class="flex-shrink-0 z-20">
+        <?php if (!$inLiveRoom && $activeRoom !== null): ?>
+            <div class="bg-emerald-500/10 border-b border-emerald-500/30 text-emerald-200 px-4 py-1.5 text-xs flex items-center justify-between gap-3">
+                <span><strong>Live Room Active:</strong> Code <span class="font-mono font-bold text-white"><?php echo SecurityHelper::escape((string)$activeRoom['roomCode']); ?></span> hosted by <strong><?php echo SecurityHelper::escape((string)$roomHostName); ?></strong>.</span>
+                <div class="flex items-center gap-3">
+                    <a href="sandbox.php?id=<?php echo (int)$sandbox->id; ?>&live=1" class="px-2.5 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition">Join Live Room</a>
+                    <a href="sandboxes.php?project_id=<?php echo (int)$sandbox->projectId; ?>" class="underline hover:text-white">Back to Sandboxes</a>
+                </div>
+            </div>
+        <?php elseif (!$inLiveRoom && $isLockedByOther): ?>
+            <div class="bg-amber-500/10 border-b border-amber-500/30 text-amber-300 px-4 py-1.5 text-xs flex items-center justify-between gap-3">
+                <span><strong>Shared Session Notice:</strong> Setup is currently locked by <strong><?php echo SecurityHelper::escape((string)$lockOwnerName); ?></strong>. Start a Live Room to playtest together in real time.</span>
+                <div class="flex items-center gap-3">
+                    <a href="sandbox.php?id=<?php echo (int)$sandbox->id; ?>&host=1" class="px-2.5 py-0.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition">Start Live Room</a>
+                    <a href="sandboxes.php?project_id=<?php echo (int)$sandbox->projectId; ?>" class="underline hover:text-white">Back to Sandboxes</a>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <!-- Middle Interactive Area: Left Component Drawer + 2D Viewport + Right Inspector / Resource & Event Log -->
     <div class="flex-1 flex min-h-0 relative overflow-hidden">
@@ -395,10 +430,19 @@ require_once __DIR__ . '/../templates/header.php';
         currentUserId: <?php echo (int)$currentUserId; ?>,
         currentUserName: <?php echo json_encode($currentUserName, JSON_HEX_TAG | JSON_HEX_AMP); ?>,
         isLockedByOther: <?php echo $isLockedByOther ? 'true' : 'false'; ?>,
+        lockOwnerName: <?php echo json_encode($lockOwnerName, JSON_HEX_TAG | JSON_HEX_AMP); ?>,
         hasStartingSnapshot: <?php echo $sandbox->startingSnapshot !== null ? 'true' : 'false'; ?>,
-        autoHost: <?php echo $autoHost ? 'true' : 'false'; ?>,
-        roomCode: <?php echo json_encode($roomInfo['roomCode'] ?? null); ?>,
-        initialState: <?php echo json_encode($sandboxService->presentState($sandbox), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
+        isMultiplayerActive: <?php echo $inLiveRoom ? 'true' : 'false'; ?>,
+        activeRoomExists: <?php echo $activeRoom !== null ? 'true' : 'false'; ?>,
+        roomCode: <?php echo json_encode($joinedRoom['roomCode'] ?? ($activeRoom['roomCode'] ?? null)); ?>,
+        roomHostName: <?php echo json_encode($roomHostName, JSON_HEX_TAG | JSON_HEX_AMP); ?>,
+        roomVersion: <?php echo (int)($joinedRoom['version'] ?? ($activeRoom['version'] ?? 0)); ?>,
+        hostUserId: <?php echo $joinedRoom ? (int)$joinedRoom['hostUserId'] : ($activeRoom !== null ? (int)$activeRoom['hostUserId'] : 'null'); ?>,
+        assignedSeat: <?php echo ($joinedRoom && $joinedRoom['assignedSeat'] !== null) ? (int)$joinedRoom['assignedSeat'] : 'null'; ?>,
+        initialState: <?php echo json_encode($inLiveRoom ? $joinedRoom['state'] : $sandboxService->presentState($sandbox), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
+        startingSnapshot: <?php echo json_encode($sandbox->startingSnapshot, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
+        publication: <?php echo json_encode($sandboxService->getPublication((int)$sandbox->id), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
+        lobbyPublicUrl: <?php echo json_encode($sandboxService->getLobbyPublicUrl(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
         projectAssets: <?php echo json_encode($importedAssetsPayload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>,
         prototypingKit: <?php echo json_encode($prototypingKit, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>
     };

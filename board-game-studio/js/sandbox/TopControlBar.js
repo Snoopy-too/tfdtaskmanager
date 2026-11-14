@@ -23,6 +23,14 @@
             (o) => o && (o.ownerSeat === undefined || o.ownerSeat === null) && !(o.type === 'CARD' && inDeckIds.has(o.id))
         ).length;
 
+        const isLive = Boolean(ui.isMultiplayerActive);
+        const isHost = isLive && ui.hostUserId !== null && Number(ui.hostUserId) === Number(bootstrap.currentUserId);
+        const memberCount = Array.isArray(ui.roomMembers) ? ui.roomMembers.length : 0;
+        const roomAvailable = !isLive && Boolean(ui.roomStatus ? ui.roomStatus.active : bootstrap.activeRoomExists);
+        const availableCode = (ui.roomStatus && ui.roomStatus.roomCode) || bootstrap.roomCode || 'Room';
+        const roomHostName = (ui.roomStatus && ui.roomStatus.hostUserName) || bootstrap.roomHostName || 'Host';
+        const hasSaveErr = String(ui.saveStatus || '').toLowerCase().includes('error');
+
         barEl.innerHTML = `
             <div class="flex items-center gap-2 min-w-0">
                 <a href="sandboxes.php?project_id=${Number(bootstrap.projectId)}" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 transition">
@@ -32,7 +40,7 @@
 
                 <!-- Two-Mode Architecture Switcher -->
                 <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 ml-1">
-                    <button type="button" id="sbx-mode-setup" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${state.mode === 'SETUP' ? 'bg-sky-600 text-white shadow' : 'text-slate-400 hover:text-white'}">
+                    <button type="button" id="sbx-mode-setup" ${isLive ? 'disabled title="Leave Live Room to edit Setup"' : ''} class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${state.mode === 'SETUP' ? 'bg-sky-600 text-white shadow' : 'text-slate-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed'}">
                         🛠 Setup Mode
                     </button>
                     <button type="button" id="sbx-mode-play" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${state.mode === 'PLAY' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}">
@@ -40,7 +48,7 @@
                     </button>
                 </div>
 
-                <span class="text-[11px] ${String(ui.saveStatus || '').startsWith('Save error') ? 'text-rose-400 border-rose-500/40 bg-rose-500/10 font-bold' : 'text-slate-400 bg-slate-950/90 border-slate-800'} border px-2 py-0.5 rounded-full hidden lg:inline">${escapeHtml(ui.saveStatus)} · ${visibleTableCount} on table</span>
+                <span class="text-[11px] ${hasSaveErr ? 'text-rose-400 border-rose-500/40 bg-rose-500/10 font-bold' : 'text-slate-400 bg-slate-950/90 border-slate-800'} border px-2 py-0.5 rounded-full hidden lg:inline">${escapeHtml(ui.saveStatus)} · ${visibleTableCount} on table</span>
             </div>
 
             <!-- Turn & Phase Tracker -->
@@ -61,17 +69,24 @@
                 <button type="button" id="sbx-btn-undo" ${store.canUndo() ? '' : 'disabled'} class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs font-semibold text-slate-200 transition" title="Undo (Ctrl+Z)">↶ Undo</button>
                 <button type="button" id="sbx-btn-redo" ${store.canRedo() ? '' : 'disabled'} class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs font-semibold text-slate-200 transition" title="Redo (Ctrl+Shift+Z)">↷</button>
 
-                <button type="button" id="sbx-btn-freeze" class="px-2.5 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 text-xs font-bold transition" title="Freeze layout as Default Starting Snapshot">
+                <button type="button" id="sbx-btn-freeze" ${isLive ? 'disabled title="Freeze Start is only available in Setup/Solo mode"' : 'title="Freeze layout as Default Starting Snapshot"'} class="px-2.5 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 disabled:opacity-40 disabled:cursor-not-allowed border border-sky-500/30 text-sky-300 text-xs font-bold transition">
                     Freeze Start
                 </button>
-                <button type="button" id="sbx-btn-reset" class="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold transition" title="Reset table to Starting State">
+                <button type="button" id="sbx-btn-reset" ${(isLive && !isHost) ? 'disabled title="Only the room host can reset the live table"' : 'title="Reset table to Starting State"'} class="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed border border-amber-500/30 text-amber-300 text-xs font-bold transition">
                     Reset Table
                 </button>
                 <button type="button" id="sbx-btn-scenarios" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
                     Scenarios (${(state.scenarios || []).length})
                 </button>
-                <button type="button" id="sbx-btn-multiplayer" class="px-2.5 py-1 rounded-lg ${ui.isMultiplayerActive ? 'bg-emerald-600 text-white' : 'bg-violet-600/80 hover:bg-violet-500 text-white'} text-xs font-bold transition">
-                    ${ui.isMultiplayerActive ? `🟢 Live (${escapeHtml(ui.liveRoomCode || 'Room')})` : '📡 Live Room'}
+                <button type="button" id="sbx-btn-multiplayer" class="px-2.5 py-1 rounded-lg ${isLive ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : (roomAvailable ? 'bg-emerald-600/80 hover:bg-emerald-500 text-white' : 'bg-violet-600/80 hover:bg-violet-500 text-white')} text-xs font-bold transition">
+                    ${isLive
+                        ? `🟢 Live (${escapeHtml(ui.liveRoomCode || 'Room')}${memberCount > 0 ? ` · ${memberCount}` : ''})`
+                        : (roomAvailable ? `🟢 Join Live (${escapeHtml(availableCode)})` : '📡 Live Room')}
+                </button>
+                <button type="button" id="sbx-btn-publish" class="px-2.5 py-1 rounded-lg ${bootstrap && bootstrap.publication ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'} text-xs font-bold transition" title="Publish to The Flying Dutchmen Game Lobby (Admins Only)">
+                    ${bootstrap && bootstrap.publication
+                        ? `🚀 Published v${Number(bootstrap.publication.publishedVersion || 1)}`
+                        : '🚀 Publish to Lobby'}
                 </button>
             </div>
         `;
@@ -91,6 +106,53 @@
         barEl.querySelector('#sbx-btn-multiplayer').onclick = () => {
             if (window.SandboxWorkspaceModals) window.SandboxWorkspaceModals.openMultiplayerModal(store);
         };
+        const pubBtn = barEl.querySelector('#sbx-btn-publish');
+        if (pubBtn) {
+            pubBtn.onclick = () => {
+                if (window.SandboxWorkspaceModals && window.SandboxWorkspaceModals.openPublishModal) {
+                    window.SandboxWorkspaceModals.openPublishModal(store, bootstrap);
+                }
+            };
+        }
+
+        const bannerEl = document.getElementById('sbx-room-banner');
+        if (bannerEl) {
+            if (!isLive && roomAvailable) {
+                bannerEl.innerHTML = `
+                    <div class="bg-emerald-500/10 border-b border-emerald-500/30 text-emerald-200 px-4 py-1.5 text-xs flex items-center justify-between gap-3">
+                        <span><strong>Live Room Active:</strong> Code <span class="font-mono font-bold text-white">${escapeHtml(availableCode)}</span> hosted by <strong>${escapeHtml(roomHostName)}</strong>.</span>
+                        <div class="flex items-center gap-3">
+                            <button type="button" id="sbx-banner-join-btn" class="px-2.5 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition">Join Live Room</button>
+                            <a href="sandboxes.php?project_id=${Number(bootstrap.projectId)}" class="underline hover:text-white">Back to Sandboxes</a>
+                        </div>
+                    </div>
+                `;
+                const joinBannerBtn = bannerEl.querySelector('#sbx-banner-join-btn');
+                if (joinBannerBtn) {
+                    joinBannerBtn.onclick = () => {
+                        if (window.SandboxMultiplayer) window.SandboxMultiplayer.joinRoom();
+                    };
+                }
+            } else if (!isLive && bootstrap.isLockedByOther) {
+                bannerEl.innerHTML = `
+                    <div class="bg-amber-500/10 border-b border-amber-500/30 text-amber-300 px-4 py-1.5 text-xs flex items-center justify-between gap-3">
+                        <span><strong>Shared Session Notice:</strong> Setup is currently locked by <strong>${escapeHtml(bootstrap.lockOwnerName || 'Another user')}</strong>. Start a Live Room to playtest together in real time.</span>
+                        <div class="flex items-center gap-3">
+                            <button type="button" id="sbx-banner-host-btn" class="px-2.5 py-0.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition">Start Live Room</button>
+                            <a href="sandboxes.php?project_id=${Number(bootstrap.projectId)}" class="underline hover:text-white">Back to Sandboxes</a>
+                        </div>
+                    </div>
+                `;
+                const hostBannerBtn = bannerEl.querySelector('#sbx-banner-host-btn');
+                if (hostBannerBtn) {
+                    hostBannerBtn.onclick = () => {
+                        if (window.SandboxMultiplayer) window.SandboxMultiplayer.hostOrJoinRoom();
+                    };
+                }
+            } else {
+                bannerEl.innerHTML = '';
+            }
+        }
     }
 
     window.SandboxTopControlBar = { renderTopControlBar };

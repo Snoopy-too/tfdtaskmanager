@@ -25,7 +25,13 @@ function handleSandboxApiAction(string $action, string $method, BgSandboxService
         'heartbeat_lock_sandbox',
         'release_lock_sandbox',
         'host_sandbox_room',
+        'join_sandbox_room',
+        'end_sandbox_room',
+        'get_sandbox_room_status',
+        'get_project_sandbox_rooms',
         'sync_sandbox_room',
+        'publish_sandbox_to_lobby',
+        'unpublish_sandbox_from_lobby',
     ];
     if (!in_array($action, $routes, true)) {
         return false;
@@ -44,7 +50,30 @@ function handleSandboxApiAction(string $action, string $method, BgSandboxService
         return true;
     }
 
-    $sandbox = sandboxApiLoadAuthorized($sandboxService, $projectService, $currentUserId);
+    if ($action === 'get_project_sandbox_rooms') {
+        $projectId = filter_var($_POST['project_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($projectId === false || $projectId === null || $projectService->getProjectById($projectId, $currentUserId) === null) {
+            sandboxApiRespond(404, ['error' => 'Project not found or access denied.']);
+            return true;
+        }
+        $rooms = $sandboxService->getActiveRoomsForProject($projectId);
+        $summaries = [];
+        foreach ($rooms as $sbxId => $room) {
+            $presence = $sandboxService->prunePresence(is_array($room['presenceState'] ?? null) ? $room['presenceState'] : []);
+            $summaries[(string)$sbxId] = [
+                'sandboxId' => (int)$sbxId,
+                'roomCode' => (string)$room['roomCode'],
+                'hostUserId' => (int)$room['hostUserId'],
+                'hostUserName' => (string)$room['hostUserName'],
+                'memberCount' => count($presence['members'] ?? []),
+                'version' => (int)$room['version'],
+            ];
+        }
+        sandboxApiRespond(200, ['success' => true, 'rooms' => $summaries]);
+        return true;
+    }
+
+    $sandbox = sandboxApiLoadAuthorized($sandboxService, $projectService, $currentUserId, $action === 'join_sandbox_room');
     if ($sandbox === null) {
         sandboxApiRespond(404, ['error' => 'Sandbox not found or access denied.']);
         return true;
@@ -88,11 +117,47 @@ function handleSandboxApiAction(string $action, string $method, BgSandboxService
                 break;
 
             case 'host_sandbox_room':
-                $room = $sandboxService->hostLiveSession($sandbox, $currentUserId);
+                $forceReset = (string)($_POST['reset'] ?? '0') === '1';
+                $sandboxService->hostLiveSession($sandbox, $currentUserId, $forceReset);
+                $joined = $sandboxService->joinLiveSession($sandbox, $currentUserId, $currentUserName, false);
+                sandboxApiRespond(200, ['success' => true] + ($joined ?? []));
+                break;
+
+            case 'join_sandbox_room':
+                $joined = $sandboxService->joinLiveSession($sandbox, $currentUserId, $currentUserName, false);
+                if ($joined === null) {
+                    sandboxApiRespond(404, ['error' => 'No active live room found for this sandbox.']);
+                    break;
+                }
+                sandboxApiRespond(200, ['success' => true] + $joined);
+                break;
+
+            case 'end_sandbox_room':
+                $sandboxService->endLiveSession($sandbox, $currentUserId);
+                sandboxApiRespond(200, ['success' => true]);
+                break;
+
+            case 'get_sandbox_room_status':
+                $room = $sandboxService->getActiveRoom($sandbox);
+                if ($room === null) {
+                    sandboxApiRespond(200, ['success' => true, 'active' => false]);
+                    break;
+                }
+                $presence = $sandboxService->prunePresence(is_array($room['presenceState']) ? $room['presenceState'] : []);
+                $hostId = (int)$room['hostUserId'];
+                $projectRooms = $sandboxService->getActiveRoomsForProject($sandbox->projectId);
+                $hostMember = $presence['members'][(string)$hostId] ?? null;
+                $hostUserName = $projectRooms[(int)$sandbox->id]['hostUserName']
+                    ?? ($hostMember['name'] ?? ('User #' . $hostId));
                 sandboxApiRespond(200, [
                     'success' => true,
-                    'roomCode' => $room['roomCode'] ?? '',
-                    'version' => $room['version'] ?? 1,
+                    'active' => true,
+                    'roomCode' => $room['roomCode'],
+                    'hostUserId' => $hostId,
+                    'hostUserName' => (string)$hostUserName,
+                    'version' => (int)$room['version'],
+                    'members' => array_values($presence['members'] ?? []),
+                    'seats' => $room['roomState']['seats'] ?? [],
                 ]);
                 break;
 
@@ -104,18 +169,63 @@ function handleSandboxApiAction(string $action, string $method, BgSandboxService
                 $sync = $sandboxService->syncLiveRoom($sandbox, $currentUserId, $currentUserName, $payload);
                 sandboxApiRespond(200, ['success' => true] + $sync);
                 break;
+
+            case 'publish_sandbox_to_lobby':
+                $userRole = strtolower((string)($_SESSION['role'] ?? ''));
+                if (!in_array($userRole, ['super_admin', 'admin', 'administrator'], true)) {
+                    sandboxApiRespond(403, ['error' => 'Only administrators can publish games to the lobby.']);
+                    return true;
+                }
+                $rawPayload = $_POST['payload'] ?? '{}';
+                if (!is_string($rawPayload) || !SandboxStateSchema::isValidJson($rawPayload)) {
+                    sandboxApiRespond(422, ['error' => 'Invalid publish payload JSON.']);
+                    break;
+                }
+                $payload = json_decode($rawPayload, true);
+                if (!is_array($payload)) {
+                    sandboxApiRespond(422, ['error' => 'Invalid publish payload.']);
+                    break;
+                }
+                $published = $sandboxService->publishToLobby($sandbox, $payload, $currentUserId, $currentUserName);
+                sandboxApiRespond(200, ['success' => true] + $published);
+                break;
+
+            case 'unpublish_sandbox_from_lobby':
+                $userRole = strtolower((string)($_SESSION['role'] ?? ''));
+                if (!in_array($userRole, ['super_admin', 'admin', 'administrator'], true)) {
+                    sandboxApiRespond(403, ['error' => 'Only administrators can unpublish lobby games.']);
+                    return true;
+                }
+                $sandboxService->unpublishFromLobby($sandbox);
+                sandboxApiRespond(200, ['success' => true]);
+                break;
         }
     } catch (ValidationException $e) {
         sandboxApiRespond(422, ['error' => $e->getMessage()]);
     } catch (ResourceLockedException $e) {
         sandboxApiRespond(423, ['error' => $e->getMessage()]);
+    } catch (\RuntimeException $e) {
+        sandboxApiRespond(502, ['error' => $e->getMessage()]);
     }
     return true;
 }
 
-function sandboxApiLoadAuthorized(BgSandboxService $sandboxService, ProjectService $projectService, int $userId): ?BgSandbox
-{
+function sandboxApiLoadAuthorized(
+    BgSandboxService $sandboxService,
+    ProjectService $projectService,
+    int $userId,
+    bool $allowRoomCodeLookup = false
+): ?BgSandbox {
     $sandboxId = filter_var($_POST['sandbox_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if (($sandboxId === false || $sandboxId === null) && $allowRoomCodeLookup) {
+        $roomCode = trim((string)($_POST['room_code'] ?? ''));
+        if ($roomCode !== '') {
+            $room = $sandboxService->getActiveRoomByCode($roomCode);
+            if ($room !== null) {
+                $sandboxId = (int)$room['sandboxId'];
+            }
+        }
+    }
     if ($sandboxId === false || $sandboxId === null) {
         return null;
     }

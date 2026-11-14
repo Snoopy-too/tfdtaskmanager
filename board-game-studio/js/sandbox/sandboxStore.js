@@ -41,16 +41,19 @@
         });
 
         const ui = {
-            activeViewerSeat: 1,
+            activeViewerSeat: bootstrap.assignedSeat ? Number(bootstrap.assignedSeat) : 1,
             godMode: false,
             selectedIds: [],
             hoveredId: null,
             snapPointToolBoardId: null,
             tuckHighlightParentId: null,
-            saveStatus: 'Saved',
+            saveStatus: bootstrap.isMultiplayerActive ? 'Synced to room' : 'Saved',
             hasStartingSnapshot: Boolean(bootstrap.hasStartingSnapshot),
             liveRoomCode: bootstrap.roomCode || null,
-            isMultiplayerActive: Boolean(bootstrap.autoHost),
+            hostUserId: bootstrap.hostUserId ? Number(bootstrap.hostUserId) : null,
+            isMultiplayerActive: Boolean(bootstrap.isMultiplayerActive),
+            roomMembers: [],
+            roomStatus: null,
             remoteCursors: {},
             remotePings: []
         };
@@ -59,6 +62,7 @@
         const redoStack = [];
         const listeners = new Set();
         let saveTimer = null;
+        let localMutationSeq = 0;
 
         function snapshotCore() {
             return cloneDeep({
@@ -97,20 +101,31 @@
         function notify(skipAutoSave) {
             listeners.forEach((fn) => fn(state, ui));
             if (!skipAutoSave) {
-                ui.saveStatus = 'Saving...';
+                localMutationSeq += 1;
+                ui.saveStatus = ui.isMultiplayerActive ? 'Syncing...' : 'Saving...';
                 listeners.forEach((fn) => fn(state, ui));
                 if (saveTimer) clearTimeout(saveTimer);
-                saveTimer = setTimeout(persistToServer, 650);
+                saveTimer = setTimeout(persistToServer, ui.isMultiplayerActive ? 180 : 650);
             }
         }
 
         let lastPersistedJson = null;
 
         async function persistToServer() {
+            saveTimer = null;
+            const seqAtStart = localMutationSeq;
             try {
                 const payload = window.SandboxSchema.serializeForSave(state);
                 const jsonStr = JSON.stringify(payload);
                 lastPersistedJson = jsonStr;
+
+                if (ui.isMultiplayerActive && window.SandboxMultiplayer) {
+                    const ok = await window.SandboxMultiplayer.broadcastFullState(payload, seqAtStart);
+                    ui.saveStatus = ok ? 'Synced to room' : 'Room sync error';
+                    listeners.forEach((fn) => fn(state, ui));
+                    return;
+                }
+
                 const fd = new FormData();
                 fd.append('action', 'save_sandbox_state');
                 fd.append('sandbox_id', String(bootstrap.sandboxId));
@@ -124,10 +139,9 @@
                     console.error('[SandboxStore] Save error:', data && data.error ? data.error : data);
                     ui.saveStatus = (data && data.error) ? `Save error: ${data.error}` : 'Save error';
                 }
-                if (ui.isMultiplayerActive && window.SandboxMultiplayer) window.SandboxMultiplayer.broadcastFullState(payload);
             } catch (err) {
                 console.error('[SandboxStore] Network/parse error during save:', err);
-                ui.saveStatus = 'Save error';
+                ui.saveStatus = ui.isMultiplayerActive ? 'Room sync error' : 'Save error';
             }
             listeners.forEach((fn) => fn(state, ui));
         }
@@ -140,6 +154,32 @@
             try {
                 const payload = window.SandboxSchema.serializeForSave(state);
                 const jsonStr = JSON.stringify(payload);
+                if (ui.isMultiplayerActive) {
+                    if (jsonStr !== lastPersistedJson && navigator.sendBeacon) {
+                        const commitFd = new FormData();
+                        commitFd.append('action', 'sync_sandbox_room');
+                        commitFd.append('sandbox_id', String(bootstrap.sandboxId));
+                        commitFd.append('csrf_token', bootstrap.csrfToken);
+                        commitFd.append('payload', JSON.stringify({
+                            subAction: 'COMMIT_STATE',
+                            viewerSeat: ui.activeViewerSeat,
+                            godMode: ui.godMode,
+                            state: jsonStr
+                        }));
+                        navigator.sendBeacon('api.php', commitFd);
+                    }
+                    if (navigator.sendBeacon) {
+                        const leaveFd = new FormData();
+                        leaveFd.append('action', 'sync_sandbox_room');
+                        leaveFd.append('sandbox_id', String(bootstrap.sandboxId));
+                        leaveFd.append('csrf_token', bootstrap.csrfToken);
+                        leaveFd.append('payload', JSON.stringify({ subAction: 'LEAVE_ROOM' }));
+                        navigator.sendBeacon('api.php', leaveFd);
+                    }
+                    lastPersistedJson = jsonStr;
+                    return;
+                }
+
                 if (jsonStr === lastPersistedJson) return;
                 lastPersistedJson = jsonStr;
                 const fd = new FormData();
@@ -194,7 +234,32 @@
             redo() { if (!redoStack.length) return; undoStack.push(snapshotCore()); applyCore(redoStack.pop()); logEvent('Redid action.'); notify(); },
             canUndo: () => undoStack.length > 0,
             canRedo: () => redoStack.length > 0,
-            setMode(mode) { pushHistory(); state.mode = mode === 'PLAY' ? 'PLAY' : 'SETUP'; ui.snapPointToolBoardId = null; logEvent(`Switched to ${state.mode === 'PLAY' ? 'Play Mode' : 'Setup Mode'}.`); notify(); },
+            getLocalMutationSeq: () => localMutationSeq,
+            hasPendingLocalSave: () => saveTimer !== null,
+            clearPendingSaveTimer() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; } },
+            applyRemoteCore(remoteState) {
+                if (!remoteState) return;
+                state.mode = remoteState.mode || state.mode;
+                state.turnState = remoteState.turnState || state.turnState;
+                state.seats = remoteState.seats || state.seats;
+                state.boardObjects = (remoteState.boardObjects && typeof remoteState.boardObjects === 'object' && !Array.isArray(remoteState.boardObjects))
+                    ? remoteState.boardObjects
+                    : state.boardObjects;
+                state.zones = remoteState.zones || state.zones;
+                state.notes = remoteState.notes || state.notes;
+                if (Array.isArray(remoteState.eventLog)) state.eventLog = remoteState.eventLog;
+                notify(true);
+            },
+            setMode(mode) {
+                if (ui.isMultiplayerActive && mode !== 'PLAY') {
+                    return;
+                }
+                pushHistory();
+                state.mode = mode === 'PLAY' ? 'PLAY' : 'SETUP';
+                ui.snapPointToolBoardId = null;
+                logEvent(`Switched to ${state.mode === 'PLAY' ? 'Play Mode' : 'Setup Mode'}.`);
+                notify();
+            },
             setViewerSeat(seatIdx, godMode = false) { ui.godMode = Boolean(godMode); if (!godMode && seatIdx) ui.activeViewerSeat = Number(seatIdx); notify(true); },
             setSelected(ids) { ui.selectedIds = Array.isArray(ids) ? ids : []; notify(true); },
             setHovered(id) { ui.hoveredId = id || null; },
@@ -603,16 +668,29 @@
                 notify();
             },
             async freezeStartingSnapshot() {
+                const serialized = window.SandboxSchema.serializeForSave(state);
                 const fd = new FormData();
                 fd.append('action', 'save_sandbox_snapshot');
                 fd.append('sandbox_id', String(bootstrap.sandboxId));
                 fd.append('csrf_token', bootstrap.csrfToken);
-                fd.append('state', JSON.stringify(window.SandboxSchema.serializeForSave(state)));
+                fd.append('state', JSON.stringify(serialized));
                 const res = await fetch('api.php', { method: 'POST', body: fd });
                 const data = await res.json();
-                if (data && data.success) { ui.hasStartingSnapshot = true; logEvent('Saved Default Starting Snapshot.'); notify(true); }
+                if (data && data.success) {
+                    ui.hasStartingSnapshot = true;
+                    bootstrap.startingSnapshot = cloneDeep(serialized);
+                    logEvent('Saved Default Starting Snapshot.');
+                    notify(true);
+                }
             },
             async resetToStartingSnapshot() {
+                if (ui.isMultiplayerActive && window.SandboxMultiplayer) {
+                    const res = await window.SandboxMultiplayer.hostRoom(true);
+                    if (res) {
+                        logEvent('Reset live room to Default Starting State.');
+                    }
+                    return;
+                }
                 const fd = new FormData();
                 fd.append('action', 'reset_sandbox_snapshot');
                 fd.append('sandbox_id', String(bootstrap.sandboxId));
