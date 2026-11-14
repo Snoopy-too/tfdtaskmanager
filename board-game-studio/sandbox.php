@@ -317,7 +317,7 @@ require_once __DIR__ . '/../templates/header.php';
 
 <link rel="stylesheet" href="css/sandbox.css?v=<?php echo file_exists(__DIR__ . '/css/sandbox.css') ? filemtime(__DIR__ . '/css/sandbox.css') : '1'; ?>">
 
-<div id="sandbox-workspace" class="h-[calc(100vh-3rem)] flex flex-col -mx-4 sm:-mx-6 lg:-mx-8 -my-8 bg-slate-950 text-slate-100 select-none overflow-hidden relative">
+<div id="sandbox-workspace" class="h-[calc(100vh-var(--tfd-navbar-height,48px))] flex flex-col bg-slate-950 text-slate-100 select-none overflow-hidden relative">
 
     <!-- Top Control Bar (hud/TopControlBar.js) -->
     <header id="sbx-top-bar" class="h-12 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between gap-2 flex-shrink-0 z-30"></header>
