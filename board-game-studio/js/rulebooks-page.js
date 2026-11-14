@@ -73,6 +73,10 @@
 
     window.editGlossary = function(data) {
         window.switchSidebarTab('manual');
+        const panel = document.getElementById('new-glossary-panel');
+        if (panel && !panel.classList.contains('is-open')) {
+            panel.classList.add('is-open');
+        }
         const title = document.getElementById('glossary-form-title');
         if (title) title.textContent = 'Edit Glossary Term';
         const formId = document.getElementById('form_term_id');

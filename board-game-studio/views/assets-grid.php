@@ -8,8 +8,25 @@ $typeFilter = $typeFilter ?? 'all';
 $searchQuery = $searchQuery ?? '';
 $activeProjectId = $activeProjectId ?? null;
 ?>
-<!-- Main Assets Grid Area -->
-<div class="lg:col-span-3 space-y-6">
+<!-- Main Assets Grid Area (Full Width) -->
+<div class="space-y-4">
+    <!-- Section Header matching Components page -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                <span>🖼️</span>
+                <span>Asset Library</span>
+            </h2>
+            <p class="text-xs text-slate-400">Artwork, icons, and typography for <?php echo SecurityHelper::escape($activeProject ? $activeProject->getName() : 'Global Library'); ?>.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="toggleCollapsible('upload-asset-panel')" class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600/15 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-transparent text-xs font-semibold rounded-lg transition duration-150">
+                <i class="bi bi-cloud-arrow-up"></i>
+                <span>Upload Asset</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Search and Filter Bar -->
     <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <form method="GET" class="flex flex-col md:flex-row md:items-center gap-3 m-0 w-full flex-wrap">
@@ -103,10 +120,16 @@ $activeProjectId = $activeProjectId ?? null;
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
             <h3 class="text-lg font-bold text-slate-300">No Assets Found</h3>
-            <p class="text-sm text-slate-500 mt-1 max-w-sm mx-auto">No assets match your current filters. Add standard board game images or design fonts in the left panel.</p>
+            <p class="text-sm text-slate-500 mt-1 max-w-sm mx-auto">No assets match your current filters. Add standard board game images, icons, or design fonts to this library.</p>
+            <div class="pt-4">
+                <button type="button" onclick="toggleCollapsible('upload-asset-panel')" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+                    <i class="bi bi-cloud-arrow-up"></i>
+                    <span>Upload First Asset</span>
+                </button>
+            </div>
         </div>
     <?php else: ?>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             <?php foreach ($assets as $asset): ?>
                 <?php 
                 $isImage = str_starts_with($asset->getMimeType(), 'image/');
@@ -196,13 +219,6 @@ $activeProjectId = $activeProjectId ?? null;
                                 <input type="hidden" name="asset_id" value="<?php echo $asset->getId(); ?>">
                                 
                                 <select name="target_project_id" onchange="this.form.submit()" class="bg-slate-900 border border-slate-800 text-slate-300 text-[11px] rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer w-full" title="Change asset scope (Global or assign to a specific project)">
-                                    <option value="" <?php echo $asset->getProjectId() === null ? 'selected' : ''; ?>>🌐 Global</option>
-                                    <?php foreach ($projects as $p): ?>
-                                        <option value="<?php echo $p->getId(); ?>" <?php echo $asset->getProjectId() === $p->getId() ? 'selected' : ''; ?>>
-                                            📁 <?php echo SecurityHelper::escape($p->getName()); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
                                     <option value="" <?php echo $asset->getProjectId() === null ? 'selected' : ''; ?>>🌐 Global</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?php echo $p->getId(); ?>" <?php echo $asset->getProjectId() === $p->getId() ? 'selected' : ''; ?>>

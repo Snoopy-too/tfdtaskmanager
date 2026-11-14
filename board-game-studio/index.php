@@ -53,39 +53,54 @@ $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
 
 // Fetch all projects accessible to current user
-$projects = $projectService->getAllProjects($currentUserId);
+$allProjects = $projectService->getAllProjects($currentUserId);
 
-// Select active project and synchronize with session storage
+// Filter ONLY Board Game projects
+$boardGameProjects = array_values(array_filter($allProjects, fn($p) => $p->isBoardGame()));
+
+// Active project selection
 $activeProjectId = null;
-if (isset($_GET['project_id'])) {
-    if ($_GET['project_id'] !== '') {
-        $activeProjectId = (int)$_GET['project_id'];
-        $_SESSION['last_project_id'] = $activeProjectId;
-    } else {
-        // User explicitly cleared project selection (selected "None")
-        unset($_SESSION['last_project_id']);
-    }
+if (isset($_GET['project_id']) && $_GET['project_id'] !== '') {
+    $activeProjectId = (int)$_GET['project_id'];
+    $_SESSION['last_project_id'] = $activeProjectId;
 } else {
-    // If no project_id parameter in URL, default to last worked project from session
-    if (isset($_SESSION['last_project_id'])) {
-        $activeProjectId = (int)$_SESSION['last_project_id'];
-        $checkProject = $projectService->getProjectById($activeProjectId, $currentUserId);
-        if ($checkProject) {
-            header("Location: index.php?project_id=" . $activeProjectId);
-            exit;
-        } else {
-            unset($_SESSION['last_project_id']);
-            $activeProjectId = null;
-        }
-    }
+    // When visiting the studio root without project_id, stay on project selection cards screen
+    unset($_SESSION['last_project_id']);
 }
 
 $activeProject = null;
 if ($activeProjectId) {
     $activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
-    if (!$activeProject) {
+    if (!$activeProject || !$activeProject->isBoardGame()) {
         $activeProjectId = null;
+        $activeProject = null;
         unset($_SESSION['last_project_id']);
+    }
+}
+
+// Handle Quick Creation of a Board Game Project
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_boardgame_project') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!SecurityHelper::verifyCsrfToken($submittedToken)) {
+        $error = 'Security check failed. Please try again.';
+    } else {
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $isPrivate = isset($_POST['is_private']) && $_POST['is_private'] === '1';
+
+        if ($name === '') {
+            $error = 'Project name cannot be empty.';
+        } else {
+            try {
+                $newProject = $projectService->createProject($name, $description, $isPrivate, $currentUserId, true, 'boardgame');
+                header("Location: index.php?project_id=" . $newProject->getId());
+                exit;
+            } catch (ValidationException $e) {
+                $error = $e->getMessage();
+            } catch (\Exception $e) {
+                $error = 'Failed to create board game: ' . $e->getMessage();
+            }
+        }
     }
 }
 
@@ -151,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         } catch (ValidationException $e) {
             $error = $e->getMessage();
         } catch (\Exception $e) {
-            // Log internally; never expose internal exceptions or stack traces to the UI
             error_log('[BoardGameStudio] create_template error: ' . $e->getMessage());
             $error = 'An unexpected error occurred creating the template. Please try again.';
         }
@@ -250,19 +264,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Fetch list of templates, assets, datasets, component types for active project
+// Data fetching depending on whether a project is selected
 $templates = [];
 $assetsCount = 0;
 $datasets = [];
 $compTypes = [];
+$projectCounts = [];
 
 if ($activeProjectId) {
+    // Inside a specific Board Game Project workspace
     $templates = $templateService->getTemplatesByProject($activeProjectId);
     $assetsCount = count($assetService->getAssetsByProject($activeProjectId));
     $datasets = $datasetService->getDatasetsByProject($activeProjectId);
     $compTypes = $templateService->getComponentTypes();
     
-    // Sort logically for the best user experience
+    // Sort component presets logically
     usort($compTypes, function($a, $b) {
         $logicalOrder = [
             'Poker Card' => 1,
@@ -282,189 +298,274 @@ if ($activeProjectId) {
         $bOrder = $logicalOrder[$b->getName()] ?? 99;
         return $aOrder <=> $bOrder;
     });
+} else {
+    // On the Board Game Projects Selection Page: fetch module counts for all board games
+    $db = $container->get(PDO::class);
+    foreach ($boardGameProjects as $bgp) {
+        $projectCounts[$bgp->getId()] = [
+            'templates' => 0,
+            'assets'    => 0,
+            'datasets'  => 0,
+            'rulebooks' => 0,
+        ];
+    }
+
+    if (!empty($boardGameProjects)) {
+        $pids = array_map(fn($p) => $p->getId(), $boardGameProjects);
+        $inClause = implode(',', $pids);
+
+        try {
+            $tRows = $db->query("SELECT project_id, COUNT(*) as cnt FROM `bg_templates` WHERE project_id IN ($inClause) GROUP BY project_id")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($tRows as $r) {
+                $projectCounts[(int)$r['project_id']]['templates'] = (int)$r['cnt'];
+            }
+
+            $aRows = $db->query("SELECT project_id, COUNT(*) as cnt FROM `bg_assets` WHERE project_id IN ($inClause) GROUP BY project_id")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($aRows as $r) {
+                $projectCounts[(int)$r['project_id']]['assets'] = (int)$r['cnt'];
+            }
+
+            $dRows = $db->query("SELECT project_id, COUNT(*) as cnt FROM `bg_datasets` WHERE project_id IN ($inClause) GROUP BY project_id")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($dRows as $r) {
+                $projectCounts[(int)$r['project_id']]['datasets'] = (int)$r['cnt'];
+            }
+
+            $rRows = $db->query("SELECT project_id, COUNT(*) as cnt FROM `bg_rulebooks` WHERE project_id IN ($inClause) GROUP BY project_id")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rRows as $r) {
+                $projectCounts[(int)$r['project_id']]['rulebooks'] = (int)$r['cnt'];
+            }
+        } catch (\Exception $e) {
+            error_log('[BoardGameStudio] Count query error: ' . $e->getMessage());
+        }
+    }
 }
 
 require_once __DIR__ . '/../templates/header.php';
+
+// Prepare Sticky Page Header
+if ($activeProject) {
+    renderPageHeader($activeProject->getName(), 'Components', '', 'index.php');
+} else {
+    ob_start();
+    ?>
+    <div class="flex items-center gap-2">
+        <button type="button" onclick="toggleCollapsible('new-boardgame-panel')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg shadow-sm transition">
+            <i class="bi bi-plus-lg"></i>
+            <span>New Board Game</span>
+        </button>
+        <a href="assets.php?project_id=" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-lg border border-slate-700 transition" title="Manage Global Assets">
+            <i class="bi bi-images"></i>
+            <span class="hidden sm:inline">Global Assets</span>
+        </a>
+    </div>
+    <?php
+    $actionsHtml = ob_get_clean();
+    renderPageHeader('Game Studio', count($boardGameProjects) . ' Games', $actionsHtml);
+}
 ?>
 
-<div class="space-y-8">
-    <!-- Top Bar with Project Select -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-                Board Game Design Studio
-            </h1>
-            <p class="text-slate-400 mt-1">Prototype board game components, manage print sheets, and bind card datasets.</p>
-        </div>
-        
-        <?php if (!empty($projects)): ?>
-            <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 p-2 rounded-xl">
-                <label for="project_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-2">Project:</label>
-                <form method="GET" class="m-0">
-                    <select id="project_select" name="project_id" onchange="this.form.submit()" class="bg-slate-950 border-0 text-slate-100 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
-                        <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None (Global Library)</option>
-                        <?php foreach ($projects as $proj): ?>
-                            <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
-                                <?php echo SecurityHelper::escape($proj->getName() . ($proj->isPrivate() ? ' (🔒 Private)' : '')); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
-            </div>
-        <?php endif; ?>
-    </div>
+<div class="page-container">
 
-    <?php if (empty($projects)): ?>
-        <div class="p-8 text-center bg-slate-900/50 border border-slate-800 rounded-2xl max-w-lg mx-auto">
-            <svg class="mx-auto h-12 w-12 text-slate-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-            </svg>
-            <h2 class="text-lg font-bold text-slate-200">No Projects Found</h2>
-            <p class="text-sm text-slate-400 mt-2 mb-6">You must create at least one project in the main task manager before using the Board Game Studio.</p>
-            <a href="../projects.php" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 transition duration-200">
-                Go to Projects
-            </a>
+    <?php if (!empty($error)): ?>
+        <div class="p-4 mb-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-sm flex items-center justify-between">
+            <span><?php echo SecurityHelper::escape($error); ?></span>
+            <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 hover:text-rose-200 font-bold ml-2">&times;</button>
         </div>
-    <?php else: ?>
-        <?php if (!$activeProjectId): ?>
-            <div class="p-12 text-center bg-slate-900/40 border border-slate-800/80 rounded-2xl max-w-2xl mx-auto my-8 space-y-6">
-                <div class="inline-flex p-4 bg-indigo-500/10 rounded-2xl text-indigo-400 mx-auto justify-center">
-                    <svg class="h-10 w-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                    </svg>
+    <?php endif; ?>
+
+    <?php if (!empty($success)): ?>
+        <div class="p-4 mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm flex items-center justify-between">
+            <span><?php echo SecurityHelper::escape($success); ?></span>
+            <button type="button" onclick="this.parentElement.remove()" class="text-emerald-400 hover:text-emerald-200 font-bold ml-2">&times;</button>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!$activeProject): ?>
+        <!-- ============================================================== -->
+        <!-- VIEW 1: BOARD GAME PROJECTS CARDS VIEW                          -->
+        <!-- ============================================================== -->
+
+        <!-- Collapsible Create Board Game Form Panel -->
+        <div id="new-boardgame-panel" class="form-panel-collapsible mb-6">
+            <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+                <div>
+                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                        <span>🎲</span>
+                        <span>Create New Board Game Project</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">Add a new board game to start designing card sheets, tokens, boards, and rulebooks.</p>
                 </div>
-                <div class="space-y-2 text-center">
-                    <h2 class="text-xl font-bold text-slate-200">Welcome to the Board Game Design Studio!</h2>
-                    <p class="text-slate-400 max-w-md mx-auto text-sm">
-                        Please select a project from the dropdown menu in the top right to start prototyping components, or click the button below to manage system-wide global assets.
-                    </p>
-                    <div class="pt-4">
-                        <a href="assets.php?project_id=" class="inline-flex items-center px-4 py-2 border border-slate-700 hover:border-indigo-500/50 hover:bg-slate-800 text-sm font-semibold rounded-xl text-slate-300 hover:text-white transition duration-200">
-                            <span>Manage Global Assets</span>
-                            <svg class="h-4 w-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </a>
+                <button type="button" onclick="toggleCollapsible('new-boardgame-panel')" class="text-slate-400 hover:text-slate-200 text-sm font-semibold p-1">
+                    &times; Close
+                </button>
+            </div>
+
+            <form action="index.php" method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                <input type="hidden" name="action" value="create_boardgame_project">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="bg_name" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Game Title *</label>
+                        <input type="text" id="bg_name" name="name" required
+                            placeholder="e.g., Mystic Realms, Galaxy Express, Royal Duel"
+                            class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm outline-none transition">
                     </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Privacy Setting</label>
+                        <label class="flex items-center gap-2.5 p-2 bg-slate-950/40 border border-slate-800 rounded-lg hover:border-slate-700 transition cursor-pointer select-none">
+                            <input type="checkbox" id="bg_is_private" name="is_private" value="1"
+                                class="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                            <span class="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                                <span>🔒</span> Private Game (Only visible to you)
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="bg_description" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Game Concept & Description (Optional)</label>
+                    <textarea id="bg_description" name="description" rows="2"
+                        placeholder="Theme, target player count, core mechanics, or component summary..."
+                        class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm outline-none transition"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
+                    <button type="button" onclick="toggleCollapsible('new-boardgame-panel')" class="px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition">
+                        + Create & Enter Studio
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <?php if (empty($boardGameProjects)): ?>
+            <!-- Empty State: No Board Game Projects -->
+            <div class="p-12 text-center bg-slate-900/40 border border-slate-800/80 rounded-2xl max-w-xl mx-auto my-8 space-y-5">
+                <div class="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center text-3xl mx-auto">
+                    🎲
+                </div>
+                <div class="space-y-1.5 text-center">
+                    <h2 class="text-lg font-bold text-slate-200">No Board Game Projects Found</h2>
+                    <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                        To access the studio tools (Components, Assets, Datasets, Rulebooks, and Export sheets), create a board game project or classify an existing project as a 'Board Game'.
+                    </p>
+                </div>
+                <div class="flex items-center justify-center gap-3 pt-2">
+                    <button type="button" onclick="toggleCollapsible('new-boardgame-panel')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+                        + Create First Board Game
+                    </button>
+                    <a href="../projects.php" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 transition">
+                        Manage Projects
+                    </a>
                 </div>
             </div>
         <?php else: ?>
-            <?php if (!empty($error)): ?>
-            <div class="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-sm">
-                <?php echo SecurityHelper::escape($error); ?>
+            <style>
+                .game-metric-btn {
+                    transition: background-color 0.15s ease, transform 0.1s ease;
+                }
+                .game-metric-btn:hover {
+                    background-color: #4f46e5 !important; /* Vibrant Indigo */
+                }
+                .game-metric-btn:hover .stat-count {
+                    color: #ffffff !important;
+                }
+                .game-metric-btn:hover .stat-label {
+                    color: #e0e7ff !important;
+                }
+                .game-metric-btn:active {
+                    transform: scale(0.95);
+                }
+            </style>
+            <!-- Grid of Board Game Cards (Compact, Balanced Layout) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                <?php foreach ($boardGameProjects as $bgp): ?>
+                    <?php
+                    $pid = $bgp->getId();
+                    $counts = $projectCounts[$pid] ?? ['templates' => 0, 'assets' => 0, 'datasets' => 0, 'rulebooks' => 0];
+                    $desc = trim((string)$bgp->getDescription());
+                    ?>
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3 flex flex-col justify-between shadow-sm backdrop-blur-sm">
+                        <div>
+                            <!-- Card Header: Icon + Title + Privacy Badge -->
+                            <div class="flex items-center justify-between gap-2 mb-1.5">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <div class="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/25 text-indigo-400 flex items-center justify-center text-sm flex-shrink-0">
+                                        🎲
+                                    </div>
+                                    <div class="min-w-0">
+                                        <a href="index.php?project_id=<?php echo $pid; ?>" class="text-xs sm:text-sm font-bold text-slate-100 hover:text-indigo-300 transition truncate block" title="<?php echo SecurityHelper::escape($bgp->getName()); ?>">
+                                            <?php echo SecurityHelper::escape($bgp->getName()); ?>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <?php if ($bgp->isPrivate()): ?>
+                                        <span class="status-pill status-pill--private text-[9px] px-1.5 py-0.5">🔒 Private</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <!-- Description (single-line aligned slot to avoid uneven vertical gaps) -->
+                            <p class="text-[11px] text-slate-400 line-clamp-1 mb-2 leading-relaxed min-h-[16px]" title="<?php echo SecurityHelper::escape($desc); ?>">
+                                <?php echo $desc !== '' ? SecurityHelper::escape($desc) : '<span class="text-slate-600 italic">No description</span>'; ?>
+                            </p>
+
+                            <!-- Interactive Module Metric Segmented Strip (Cards, Assets, Data, Rules Hover Effects) -->
+                            <div class="grid grid-cols-4 bg-slate-950/60 border border-slate-800/80 rounded-lg divide-x divide-slate-800/80 mb-2.5 overflow-hidden">
+                                <a href="index.php?project_id=<?php echo $pid; ?>" class="game-metric-btn py-1.5 px-1 text-center block cursor-pointer" title="Cards & Components">
+                                    <div class="stat-count text-xs font-bold text-slate-200 leading-tight transition-colors"><?php echo $counts['templates']; ?></div>
+                                    <div class="stat-label text-[9px] text-slate-400 font-medium leading-tight mt-0.5 transition-colors">Cards</div>
+                                </a>
+                                <a href="assets.php?project_id=<?php echo $pid; ?>" class="game-metric-btn py-1.5 px-1 text-center block cursor-pointer" title="Assets">
+                                    <div class="stat-count text-xs font-bold text-slate-200 leading-tight transition-colors"><?php echo $counts['assets']; ?></div>
+                                    <div class="stat-label text-[9px] text-slate-400 font-medium leading-tight mt-0.5 transition-colors">Assets</div>
+                                </a>
+                                <a href="datasets.php?project_id=<?php echo $pid; ?>" class="game-metric-btn py-1.5 px-1 text-center block cursor-pointer" title="Datasets">
+                                    <div class="stat-count text-xs font-bold text-slate-200 leading-tight transition-colors"><?php echo $counts['datasets']; ?></div>
+                                    <div class="stat-label text-[9px] text-slate-400 font-medium leading-tight mt-0.5 transition-colors">Data</div>
+                                </a>
+                                <a href="rulebooks.php?project_id=<?php echo $pid; ?>" class="game-metric-btn py-1.5 px-1 text-center block cursor-pointer" title="Rulebooks">
+                                    <div class="stat-count text-xs font-bold text-slate-200 leading-tight transition-colors"><?php echo $counts['rulebooks']; ?></div>
+                                    <div class="stat-label text-[9px] text-slate-400 font-medium leading-tight mt-0.5 transition-colors">Rules</div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer: Quick Export Action + Open Studio -->
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-800/70 text-xs">
+                            <a href="export.php?project_id=<?php echo $pid; ?>" class="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200 transition py-0.5 px-1 rounded hover:bg-slate-800/60" title="Export Print Sheets">
+                                <i class="bi bi-printer text-slate-400"></i>
+                                <span>Export</span>
+                            </a>
+                            <a href="index.php?project_id=<?php echo $pid; ?>" class="inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition py-0.5 px-2 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40">
+                                <span>Studio</span>
+                                <i class="bi bi-arrow-right text-[10px]"></i>
+                            </a>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($success)): ?>
-            <div class="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm">
-                <?php echo SecurityHelper::escape($success); ?>
-            </div>
-        <?php endif; ?>
+    <?php else: ?>
+        <!-- ============================================================== -->
+        <!-- VIEW 2: ACTIVE PROJECT COMPONENTS WORKSPACE                    -->
+        <!-- ============================================================== -->
 
-        <!-- Quick Stats / Navigation Links -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            <!-- Asset Library Card -->
-            <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-indigo-400 transition">Project Asset Library</h3>
-                        <p class="text-xs text-slate-400 mt-1">Images, icon tokens, and custom print fonts.</p>
-                    </div>
-                    <span class="text-2xl font-black text-indigo-400/80 bg-indigo-500/10 px-3 py-1 rounded-lg">
-                        <?php echo $assetsCount; ?>
-                    </span>
-                </div>
-                <div class="mt-6">
-                    <a href="assets.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
-                        <span>Manage Assets</span>
-                        <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-            </div>
+        <?php
+        $activeTab = 'components';
+        include __DIR__ . '/views/studio-nav.php';
+        include __DIR__ . '/views/create-template-sidebar.php';
+        include __DIR__ . '/views/template-grid.php';
+        ?>
 
-            <!-- Datasets Card -->
-            <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-violet-400 transition">Project Datasets</h3>
-                        <p class="text-xs text-slate-400 mt-1">Bind spreadsheets or build grids to generate dynamic decks.</p>
-                    </div>
-                    <span class="text-2xl font-black text-violet-400/80 bg-violet-500/10 px-3 py-1 rounded-lg">
-                        <?php echo count($datasets); ?>
-                    </span>
-                </div>
-                <div class="mt-6">
-                    <a href="datasets.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
-                        <span>Manage Datasets</span>
-                        <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Export Studio Card -->
-            <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-emerald-400 transition">Print & Export Studio</h3>
-                        <p class="text-xs text-slate-400 mt-1">Generate PDF sheets with crop marks and TTS assets.</p>
-                    </div>
-                    <svg class="h-8 w-8 text-emerald-400/60 bg-emerald-500/10 p-1.5 rounded-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                </div>
-                <div class="mt-6">
-                    <a href="export.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
-                        <span>Generate Exports</span>
-                        <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Playtest Sandbox Card -->
-            <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-sky-400 transition">Playtest Sandbox</h3>
-                        <p class="text-xs text-slate-400 mt-1">Stage a 2D table and playtest with your project components.</p>
-                    </div>
-                    <svg class="h-8 w-8 text-sky-400/60 bg-sky-500/10 p-1.5 rounded-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm4 2h.01M16 8h.01M12 12h.01M8 16h.01M16 16h.01"/>
-                    </svg>
-                </div>
-                <div class="mt-6">
-                    <a href="sandboxes.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
-                        <span>Open Sandboxes</span>
-                        <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Rulebooks & Glossary Card -->
-            <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-slate-700 transition group">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-200 group-hover:text-amber-400 transition">Rulebooks & Glossary</h3>
-                        <p class="text-xs text-slate-400 mt-1">Write rules with synchronized iconography and glossary terms.</p>
-                    </div>
-                    <svg class="h-8 w-8 text-amber-400/60 bg-amber-500/10 p-1.5 rounded-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                    </svg>
-                </div>
-                <div class="mt-6">
-                    <a href="rulebooks.php?project_id=<?php echo $activeProjectId; ?>" class="text-sm font-semibold text-slate-300 hover:text-white inline-flex items-center space-x-1">
-                        <span>Manage Rulebooks</span>
-                        <svg class="h-4 w-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <?php include __DIR__ . '/views/template-grid.php'; ?>
-
-
-            <?php include __DIR__ . '/views/create-template-sidebar.php'; ?>
-        </div>
-        <?php endif; ?>
     <?php endif; ?>
+
 </div>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>

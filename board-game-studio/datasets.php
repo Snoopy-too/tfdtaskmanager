@@ -20,38 +20,33 @@ $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
 
-// Projects dropdown
+// Projects dropdown - only board games
 $projects = $projectService->getAllProjects($currentUserId);
+$boardGameProjects = array_values(array_filter($projects, fn($p) => $p->isBoardGame()));
+
 $activeProjectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '') ? (int)$_GET['project_id'] : null;
 
-// Default to last project from session if not specified, otherwise default to first project
-if ($activeProjectId === null && !isset($_GET['project_id'])) {
-    if (isset($_SESSION['last_project_id'])) {
-        $candidateId = (int)$_SESSION['last_project_id'];
-        if ($projectService->getProjectById($candidateId, $currentUserId)) {
-            $activeProjectId = $candidateId;
-        } else {
-            unset($_SESSION['last_project_id']);
-        }
-    } elseif (!empty($projects)) {
-        $activeProjectId = $projects[0]->getId();
+if (!$activeProjectId && isset($_SESSION['last_project_id'])) {
+    $candidateId = (int)$_SESSION['last_project_id'];
+    $candProject = $projectService->getProjectById($candidateId, $currentUserId);
+    if ($candProject && $candProject->isBoardGame()) {
+        $activeProjectId = $candidateId;
     }
 }
 
-if ($activeProjectId) {
-    $_SESSION['last_project_id'] = $activeProjectId;
+if (!$activeProjectId) {
+    header("Location: index.php");
+    exit;
 }
 
-$activeProject = null;
-if ($activeProjectId) {
-    $activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
-}
-
-if (!$activeProject) {
+$activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
+if (!$activeProject || !$activeProject->isBoardGame()) {
     unset($_SESSION['last_project_id']);
     header("Location: index.php");
     exit;
 }
+
+$_SESSION['last_project_id'] = $activeProjectId;
 
 $allTemplates = $templateService->getTemplatesByProject($activeProjectId);
 
@@ -108,35 +103,19 @@ if ($inspectDatasetId) {
 }
 
 require_once __DIR__ . '/../templates/header.php';
+
+if ($activeProject) {
+    renderPageHeader($activeProject->getName(), 'Datasets', '', 'index.php');
+} else {
+    renderPageHeader('Datasets', 'Game Studio', '', 'index.php');
+}
 ?>
 
-<div class="space-y-8">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <div class="flex items-center space-x-2 text-sm text-slate-400">
-                <a href="index.php?project_id=<?php echo $activeProjectId; ?>" class="hover:text-white transition">Studio</a>
-                <span>/</span>
-                <span class="text-slate-200">Datasets</span>
-            </div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white mt-1">Imported Datasets</h1>
-            <p class="text-slate-400 mt-1">Manage card datasets, dynamic variable bindings, and spreadsheet rows.</p>
-        </div>
-
-        <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 p-2 rounded-xl">
-            <label for="project_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-2">Project:</label>
-            <form method="GET" class="m-0">
-                <select id="project_select" name="project_id" onchange="this.form.submit()" class="bg-slate-950 border-0 text-slate-100 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
-                    <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None (Global Library)</option>
-                    <?php foreach ($projects as $proj): ?>
-                        <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
-                            <?php echo SecurityHelper::escape($proj->getName() . ($proj->isPrivate() ? ' (🔒 Private)' : '')); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
-        </div>
-    </div>
+<div class="page-container space-y-6">
+    <?php
+    $activeTab = 'datasets';
+    include __DIR__ . '/views/studio-nav.php';
+    ?>
 
     <?php if (!empty($error)): ?>
         <div class="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-sm">
@@ -150,11 +129,8 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
     <?php endif; ?>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <?php include __DIR__ . '/views/datasets-sidebar.php'; ?>
-
-        <?php include __DIR__ . '/views/datasets-preview.php'; ?>
-    </div>
+    <?php include __DIR__ . '/views/datasets-create-panel.php'; ?>
+    <?php include __DIR__ . '/views/datasets-preview.php'; ?>
 </div>
 
 <script>

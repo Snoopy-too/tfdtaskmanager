@@ -20,9 +20,16 @@ class SSOHelper
         }
 
         $rawCookie = $_COOKIE['session_id'] ?? '';
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $isCrossDomain = (strpos($host, 'theflyingdutchmen.games') === false && strpos($host, 'theflyingdutchmen.com') === false);
 
         // If currently logged in via SSO in Tasks, verify central TFD session is still valid
         if (!empty($_SESSION['sso_tfd']) && !empty($_SESSION['user_id'])) {
+            // For cross-domain environments (e.g. dev.englishjones.com), the browser cannot send
+            // .theflyingdutchmen.games cookies. The session was established via OAuth and is maintained locally.
+            if ($isCrossDomain) {
+                return;
+            }
             if (empty($rawCookie)) {
                 self::clearSession();
                 return;
@@ -210,7 +217,15 @@ class SSOHelper
         $_SESSION['oauth_state'] = $state;
 
         $tfdDomain = self::getTfdDomain();
-        return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode("https://tasks.{$tfdDomain}/auth_callback.php") . "&scope=openid%20profile%20email&state=" . urlencode($state);
+        $host = $_SERVER['HTTP_HOST'] ?? 'tasks.theflyingdutchmen.games';
+
+        if (strpos($host, 'dev.englishjones.com') !== false) {
+            $redirectUri = 'https://dev.englishjones.com/auth_callback.php';
+        } else {
+            $redirectUri = "https://tasks.{$tfdDomain}/auth_callback.php";
+        }
+
+        return "https://{$tfdDomain}/oauth/authorize?client_id=tasks-app-f807c6b8&response_type=code&redirect_uri=" . urlencode($redirectUri) . "&scope=openid%20profile%20email&state=" . urlencode($state);
     }
 
     public static function clearSession(): void

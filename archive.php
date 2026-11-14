@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $taskId = (int)($_POST['task_id'] ?? 0);
         try {
             $taskService->unarchiveTask($taskId, $currentUserId);
-            $success = "Task #" . $taskId . " has been unarchived and restored to active board.";
+            $success = "Task #" . $taskId . " restored to active task board.";
         } catch (\Throwable $e) {
             $error = $e->getMessage();
         }
@@ -63,137 +63,144 @@ foreach ($users as $u) {
     $userMap[$u->getId()] = $u->getName();
 }
 
+$hasFiltersActive = ($selectedProjectId !== null) || $onlyBugs || ($sortBy !== '');
+
 require_once __DIR__ . '/templates/header.php';
+
+// Render sticky-top header
+$subtitle = ($selectedProjectId !== null && $activeProj)
+    ? 'Filtered by: "' . SecurityHelper::escape($activeProj->getName()) . '" &bull; <a href="archive.php" class="text-indigo-400 hover:underline font-medium">Show All</a>'
+    : count($archivedTasks) . ' archived';
+
+renderPageHeader('Task Archive', $subtitle);
 ?>
 
-<div class="space-y-8">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-        <div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
-                <span>Task Archive</span>
-                <span class="text-sm font-semibold px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full">
-                    <?php echo count($archivedTasks); ?> Archived
-                </span>
-            </h1>
-            <p class="text-slate-400 mt-1">Completed tasks stored away for reference. Restore them anytime.</p>
-        </div>
-        <div class="flex items-center space-x-3">
-            <a href="index.php" class="inline-flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm rounded-lg border border-slate-700 transition duration-200">
-                &larr; Back to Dashboard
-            </a>
-        </div>
-    </div>
+<div class="page-container space-y-5">
 
     <?php if ($error): ?>
-        <div class="bg-rose-500/10 border border-rose-500/20 text-rose-300 px-4 py-3 rounded-xl text-sm">
-            <?php echo SecurityHelper::escape($error); ?>
+        <div class="p-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl text-sm flex items-center justify-between">
+            <span><?php echo SecurityHelper::escape($error); ?></span>
+            <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 hover:text-rose-200 text-lg leading-none">&times;</button>
         </div>
     <?php endif; ?>
 
     <?php if ($success): ?>
-        <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-4 py-3 rounded-xl text-sm">
-            <?php echo SecurityHelper::escape($success); ?>
+        <div class="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded-xl text-sm flex items-center justify-between">
+            <span><?php echo SecurityHelper::escape($success); ?></span>
+            <button type="button" onclick="this.parentElement.remove()" class="text-emerald-400 hover:text-emerald-200 text-lg leading-none">&times;</button>
         </div>
     <?php endif; ?>
 
-    <!-- Filter Bar -->
-    <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-xl shadow-md">
-        <form action="archive.php" method="GET" class="flex flex-col md:flex-row items-end gap-4">
-            <div class="flex-grow w-full md:max-w-xs">
-                <label for="project_filter" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filter by Project</label>
-                <select id="project_filter" name="project_id" onchange="this.form.submit()"
-                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
-                    <option value="">All Projects</option>
-                    <?php foreach ($projects as $project): ?>
-                        <option value="<?php echo $project->getId(); ?>" <?php echo $selectedProjectId === $project->getId() ? 'selected' : ''; ?>>
-                            <?php echo SecurityHelper::escape($project->getName() . ($project->isPrivate() ? ' (🔒 Private)' : '')); ?>
-                        </option>
+    <!-- Data Table (Replaces Cards) -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 90px;"># / Type</th>
+                    <th>Archived Task & Details</th>
+                    <th>Project</th>
+                    <th>Created By</th>
+                    <th>Created Date</th>
+                    <th class="text-right" style="width: 170px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($archivedTasks)): ?>
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-slate-400">
+                            <div class="max-w-sm mx-auto space-y-2">
+                                <p class="text-base font-semibold text-slate-300">No archived tasks found</p>
+                                <p class="text-xs text-slate-500">
+                                    <?php if ($hasFiltersActive): ?>
+                                        Try adjusting your filter settings.
+                                    <?php else: ?>
+                                        Tasks marked as Done can be archived from the dashboard to keep your workspace tidy.
+                                    <?php endif; ?>
+                                </p>
+                                <div class="pt-2">
+                                    <a href="index.php" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">&larr; Return to Active Board</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($archivedTasks as $task): ?>
+                        <?php $taskProj = $projectObjMap[$task->getProjectId()] ?? null; ?>
+                        <tr>
+                            <!-- # / Type -->
+                            <td class="font-mono text-xs" data-sort-value="<?php echo $task->getId(); ?>">
+                                <?php if ($task->isBug()): ?>
+                                    <span class="status-pill status-pill--bug">BUG #<?php echo $task->getId(); ?></span>
+                                <?php else: ?>
+                                    <span class="status-pill status-pill--todo">#<?php echo $task->getId(); ?></span>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- Title & Details -->
+                            <td data-sort-value="<?php echo SecurityHelper::escape($task->getTitle()); ?>">
+                                <div class="space-y-0.5">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <a href="task_detail.php?id=<?php echo $task->getId(); ?>"
+                                           class="font-semibold text-slate-300 line-through hover:text-indigo-400 transition">
+                                            <?php echo SecurityHelper::escape($task->getTitle()); ?>
+                                        </a>
+                                        <?php if ($taskProj && $taskProj->isPrivate()): ?>
+                                            <span class="status-pill status-pill--private text-[10px]">🔒 Private</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if ($task->getDetails()): ?>
+                                        <div class="text-xs text-slate-500 line-clamp-1">
+                                            <?php echo SecurityHelper::escape(strip_tags($task->getDetails())); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+
+                            <!-- Project -->
+                            <td class="text-xs" data-sort-value="<?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? ''); ?>">
+                                <span class="text-slate-400 inline-flex items-center gap-1">
+                                    <?php if ($taskProj && $taskProj->isBoardGame()): ?>
+                                        <span title="Board Game">🎲</span>
+                                    <?php endif; ?>
+                                    <span><?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?></span>
+                                </span>
+                            </td>
+
+                            <!-- Created By -->
+                            <td class="text-xs text-slate-400" data-sort-value="<?php echo SecurityHelper::escape($userMap[$task->getCreatedBy()] ?? ''); ?>">
+                                <?php echo SecurityHelper::escape($userMap[$task->getCreatedBy()] ?? 'Unknown User'); ?>
+                            </td>
+
+                            <!-- Created Date -->
+                            <td class="text-xs text-slate-400 whitespace-nowrap" data-sort-value="<?php echo strtotime($task->getCreatedAt()); ?>">
+                                <?php echo date('M d, Y', strtotime($task->getCreatedAt())); ?>
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="text-right text-xs">
+                                <div class="flex items-center justify-end gap-3">
+                                    <form action="archive.php?<?php echo SecurityHelper::escape(http_build_query($_GET)); ?>" method="POST" class="inline">
+                                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                        <input type="hidden" name="action" value="unarchive">
+                                        <input type="hidden" name="task_id" value="<?php echo $task->getId(); ?>">
+                                        <button type="submit" class="text-indigo-400 hover:text-indigo-300 font-medium transition"
+                                            onclick="return showCustomConfirm('Restore task #<?php echo $task->getId(); ?> to active board?', this.form, 'Unarchive', 'Restore Task');">
+                                            Unarchive
+                                        </button>
+                                    </form>
+                                    <a href="task_detail.php?id=<?php echo $task->getId(); ?>"
+                                       class="text-slate-400 hover:text-slate-200 font-medium transition">
+                                        Details &rarr;
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
                     <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="flex-grow w-full md:max-w-xs">
-                <label for="bug_filter" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filter by Type</label>
-                <select id="bug_filter" name="only_bugs" onchange="this.form.submit()"
-                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
-                    <option value="0" <?php echo !$onlyBugs ? 'selected' : ''; ?>>All Tasks</option>
-                    <option value="1" <?php echo $onlyBugs ? 'selected' : ''; ?>>Bugs Only</option>
-                </select>
-            </div>
-
-            <div class="flex-grow w-full md:max-w-xs">
-                <label for="sort_by" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Sort By</label>
-                <select id="sort_by" name="sort_by" onchange="this.form.submit()"
-                    class="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-100 text-sm transition outline-none">
-                    <option value="" <?php echo $sortBy === '' ? 'selected' : ''; ?>>Default (Newest First)</option>
-                    <option value="deadline" <?php echo $sortBy === 'deadline' ? 'selected' : ''; ?>>Due Date</option>
-                    <option value="alphabetical" <?php echo $sortBy === 'alphabetical' ? 'selected' : ''; ?>>Alphabetical</option>
-                    <option value="task_number" <?php echo $sortBy === 'task_number' ? 'selected' : ''; ?>>Task Number</option>
-                </select>
-            </div>
-
-            <?php if ($selectedProjectId !== null || $onlyBugs || $sortBy !== ''): ?>
-                <a href="archive.php" class="px-3 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition">Clear Filters</a>
-            <?php endif; ?>
-        </form>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
 
-    <!-- Archived Task List Grid -->
-    <?php if (empty($archivedTasks)): ?>
-        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-12 text-center space-y-3">
-            <p class="text-slate-400 text-base font-medium">No archived tasks found.</p>
-            <p class="text-slate-500 text-xs">Completed tasks can be archived from the main dashboard or task detail page.</p>
-        </div>
-    <?php else: ?>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <?php foreach ($archivedTasks as $task): ?>
-                <?php $taskProj = $projectObjMap[$task->getProjectId()] ?? null; ?>
-                <div class="bg-slate-900 border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-lg hover:border-slate-700 transition">
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
-                                <?php echo SecurityHelper::escape($projectMap[$task->getProjectId()] ?? 'Unknown Project'); ?>
-                            </span>
-                            <div class="flex items-center space-x-1.5">
-                                <?php if ($taskProj && $taskProj->isPrivate()): ?>
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">🔒 Private</span>
-                                <?php endif; ?>
-                                <?php if ($task->isBug()): ?>
-                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BUG</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <h3 class="text-base font-bold text-slate-200 line-through">
-                            <a href="task_detail.php?id=<?php echo $task->getId(); ?>" class="hover:text-indigo-400 transition">
-                                <span class="text-slate-500 font-medium mr-1 no-underline">#<?php echo $task->getId(); ?>:</span><?php echo SecurityHelper::escape($task->getTitle()); ?>
-                            </a>
-                        </h3>
-                        <p class="text-xs text-slate-400 line-clamp-2">
-                            <?php echo SecurityHelper::escape($task->getDetails() ?: 'No details'); ?>
-                        </p>
-                    </div>
-
-                    <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs">
-                        <span class="text-slate-500">
-                            Created by <?php echo SecurityHelper::escape($userMap[$task->getCreatedBy()] ?? 'Unknown'); ?>
-                        </span>
-
-                        <div class="flex items-center space-x-3">
-                            <form action="archive.php?<?php echo SecurityHelper::escape(http_build_query($_GET)); ?>" method="POST" class="inline">
-                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                                <input type="hidden" name="action" value="unarchive">
-                                <input type="hidden" name="task_id" value="<?php echo $task->getId(); ?>">
-                                <button type="submit" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium rounded-lg transition" onclick="return showCustomConfirm('Restore task #<?php echo $task->getId(); ?> to active board?', this.form, 'Unarchive', 'Restore Task');">
-                                    Unarchive
-                                </button>
-                            </form>
-                            <a href="task_detail.php?id=<?php echo $task->getId(); ?>" class="text-slate-400 hover:text-slate-200 font-medium">Details &rarr;</a>
-                        </div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
 </div>
 
 <?php

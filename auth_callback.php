@@ -41,7 +41,11 @@ $tfdDomain = (strpos($host, 'theflyingdutchmen.com') !== false) ? 'theflyingdutc
 
 $clientId = 'tasks-app-f807c6b8';
 $clientSecret = '72edd0162a97e41f699df52b35f94642cb6c4efdceb9713f73b05bb9d09b2489';
-$redirectUri = 'https://tasks.' . $tfdDomain . '/auth_callback.php';
+if (strpos($host, 'dev.englishjones.com') !== false) {
+    $redirectUri = 'https://dev.englishjones.com/auth_callback.php';
+} else {
+    $redirectUri = 'https://tasks.' . $tfdDomain . '/auth_callback.php';
+}
 $tokenUrl = 'http://127.0.0.1:4000/oauth/token';
 $userinfoUrl = 'http://127.0.0.1:4000/oauth/userinfo';
 

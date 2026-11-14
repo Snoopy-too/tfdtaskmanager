@@ -64,21 +64,33 @@ require_once __DIR__ . '/../templates/header.php';
 <!-- FabricJS for rendering component previews on visual tables -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 
-<link rel="stylesheet" href="css/rulebook.css">
+<link rel="stylesheet" href="css/rulebook.css?v=<?php echo filemtime(__DIR__ . '/css/rulebook.css'); ?>">
 
-<div class="h-[calc(100vh-4rem)] flex flex-col md:flex-row -mx-4 md:-mx-8 -my-8 overflow-hidden" id="editor-workspace">
+<div class="flex-grow flex flex-col md:flex-row w-full min-h-full" id="editor-workspace">
     
     <?php include __DIR__ . '/views/rulebook-sidebar.php'; ?>
 
     <!-- Main Workspace Container -->
-    <div id="main-workspace-container" class="flex-grow flex flex-col bg-slate-950 overflow-hidden h-full">
+    <div id="main-workspace-container" class="flex-grow flex flex-col bg-slate-950 min-w-0">
         <!-- Top Toolbar -->
         <div id="editor-controls" class="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 flex-shrink-0">
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-3">
                 <span class="text-xs text-slate-400 bg-slate-850 px-2.5 py-1 rounded-full font-medium" id="status-indicator">All changes saved</span>
+                <button onclick="saveRulebook()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition duration-200 flex items-center gap-1.5 shadow-sm">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    <span class="hidden sm:inline">Save Document</span>
+                </button>
+                <button onclick="triggerPrint()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-700 transition duration-200 flex items-center gap-1.5">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 002 2zm5-17V4a2 2 0 00-2-2H9a2 2 0 00-2 2v3"/></svg>
+                    <span class="hidden sm:inline">Print-Ready PDF</span>
+                </button>
             </div>
             
             <div class="flex items-center space-x-2">
+                <button type="button" onclick="toggleFullScreenEditor()" id="btn-fullscreen-mode" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5 border border-slate-800 hover:border-slate-700" title="Toggle Fullscreen Editor (Hides Topnav & Side Menu)">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                    <span class="hidden sm:inline">Fullscreen</span>
+                </button>
                 <button onclick="togglePreviewMode(false)" id="btn-edit-mode" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 transition">
                     Editor View
                 </button>
@@ -100,8 +112,8 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
         <?php endif; ?>
 
-        <!-- Scrollable Blocks Canvas -->
-        <div class="flex-grow overflow-y-auto p-4 md:p-8" id="rulebook-viewport-container">
+        <!-- Rulebook Content Container -->
+        <div class="flex-grow p-4 md:p-8" id="rulebook-viewport-container">
             <div id="rulebook-content-wrapper" class="max-w-3xl mx-auto bg-slate-900 border border-slate-850 shadow-2xl rounded-2xl min-h-[80vh] p-10 relative space-y-8 transition-colors duration-300">
                 
                 <!-- Crop mark targets (will show during print layout) -->
@@ -179,5 +191,28 @@ require_once __DIR__ . '/../templates/header.php';
 <script src="js/rulebook-theme.js?v=<?php echo filemtime(__DIR__ . '/js/rulebook-theme.js'); ?>"></script>
 <script src="js/rulebook-blocks.js?v=<?php echo filemtime(__DIR__ . '/js/rulebook-blocks.js'); ?>"></script>
 <script src="js/rulebook-renderer.js?v=<?php echo filemtime(__DIR__ . '/js/rulebook-renderer.js'); ?>"></script>
+
+<script>
+window.toggleFullScreenEditor = function() {
+    document.body.classList.toggle('fullscreen-editor');
+    const isFull = document.body.classList.contains('fullscreen-editor');
+    const btn = document.getElementById('btn-fullscreen-mode');
+    if (btn) {
+        btn.classList.toggle('text-indigo-400', isFull);
+        btn.classList.toggle('bg-indigo-500/10', isFull);
+        btn.classList.toggle('border-indigo-500/30', isFull);
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = isFull ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+        }
+    }
+};
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.body.classList.contains('fullscreen-editor')) {
+        window.toggleFullScreenEditor();
+    }
+});
+</script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>

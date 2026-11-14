@@ -13,9 +13,14 @@ $host = $_SERVER['HTTP_HOST'] ?? 'tasks.theflyingdutchmen.games';
 $tfdDomain = (strpos($host, 'theflyingdutchmen.com') !== false) ? 'theflyingdutchmen.com' : 'theflyingdutchmen.games';
 
 if ($wasSso || !empty($_COOKIE['session_id'])) {
-    header("Location: https://{$tfdDomain}/logout?redirect=" . urlencode("https://{$tfdDomain}/"));
+    $returnUrl = (strpos($host, 'dev.englishjones.com') !== false) ? "https://dev.englishjones.com/" : "https://tasks.{$tfdDomain}/";
+    header("Location: https://{$tfdDomain}/logout?redirect=" . urlencode($returnUrl));
     exit();
 }
 
-header("Location: https://{$tfdDomain}/");
+if (strpos($host, 'dev.englishjones.com') !== false) {
+    header("Location: https://dev.englishjones.com/");
+} else {
+    header("Location: https://{$tfdDomain}/");
+}
 exit();

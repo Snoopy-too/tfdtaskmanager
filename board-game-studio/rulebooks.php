@@ -18,38 +18,34 @@ $error = '';
 $success = '';
 $csrfToken = SecurityHelper::generateCsrfToken();
 
-// Projects list
+// Projects list - only board games
 $projects = $projectService->getAllProjects($currentUserId);
+$boardGameProjects = array_values(array_filter($projects, fn($p) => $p->isBoardGame()));
 $activeProjectId = null;
 
-if (isset($_GET['project_id'])) {
-    if ($_GET['project_id'] !== '') {
-        $activeProjectId = (int)$_GET['project_id'];
-        $_SESSION['last_project_id'] = $activeProjectId;
-    } else {
-        unset($_SESSION['last_project_id']);
-    }
-} else {
-    if (isset($_SESSION['last_project_id'])) {
-        $candidateId = (int)$_SESSION['last_project_id'];
-        if ($projectService->getProjectById($candidateId, $currentUserId)) {
-            $activeProjectId = $candidateId;
-            header("Location: rulebooks.php?project_id=" . $activeProjectId);
-            exit;
-        } else {
-            unset($_SESSION['last_project_id']);
-        }
+if (isset($_GET['project_id']) && $_GET['project_id'] !== '') {
+    $activeProjectId = (int)$_GET['project_id'];
+} elseif (isset($_SESSION['last_project_id'])) {
+    $candidateId = (int)$_SESSION['last_project_id'];
+    $candProject = $projectService->getProjectById($candidateId, $currentUserId);
+    if ($candProject && $candProject->isBoardGame()) {
+        $activeProjectId = $candidateId;
     }
 }
 
-$activeProject = null;
-if ($activeProjectId) {
-    $activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
-    if (!$activeProject) {
-        $activeProjectId = null;
-        unset($_SESSION['last_project_id']);
-    }
+if (!$activeProjectId) {
+    header("Location: index.php");
+    exit;
 }
+
+$activeProject = $projectService->getProjectById($activeProjectId, $currentUserId);
+if (!$activeProject || !$activeProject->isBoardGame()) {
+    unset($_SESSION['last_project_id']);
+    header("Location: index.php");
+    exit;
+}
+
+$_SESSION['last_project_id'] = $activeProjectId;
 
 // Handle actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -106,40 +102,19 @@ if ($activeProjectId) {
 }
 
 require_once __DIR__ . '/../templates/header.php';
+
+if ($activeProject) {
+    renderPageHeader($activeProject->getName(), 'Rulebooks & Glossary', '', 'index.php');
+} else {
+    renderPageHeader('Rulebooks & Glossary', 'Game Studio', '', 'index.php');
+}
 ?>
 
-<div class="space-y-8">
-    <!-- Top Bar with Project Select -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <div class="flex items-center space-x-2">
-                <a href="index.php" class="text-xs font-semibold text-slate-400 hover:text-white transition duration-200 inline-flex items-center">
-                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
-                    Studio Dashboard
-                </a>
-            </div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mt-1">
-                Rulebooks & Glossary
-            </h1>
-            <p class="text-slate-400 mt-1">Design beautiful rulebooks with live sync assets and project-wide terminology control.</p>
-        </div>
-
-        <?php if (!empty($projects)): ?>
-            <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 p-2 rounded-xl">
-                <label for="project_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-2">Project:</label>
-                <form method="GET" class="m-0">
-                    <select id="project_select" name="project_id" onchange="this.form.submit()" class="bg-slate-950 border-0 text-slate-100 text-sm rounded-lg focus:ring-2 focus:ring-amber-505 py-1.5 pl-3 pr-8 font-medium cursor-pointer">
-                        <option value="" <?php echo $activeProjectId === null ? 'selected' : ''; ?>>None (Choose Project)</option>
-                        <?php foreach ($projects as $proj): ?>
-                            <option value="<?php echo $proj->getId(); ?>" <?php echo $proj->getId() === $activeProjectId ? 'selected' : ''; ?>>
-                                <?php echo SecurityHelper::escape($proj->getName() . ($proj->isPrivate() ? ' (🔒 Private)' : '')); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
-            </div>
-        <?php endif; ?>
-    </div>
+<div class="page-container space-y-6">
+    <?php
+    $activeTab = 'rulebooks';
+    include __DIR__ . '/views/studio-nav.php';
+    ?>
 
     <?php if (empty($projects)): ?>
         <div class="p-8 text-center bg-slate-900/50 border border-slate-800 rounded-2xl max-w-lg mx-auto">
@@ -188,33 +163,105 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
 
         <!-- Rulebooks Tab -->
-        <div id="rulebooks-tab" class="tab-content grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 space-y-4">
-                <h2 class="text-xl font-bold text-slate-200">Rulebook Documents</h2>
-                
+        <div id="rulebooks-tab" class="tab-content space-y-6">
+            <!-- Section Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-800/80">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            Rulebook Documents
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono font-normal">
+                                <?php echo count($rulebooks); ?>
+                            </span>
+                        </h2>
+                        <p class="text-xs text-slate-400">Create, edit, and organize rulebooks, reference guides, and scenario books</p>
+                    </div>
+                </div>
+                <div>
+                    <button type="button" onclick="toggleCollapsible('new-rulebook-panel')" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-amber-600/20 transition-all duration-200">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>New Rulebook</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Create Rulebook Collapsible Panel -->
+            <div id="new-rulebook-panel" class="form-panel-collapsible mb-6">
+                <div class="form-panel-collapsible-inner bg-slate-900 border border-amber-500/20 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-200">Create New Rulebook</h3>
+                                <p class="text-xs text-slate-400">Initialize a document for rules, reference guides, or scenarios</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="toggleCollapsible('new-rulebook-panel')" class="text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded-lg hover:bg-slate-800 transition">
+                            &times; Close
+                        </button>
+                    </div>
+
+                    <form action="" method="POST" class="space-y-4">
+                        <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                        <input type="hidden" name="action" value="create_rulebook">
+
+                        <div class="max-w-md">
+                            <label for="name" class="block text-xs font-medium text-slate-300 mb-1.5">Rulebook Title</label>
+                            <input type="text" id="name" name="name" required placeholder="e.g. Core Rules, Quick Start Guide" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-xl focus:ring-amber-500 focus:border-amber-500 p-2.5">
+                        </div>
+
+                        <div class="flex items-center space-x-3 pt-2">
+                            <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl py-2 px-5 text-xs transition duration-200 shadow-lg shadow-amber-600/20">
+                                Create & Open Editor
+                            </button>
+                            <button type="button" onclick="toggleCollapsible('new-rulebook-panel')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl py-2 px-4 transition duration-200">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Rulebooks Display Grid -->
+            <div>
                 <?php if (empty($rulebooks)): ?>
-                    <div class="p-12 text-center bg-slate-900/30 border border-dashed border-slate-800 rounded-2xl">
-                        <svg class="mx-auto h-10 w-10 text-slate-650 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="p-12 text-center bg-slate-900/30 border border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center space-y-3">
+                        <svg class="mx-auto h-12 w-12 text-slate-650" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                         <h4 class="text-sm font-semibold text-slate-300">No Rulebooks Created</h4>
-                        <p class="text-xs text-slate-550 mt-1">Start by creating a new rulebook document using the panel on the right.</p>
+                        <p class="text-xs text-slate-400 max-w-sm">Start by creating a new rulebook document to write and organize your game's rules.</p>
+                        <button type="button" onclick="toggleCollapsible('new-rulebook-panel')" class="mt-2 inline-flex items-center space-x-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition duration-200">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>New Rulebook</span>
+                        </button>
                     </div>
                 <?php else: ?>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         <?php foreach ($rulebooks as $rb): ?>
-                            <div class="bg-slate-900 border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between hover:border-slate-700/80 hover:shadow-lg transition">
+                            <div class="bg-slate-900/80 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-slate-700 hover:shadow-md transition">
                                 <div class="space-y-1">
-                                    <h3 class="font-bold text-slate-200 truncate"><?php echo SecurityHelper::escape($rb->getName()); ?></h3>
-                                    <p class="text-xs text-slate-400">
-                                        Blocks: <?php echo count($rb->getContent()); ?>
-                                    </p>
-                                    <p class="text-[10px] text-slate-500">
-                                        Updated: <?php echo date('M d, Y H:i', strtotime($rb->getUpdatedAt())); ?>
-                                    </p>
+                                    <h3 class="font-bold text-slate-200 text-sm truncate"><?php echo SecurityHelper::escape($rb->getName()); ?></h3>
+                                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                                        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">
+                                            <?php echo count($rb->getContent()); ?> blocks
+                                        </span>
+                                        <span class="text-[10px] text-slate-500">
+                                            Updated <?php echo date('M d, Y', strtotime($rb->getUpdatedAt())); ?>
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="flex items-center justify-between mt-6 pt-3 border-t border-slate-800/60 gap-2">
-                                    <a href="rulebook-editor.php?id=<?php echo $rb->getId(); ?>" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center space-x-1.5 bg-amber-500/5 hover:bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 transition">
+                                <div class="flex items-center justify-between mt-3.5 pt-2.5 border-t border-slate-800/70 gap-2 text-xs">
+                                    <a href="rulebook-editor.php?id=<?php echo $rb->getId(); ?>" class="font-semibold text-amber-400 hover:text-amber-300 flex items-center space-x-1.5 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/20 transition">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                         <span>Open Editor</span>
                                     </a>
@@ -223,7 +270,7 @@ require_once __DIR__ . '/../templates/header.php';
                                         <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
                                         <input type="hidden" name="action" value="delete_rulebook">
                                         <input type="hidden" name="rulebook_id" value="<?php echo $rb->getId(); ?>">
-                                        <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 transition p-1 rounded hover:bg-rose-500/10 border border-transparent hover:border-rose-500/10">
+                                        <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 transition py-0.5 px-1.5 rounded hover:bg-rose-500/10" title="Delete Rulebook">
                                             Delete
                                         </button>
                                     </form>
@@ -232,24 +279,6 @@ require_once __DIR__ . '/../templates/header.php';
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </div>
-
-            <!-- Create Rulebook Sidebar -->
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl h-fit">
-                <h2 class="text-xl font-bold text-slate-200 mb-4">New Rulebook</h2>
-                <form action="" method="POST" class="space-y-4">
-                    <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
-                    <input type="hidden" name="action" value="create_rulebook">
-
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-slate-300 mb-1">Rulebook Title</label>
-                        <input type="text" id="name" name="name" required placeholder="e.g. Core Rules" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-xl focus:ring-amber-500 focus:border-amber-500 p-2.5">
-                    </div>
-
-                    <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-xl py-2.5 px-4 transition duration-200">
-                        Create Rulebook
-                    </button>
-                </form>
             </div>
         </div>
 
