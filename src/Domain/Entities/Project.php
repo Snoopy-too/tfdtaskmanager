@@ -11,6 +11,8 @@ class Project
     private string $createdAt;
     private bool $isPrivate;
     private ?int $createdBy;
+    private bool $isBoardGame;
+    private string $type;
 
     public function __construct(
         ?int $id,
@@ -18,7 +20,9 @@ class Project
         string $description,
         string $createdAt = '',
         bool $isPrivate = false,
-        ?int $createdBy = null
+        ?int $createdBy = null,
+        bool $isBoardGame = false,
+        string $type = 'standard'
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -26,6 +30,12 @@ class Project
         $this->createdAt = $createdAt;
         $this->isPrivate = $isPrivate;
         $this->createdBy = $createdBy;
+        if ($isBoardGame || $type === 'boardgame') {
+            $isBoardGame = true;
+            $type = 'boardgame';
+        }
+        $this->isBoardGame = $isBoardGame;
+        $this->type = $type;
     }
 
     public function getId(): ?int
@@ -56,6 +66,16 @@ class Project
     public function getCreatedBy(): ?int
     {
         return $this->createdBy;
+    }
+
+    public function isBoardGame(): bool
+    {
+        return $this->isBoardGame;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
     }
 
     public function isAccessibleBy(?int $userId): bool

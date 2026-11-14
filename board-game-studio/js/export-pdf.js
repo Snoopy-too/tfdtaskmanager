@@ -232,6 +232,93 @@
         }
     }
 
+    // Helper to draw physical dimensions and measurement overlay onto the PDF
+    function drawMeasurementsOverlay(pdf, x, y, w, h, realW, realH, bleedMm = 0, safeMm = 0, extraLabel = '') {
+        if (typeof pdf.saveGraphicsState === 'function') pdf.saveGraphicsState();
+
+        const displayW = realW || w;
+        const displayH = realH || h;
+        const offset = 2.2;
+        const tickLen = 1.8;
+
+        pdf.setDrawColor(79, 70, 229); // Indigo 600
+        pdf.setFillColor(255, 255, 255);
+        pdf.setLineWidth(0.2);
+        if (typeof pdf.setLineDashPattern === 'function') pdf.setLineDashPattern([], 0);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(67, 56, 202);
+
+        // --- Horizontal measurement (Width) above component ---
+        const topY = y - offset;
+        pdf.line(x, y - 0.3, x, topY - tickLen);
+        pdf.line(x + w, y - 0.3, x + w, topY - tickLen);
+        pdf.line(x, topY, x + w, topY);
+        // Arrowheads
+        pdf.line(x, topY, x + 1.4, topY - 0.7);
+        pdf.line(x, topY, x + 1.4, topY + 0.7);
+        pdf.line(x + w, topY, x + w - 1.4, topY - 0.7);
+        pdf.line(x + w, topY, x + w - 1.4, topY + 0.7);
+
+        const isBox = Boolean(window.studioConfig && (window.studioConfig.isBoxTemplate || window.studioConfig.boxConfig));
+        const boxCfg = isBox ? window.studioConfig.boxConfig : null;
+
+        const wText = isBox ? `Flat Width: ${displayW.toFixed(1)} mm` : `${displayW.toFixed(1)} mm`;
+        const wTextWidth = pdf.getTextWidth(wText) + 2.2;
+        const midX = x + (w / 2);
+        if (!isBox) pdf.rect(midX - (wTextWidth / 2), topY - 1.8, wTextWidth, 3.4, 'F');
+        pdf.text(wText, midX, topY + 0.6, { align: 'center' });
+
+        // --- Vertical measurement (Height) on left of component ---
+        const leftX = x - offset;
+        pdf.line(x - 0.3, y, leftX - tickLen, y);
+        pdf.line(x - 0.3, y + h, leftX - tickLen, y + h);
+        pdf.line(leftX, y, leftX, y + h);
+        // Arrowheads
+        pdf.line(leftX, y, leftX - 0.7, y + 1.4);
+        pdf.line(leftX, y, leftX + 0.7, y + 1.4);
+        pdf.line(leftX, y + h, leftX - 0.7, y + h - 1.4);
+        pdf.line(leftX, y + h, leftX + 0.7, y + h - 1.4);
+
+        // Height label badge (rotated)
+        const hText = isBox ? `Flat Height: ${displayH.toFixed(1)} mm` : `${displayH.toFixed(1)} mm`;
+        const hTextWidth = pdf.getTextWidth(hText) + 2.2;
+        const midY = y + (h / 2);
+        if (!isBox) pdf.rect(leftX - 1.7, midY - (hTextWidth / 2), 3.4, hTextWidth, 'F');
+        pdf.text(hText, leftX + 0.6, midY, { align: 'center', angle: 90 });
+
+        // --- Corner Annotation Badge ---
+        let notes = [];
+        if (extraLabel) notes.push(extraLabel);
+        if (boxCfg) {
+            const cavityW = boxCfg.effectiveW ?? boxCfg.finishedW;
+            const cavityL = boxCfg.effectiveL ?? boxCfg.finishedL;
+            const cavityH = boxCfg.effectiveH ?? boxCfg.finishedH;
+            const stock = boxCfg.stockThicknessMm ?? 0.6;
+            if (cavityW && cavityL && cavityH) {
+                notes.push(`Box Cavity: ${cavityW}×${cavityL}×${cavityH}mm (t=${stock}mm)`);
+            }
+            notes.push(`Cut & Fold Segments Overlaid`);
+        } else {
+            if (bleedMm > 0) notes.push(`Bleed: ${bleedMm}mm`);
+            if (safeMm > 0) notes.push(`Safe: ${safeMm}mm`);
+        }
+        if (notes.length > 0) {
+            pdf.setFontSize(5.5);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(100, 116, 139);
+            const tagText = notes.join(' • ');
+            const tagWidth = pdf.getTextWidth(tagText) + 2.5;
+            if (!isBox) {
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(x + 1, y + h - 4.2, tagWidth, 3.2, 'F');
+            }
+            pdf.text(tagText, x + 2, y + h - 1.8);
+        }
+
+        if (typeof pdf.restoreGraphicsState === 'function') pdf.restoreGraphicsState();
+    }
+
     // Export PDF Tiled Generation
     function generatePdf(cardImages, updateProgress) {
         return new Promise(async (resolve, reject) => {
@@ -242,7 +329,8 @@
 
                 const pageSize = document.getElementById('pdf_page_size').value;
                 const orientation = document.getElementById('pdf_orientation') ? document.getElementById('pdf_orientation').value : 'portrait';
-                const drawCropMarks = document.getElementById('pdf_crop_marks').checked;
+                const drawCropMarks = document.getElementById('pdf_crop_marks') ? document.getElementById('pdf_crop_marks').checked : false;
+                const drawMeasurements = document.getElementById('pdf_measurements') ? document.getElementById('pdf_measurements').checked : false;
 
                 const isF10A4 = (pageSize === 'f10a4_1');
                 const is51215 = (pageSize === 'a_one_51215');
@@ -306,16 +394,6 @@
 
                     cols = Math.floor((availW + gap) / (drawW + gap));
                     rows = Math.floor((availH + gap) / (drawH + gap));
-
-                    const isOversized = (cols === 0 || rows === 0);
-                    if (isOversized && (tilingMode === 'fit' || !tilingMode)) {
-                        // If oversized and user hasn't explicitly chosen single-sheet shrink, default to 2-sheet tiling
-                        tilingMode = 'split_2_margin';
-                        const tilingEl = document.getElementById('pdf_tiling');
-                        if (tilingEl && (tilingEl.value === 'fit' || !tilingEl.value)) {
-                            tilingEl.value = 'split_2_margin';
-                        }
-                    }
 
                     // Apply multi-sheet or single-sheet tiling if the component is larger than 1 page OR if the user explicitly chose a multi-sheet split
                     if (cols === 0 || rows === 0 || (isTilingVisible && tilingMode && tilingMode.startsWith('split_'))) {
@@ -413,6 +491,10 @@
                         if (drawCropMarks) {
                             drawPageCropMarks(pdf, x, y, drawW, drawH, col, row, cols, rows, gap);
                         }
+
+                        if (drawMeasurements) {
+                            drawMeasurementsOverlay(pdf, x, y, drawW, drawH, cardW, cardH, window.studioConfig.bleedMm, window.studioConfig.safeMarginMm);
+                        }
                     } else {
                         const htmlImg = await loadImage(img.dataUrl);
                         const sourceW = htmlImg.naturalWidth || htmlImg.width || window.studioConfig.canvasWidth;
@@ -458,6 +540,12 @@
                                 }
 
                                 drawOverlapGuidelines(pdf, x, y, drawW, drawH, c, r, splitCols, splitRows, sheetCounter, totalSheets, hasSafeMargins);
+
+                                if (drawMeasurements) {
+                                    const tilePieceW = cardW / splitCols;
+                                    const tilePieceH = cardH / splitRows;
+                                    drawMeasurementsOverlay(pdf, x, y, drawW, drawH, tilePieceW, tilePieceH, window.studioConfig.bleedMm, window.studioConfig.safeMarginMm, `Tile ${sheetCounter}/${totalSheets}`);
+                                }
                             }
                         }
                     }

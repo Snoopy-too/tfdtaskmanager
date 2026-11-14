@@ -253,11 +253,23 @@
 
 
     function processExportObjects(objectsList) {
+        const drawMeasurementsEl = document.getElementById('pdf_measurements');
+        const drawMeasurements = drawMeasurementsEl ? drawMeasurementsEl.checked : false;
+
         objectsList.forEach(obj => {
             if (obj.id === 'safe-zone-guide') {
-                toRemove.push(obj);
+                if (!drawMeasurements) {
+                    toRemove.push(obj);
+                } else {
+                    obj.set({
+                        visible: true,
+                        opacity: 0.7,
+                        stroke: '#4f46e5',
+                        strokeDashArray: [4, 4]
+                    });
+                }
                 return;
-            } else if (obj.id === 'bleed-zone-guide' && !drawBleedCheckbox) {
+            } else if (obj.id === 'bleed-zone-guide' && !drawBleedCheckbox && !drawMeasurements) {
                 toRemove.push(obj);
                 return;
             }
@@ -456,6 +468,9 @@
                         : Promise.resolve();
 
                     afterImages.then(() => {
+                        const drawMeasurementsEl = document.getElementById('pdf_measurements');
+                        const drawMeasurements = drawMeasurementsEl ? drawMeasurementsEl.checked : false;
+
                         if (hasBoxDieline) {
                             const currentObjs = canvas.getObjects();
                             const fillObj = currentObjs.find(o => o.id === 'box-dieline-fill' || o.dielineRole === 'fill');
@@ -467,6 +482,28 @@
                             if (foldObj) canvas.bringToFront(foldObj);
                             if (cutObj) canvas.bringToFront(cutObj);
                             labelObjs.forEach(l => canvas.bringToFront(l));
+
+                            if (drawMeasurements && window.boxMeasurements) {
+                                let cfg = (window.studioConfig && window.studioConfig.boxConfig) ? window.studioConfig.boxConfig : null;
+                                if (!cfg) {
+                                    const boxObj = canvas.getObjects().find(o => o.boxConfig);
+                                    if (boxObj) cfg = boxObj.boxConfig;
+                                }
+                                if (!cfg && typeof templateJson === 'string') {
+                                    try {
+                                        const parsed = JSON.parse(templateJson);
+                                        cfg = parsed.boxConfig || (parsed.objects ? parsed.objects.find(o => o.boxConfig)?.boxConfig : null);
+                                    } catch (e) {}
+                                } else if (!cfg && templateJson && typeof templateJson === 'object') {
+                                    cfg = templateJson.boxConfig || (templateJson.objects ? templateJson.objects.find(o => o.boxConfig)?.boxConfig : null);
+                                }
+
+                                if (cfg) {
+                                    window.boxMeasurements.renderMeasurementsOnCanvas(canvas, cfg);
+                                }
+                            } else if (!drawMeasurements && window.boxMeasurements) {
+                                window.boxMeasurements.removeMeasurementsFromCanvas(canvas);
+                            }
                         }
 
                         canvas.getObjects().forEach(o => {

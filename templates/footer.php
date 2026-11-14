@@ -1,7 +1,21 @@
 <?php
 declare(strict_types=1);
+
+$current_page = basename($_SERVER['PHP_SELF'] ?? '');
 ?>
     </main>
+
+    <script>
+    window.toggleCollapsible = function(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle('is-open');
+        if (el.classList.contains('is-open')) {
+            const firstInput = el.querySelector('input:not([type="hidden"]), select, textarea');
+            if (firstInput) firstInput.focus();
+        }
+    };
+    </script>
 
     <!-- Global Custom Confirm Modal -->
     <div id="global_confirm_modal" class="hidden fixed inset-0 z-[9999] overflow-y-auto flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -346,6 +360,42 @@ declare(strict_types=1);
             }
         });
 
+        // Desktop Expand / Collapse Toggle
+        const pinBtn = document.getElementById('sidebar-pin-toggle');
+        if (pinBtn && sidebar) {
+            function updateSidebarExpanded(isExpanded) {
+                if (isExpanded) {
+                    document.body.classList.add('sidebar-expanded', 'sidebar-pinned');
+                    sidebar.classList.add('is-expanded', 'is-pinned');
+                    pinBtn.setAttribute('title', 'Collapse menu');
+                    const pinIcon = pinBtn.querySelector('.sidebar-item-icon');
+                    if (pinIcon) pinIcon.className = 'sidebar-item-icon bi bi-chevron-double-left text-base flex-shrink-0 text-slate-300';
+                    const pinLabel = pinBtn.querySelector('.sidebar-item-label');
+                    if (pinLabel) pinLabel.textContent = 'Collapse menu';
+                } else {
+                    document.body.classList.remove('sidebar-expanded', 'sidebar-pinned');
+                    sidebar.classList.remove('is-expanded', 'is-pinned');
+                    pinBtn.setAttribute('title', 'Expand menu');
+                    const pinIcon = pinBtn.querySelector('.sidebar-item-icon');
+                    if (pinIcon) pinIcon.className = 'sidebar-item-icon bi bi-chevron-double-right text-base flex-shrink-0 text-slate-400';
+                    const pinLabel = pinBtn.querySelector('.sidebar-item-label');
+                    if (pinLabel) pinLabel.textContent = 'Expand menu';
+                }
+            }
+
+            const initialExpanded = (localStorage.getItem('tasks_sidebar_expanded') === 'true' || localStorage.getItem('tasks_sidebar_pinned') === 'true');
+            updateSidebarExpanded(initialExpanded);
+
+            pinBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currentlyExpanded = document.body.classList.contains('sidebar-expanded') || document.body.classList.contains('sidebar-pinned');
+                const nextState = !currentlyExpanded;
+                localStorage.setItem('tasks_sidebar_expanded', nextState ? 'true' : 'false');
+                localStorage.setItem('tasks_sidebar_pinned', nextState ? 'true' : 'false');
+                updateSidebarExpanded(nextState);
+            });
+        }
+
         // Close sidebar on mobile when navigating
         if (sidebar) {
             sidebar.querySelectorAll('nav a').forEach(function(link) {
@@ -376,6 +426,9 @@ declare(strict_types=1);
         }, { passive: true });
     })();
     </script>
+
+    <!-- Universal Table Sort Script -->
+    <script src="/js/table-sort.js"></script>
 
     <!-- TFD Universal Navigation Script -->
     <script src="https://theflyingdutchmen.games/javascripts/tfd-navbar.js"></script>

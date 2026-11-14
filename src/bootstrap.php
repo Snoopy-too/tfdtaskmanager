@@ -6,8 +6,12 @@ date_default_timezone_set('Asia/Tokyo');
 
 require_once __DIR__ . '/autoloader.php';
 
-$config = require __DIR__ . '/../config.php';
-
 use App\Container\DIContainer;
 
-return new DIContainer($config);
+static $containerInstance = null;
+if ($containerInstance === null) {
+    $config = require __DIR__ . '/../config.php';
+    $containerInstance = new DIContainer($config);
+}
+
+return $containerInstance;

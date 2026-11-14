@@ -8,7 +8,7 @@ $project = $project ?? null;
 ?>
 <!-- Sidebar: Templates & Block types -->
 <div id="editor-sidebar" class="w-full md:w-80 bg-slate-900 border-r border-slate-800 flex flex-col justify-between flex-shrink-0">
-    <div class="p-6 space-y-6 overflow-y-auto flex-grow h-1">
+    <div class="p-6 space-y-6 flex-grow">
         <div class="space-y-1">
             <a href="rulebooks.php?project_id=<?php echo $rulebook ? $rulebook->getProjectId() : 0; ?>" class="text-xs font-semibold text-slate-400 hover:text-white transition duration-200 inline-flex items-center">
                 <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
@@ -18,10 +18,22 @@ $project = $project ?? null;
             <p class="text-xs text-slate-500">Project: <?php echo SecurityHelper::escape($project ? $project->getName() : 'Active Project'); ?></p>
         </div>
 
+        <!-- Primary Document Actions (Top of Sidebar) -->
+        <div class="grid grid-cols-2 gap-2 pt-1 pb-1">
+            <button onclick="saveRulebook()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2 px-2.5 rounded-xl transition duration-200 flex items-center justify-center space-x-1.5 shadow-sm">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                <span>Save</span>
+            </button>
+            <button onclick="triggerPrint()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2 px-2.5 rounded-xl border border-slate-700 transition duration-200 flex items-center justify-center space-x-1.5">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 002 2zm5-17V4a2 2 0 00-2-2H9a2 2 0 00-2 2v3"/></svg>
+                <span>Print PDF</span>
+            </button>
+        </div>
+
         <!-- Sidebar Tab Buttons -->
         <div class="flex border-b border-slate-800 text-xs font-semibold mb-4">
             <button id="btn-sidebar-blocks" onclick="switchEditorSidebarTab('blocks')" class="flex-grow pb-2 border-b-2 border-amber-500 text-white transition">
-                Blocks
+                Blocks & Content
             </button>
             <button id="btn-sidebar-theme" onclick="switchEditorSidebarTab('theme')" class="flex-grow pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition">
                 Theme & CSS
@@ -89,7 +101,7 @@ $project = $project ?? null;
             <!-- Glossary and Assets list overview -->
             <div class="space-y-3">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Icon Tag Cheat Sheet</h3>
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 max-h-48 overflow-y-auto">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 max-h-48 overflow-y-auto" style="scrollbar-width: none; -ms-overflow-style: none;">
                     <?php if (empty($assets)): ?>
                         <p class="text-[10px] text-slate-500">Upload assets in Studio to see tags.</p>
                     <?php else: ?>
@@ -203,14 +215,4 @@ $project = $project ?? null;
         </div>
     </div>
 
-    <div class="p-6 border-t border-slate-800 bg-slate-950 space-y-3">
-        <button onclick="saveRulebook()" class="w-full bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold py-2 rounded-xl transition duration-200 flex items-center justify-center space-x-2">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-            <span>Save Document</span>
-        </button>
-        <button onclick="triggerPrint()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-350 text-sm font-semibold py-2 rounded-xl border border-slate-700 transition duration-200 flex items-center justify-center space-x-2">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 002 2zm5-17V4a2 2 0 00-2-2H9a2 2 0 00-2 2v3"/></svg>
-            <span>Print-Ready PDF</span>
-        </button>
-    </div>
 </div>

@@ -3,16 +3,93 @@ declare(strict_types=1);
 
 use App\Infrastructure\Security\SecurityHelper;
 ?>
-<!-- Right: Dataset Preview Grid / Details -->
-<div class="lg:col-span-2 space-y-6">
-    <?php if (!$inspectDataset): ?>
-        <div class="p-16 text-center bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl h-full flex flex-col justify-center items-center">
-            <svg class="h-12 w-12 text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
-            <h3 class="text-lg font-bold text-slate-300">Select a Dataset to Preview</h3>
-            <p class="text-sm text-slate-500 mt-1 max-w-sm">Choose from the left sidebar to preview row values, variable column maps, and verify CSV structure.</p>
+<!-- Main Datasets Area (Full Width) -->
+<div class="space-y-4">
+    <!-- Section Header matching Components page -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                <span>📊</span>
+                <span>Datasets &amp; Variables</span>
+            </h2>
+            <p class="text-xs text-slate-400">Card variable mappings and spreadsheet tables for <?php echo SecurityHelper::escape($activeProject ? $activeProject->getName() : 'Active Project'); ?>.</p>
         </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <?php if (!empty($datasets)): ?>
+                <form method="GET" class="m-0">
+                    <input type="hidden" name="project_id" value="<?php echo $activeProjectId; ?>">
+                    <select name="inspect_id" onchange="this.form.submit()" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs font-semibold rounded-lg focus:ring-1 focus:ring-indigo-500 py-1.5 pl-2.5 pr-7 cursor-pointer">
+                        <option value="">-- Choose Dataset --</option>
+                        <?php foreach ($datasets as $ds): ?>
+                            <option value="<?php echo $ds->getId(); ?>" <?php echo ($inspectDataset && $inspectDataset->getId() === $ds->getId()) ? 'selected' : ''; ?>>
+                                <?php echo SecurityHelper::escape($ds->getName()); ?> (<?php echo count($ds->getRowData()); ?> rows)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+            <?php endif; ?>
+
+            <button type="button" onclick="toggleCollapsible('new-dataset-panel')" class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600/15 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-transparent text-xs font-semibold rounded-lg transition duration-150">
+                <i class="bi bi-plus-lg"></i>
+                <span>Add Dataset</span>
+            </button>
+        </div>
+    </div>
+
+    <?php if (!$inspectDataset): ?>
+        <?php if (empty($datasets)): ?>
+            <!-- Friendly Empty State -->
+            <div class="p-12 text-center bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl max-w-lg mx-auto my-8 space-y-4">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-3xl mx-auto">
+                    📊
+                </div>
+                <div class="space-y-1">
+                    <h3 class="text-base font-bold text-slate-200">No Datasets Created Yet</h3>
+                    <p class="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                        Import CSV spreadsheets or build manual data tables to dynamically generate cards for <?php echo SecurityHelper::escape($activeProject ? $activeProject->getName() : 'Active Project'); ?>.
+                    </p>
+                </div>
+                <div class="pt-2">
+                    <button type="button" onclick="toggleCollapsible('new-dataset-panel')" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Create First Dataset</span>
+                    </button>
+                </div>
+            </div>
+        <?php else: ?>
+            <!-- Datasets Grid Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <?php foreach ($datasets as $data): ?>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col justify-between hover:border-slate-700 hover:shadow-md transition">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-bold text-slate-100 text-sm truncate"><?php echo SecurityHelper::escape($data->getName()); ?></h3>
+                                <span class="text-[10px] font-mono bg-slate-950 px-2 py-0.5 rounded text-indigo-400 border border-slate-800">
+                                    <?php echo count($data->getRowData()); ?> rows
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-3">
+                                Columns: <span class="text-slate-300 font-mono text-[11px]"><?php echo count($data->getColumnMap()); ?> mapped variables</span>
+                            </p>
+                        </div>
+                        <div class="flex items-center justify-between pt-2.5 border-t border-slate-800/80 gap-2">
+                            <a href="?project_id=<?php echo $activeProjectId; ?>&inspect_id=<?php echo $data->getId(); ?>" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 transition flex items-center gap-1.5">
+                                <i class="bi bi-table"></i>
+                                <span>Inspect &amp; Edit Table</span>
+                            </a>
+                            <form action="" method="POST" class="m-0" onsubmit="event.preventDefault(); window.studioConfirm('Are you sure you want to delete this dataset? This may break active variable bindings on templates.', 'Delete', 'Delete Dataset').then((confirmed) => { if (confirmed) this.submit(); });">
+                                <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escape($csrfToken); ?>">
+                                <input type="hidden" name="action" value="delete_dataset">
+                                <input type="hidden" name="dataset_id" value="<?php echo $data->getId(); ?>">
+                                <button type="submit" class="text-xs text-rose-500 hover:text-rose-400 p-1 rounded hover:bg-rose-500/10" title="Delete Dataset">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     <?php else: ?>
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
             <?php if ($isDatasetLocked): ?>

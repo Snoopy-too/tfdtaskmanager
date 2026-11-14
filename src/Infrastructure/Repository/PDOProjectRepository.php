@@ -31,13 +31,15 @@ class PDOProjectRepository implements ProjectRepositoryInterface
         $this->ensureProjectColumns();
         if ($project->getId() === null) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO projects (name, description, is_private, created_by)
-                VALUES (:name, :description, :is_private, :created_by)
+                INSERT INTO projects (name, description, is_private, is_boardgame, type, created_by)
+                VALUES (:name, :description, :is_private, :is_boardgame, :type, :created_by)
             ");
             $stmt->execute([
                 'name' => $project->getName(),
                 'description' => $project->getDescription(),
                 'is_private' => $project->isPrivate() ? 1 : 0,
+                'is_boardgame' => $project->isBoardGame() ? 1 : 0,
+                'type' => $project->getType(),
                 'created_by' => $project->getCreatedBy()
             ]);
             $id = (int)$this->pdo->lastInsertId();
@@ -47,18 +49,23 @@ class PDOProjectRepository implements ProjectRepositoryInterface
                 $project->getDescription(),
                 date('Y-m-d H:i:s'),
                 $project->isPrivate(),
-                $project->getCreatedBy()
+                $project->getCreatedBy(),
+                $project->isBoardGame(),
+                $project->getType()
             );
         } else {
             $stmt = $this->pdo->prepare("
                 UPDATE projects
-                SET name = :name, description = :description, is_private = :is_private, created_by = :created_by
+                SET name = :name, description = :description, is_private = :is_private,
+                    is_boardgame = :is_boardgame, type = :type, created_by = :created_by
                 WHERE id = :id
             ");
             $stmt->execute([
                 'name' => $project->getName(),
                 'description' => $project->getDescription(),
                 'is_private' => $project->isPrivate() ? 1 : 0,
+                'is_boardgame' => $project->isBoardGame() ? 1 : 0,
+                'type' => $project->getType(),
                 'created_by' => $project->getCreatedBy(),
                 'id' => $project->getId()
             ]);
@@ -95,13 +102,21 @@ class PDOProjectRepository implements ProjectRepositoryInterface
 
     private function mapRowToEntity(array $row): Project
     {
+        $type = $row['type'] ?? 'standard';
+        $isBoardGame = (bool)($row['is_boardgame'] ?? ($type === 'boardgame'));
+        if ($isBoardGame && $type === 'standard') {
+            $type = 'boardgame';
+        }
+
         return new Project(
             (int)$row['id'],
             $row['name'],
             $row['description'] ?? '',
             $row['created_at'] ?? '',
             (bool)($row['is_private'] ?? false),
-            isset($row['created_by']) && $row['created_by'] !== null ? (int)$row['created_by'] : null
+            isset($row['created_by']) && $row['created_by'] !== null ? (int)$row['created_by'] : null,
+            $isBoardGame,
+            $type
         );
     }
 
@@ -114,9 +129,17 @@ class PDOProjectRepository implements ProjectRepositoryInterface
             if (empty($cols)) {
                 $this->pdo->exec("ALTER TABLE `projects` ADD COLUMN `is_private` TINYINT(1) NOT NULL DEFAULT 0 AFTER `description`");
             }
+            $bgCols = $this->pdo->query("SHOW COLUMNS FROM `projects` LIKE 'is_boardgame'")->fetchAll();
+            if (empty($bgCols)) {
+                $this->pdo->exec("ALTER TABLE `projects` ADD COLUMN `is_boardgame` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_private`");
+            }
+            $typeCols = $this->pdo->query("SHOW COLUMNS FROM `projects` LIKE 'type'")->fetchAll();
+            if (empty($typeCols)) {
+                $this->pdo->exec("ALTER TABLE `projects` ADD COLUMN `type` VARCHAR(50) NOT NULL DEFAULT 'standard' AFTER `is_boardgame`");
+            }
             $createdByCols = $this->pdo->query("SHOW COLUMNS FROM `projects` LIKE 'created_by'")->fetchAll();
             if (empty($createdByCols)) {
-                $this->pdo->exec("ALTER TABLE `projects` ADD COLUMN `created_by` INT DEFAULT NULL AFTER `is_private`");
+                $this->pdo->exec("ALTER TABLE `projects` ADD COLUMN `created_by` INT DEFAULT NULL AFTER `type`");
                 $this->pdo->exec("ALTER TABLE `projects` ADD CONSTRAINT `fk_projects_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL");
             }
         } catch (\Throwable $e) {

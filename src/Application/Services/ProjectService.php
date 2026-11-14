@@ -33,8 +33,14 @@ class ProjectService
         return $this->projectRepository->findAll($forUserId);
     }
 
-    public function createProject(string $name, string $description, bool $isPrivate = false, ?int $createdBy = null): Project
-    {
+    public function createProject(
+        string $name,
+        string $description,
+        bool $isPrivate = false,
+        ?int $createdBy = null,
+        bool $isBoardGame = false,
+        string $type = 'standard'
+    ): Project {
         $name = trim($name);
         $description = trim($description);
 
@@ -42,12 +48,24 @@ class ProjectService
             throw new ValidationException("Project name is required.");
         }
 
-        $project = new Project(null, $name, $description, '', $isPrivate, $createdBy);
+        if ($isBoardGame || $type === 'boardgame') {
+            $isBoardGame = true;
+            $type = 'boardgame';
+        }
+
+        $project = new Project(null, $name, $description, '', $isPrivate, $createdBy, $isBoardGame, $type);
         return $this->projectRepository->save($project);
     }
 
-    public function updateProject(int $id, string $name, string $description, bool $isPrivate = false, ?int $userId = null): Project
-    {
+    public function updateProject(
+        int $id,
+        string $name,
+        string $description,
+        bool $isPrivate = false,
+        ?int $userId = null,
+        bool $isBoardGame = false,
+        string $type = 'standard'
+    ): Project {
         $name = trim($name);
         $description = trim($description);
 
@@ -69,7 +87,12 @@ class ProjectService
             $createdBy = $userId;
         }
 
-        $updatedProject = new Project($id, $name, $description, $project->getCreatedAt(), $isPrivate, $createdBy);
+        if ($isBoardGame || $type === 'boardgame') {
+            $isBoardGame = true;
+            $type = 'boardgame';
+        }
+
+        $updatedProject = new Project($id, $name, $description, $project->getCreatedAt(), $isPrivate, $createdBy, $isBoardGame, $type);
         return $this->projectRepository->save($updatedProject);
     }
 }
